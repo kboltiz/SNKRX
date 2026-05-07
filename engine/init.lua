@@ -46,7 +46,7 @@ end
 function engine_run(config)
   if not web then
     love.filesystem.setIdentity(config.game_name)
-    steam.init()
+    -- steam.init()
     system.load_state()
 
     local _, _, flags = love.window.getMode()
@@ -74,7 +74,7 @@ function engine_run(config)
     love.window.setTitle(config.game_name)
 
   else
-    gw, gh = config.game_width or 480, config.game_height or 270 
+    gw, gh = config.game_width or 480, config.game_height or 270
     sx, sy = 2, 2
     ww, wh = 960, 540
   end
@@ -122,7 +122,6 @@ function engine_run(config)
         if name == "quit" then
           if not love.quit or not love.quit() then
             system.save_state()
-            steam.shutdown()
             return a or 0
           end
         elseif name == "focus" then
@@ -146,7 +145,7 @@ function engine_run(config)
 
     if love.timer then dt = love.timer.step() end
 
-    steam.runCallbacks()
+    -- steam.runCallbacks()
     accumulator = accumulator + dt
     while accumulator >= fixed_dt do
       frame = frame + 1

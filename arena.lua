@@ -26,9 +26,6 @@ function Arena:on_enter(from, level, loop, units, passives, shop_level, shop_xp,
 
   trigger:tween(2, main_song_instance, {volume = 0.5, pitch = 1}, math.linear)
 
-  steam.friends.setRichPresence('steam_display', '#StatusFull')
-  steam.friends.setRichPresence('text', 'Arena - Level ' .. self.level)
-
   self.floor = Group()
   self.main = Group():set_as_physics_world(32, 0, 0, {'player', 'enemy', 'projectile', 'enemy_projectile', 'force_field', 'ghost'})
   self.post_main = Group()
@@ -104,7 +101,7 @@ function Arena:on_enter(from, level, loop, units, passives, shop_level, shop_xp,
 
   if self.level == 1000 then
     self.level_1000_text = Text2{group = self.ui, x = gw/2, y = gh/2, lines = {{text = '[fg, wavy_mid]SNKRX', font = fat_font, alignment = 'center'}}}
-  
+
   elseif (self.level - (25*self.loop)) % 6 == 0 or self.level % 25 == 0 then
     self.boss_level = true
     self.start_time = 3
@@ -143,35 +140,6 @@ function Arena:on_enter(from, level, loop, units, passives, shop_level, shop_xp,
             self.t:after(1.125, function() self:spawn_n_enemies(p, nil, 8 + math.floor(self.level/2)) end)
           end)
         end)
-      end)
-      self.t:every(function() return self.start_time <= 0 and (self.boss and self.boss.dead) and #self.main:get_objects_by_classes(self.enemies) <= 0 and not self.spawning_enemies and not self.quitting end, function()
-        self:quit()
-        if self.level == 6 then
-          state.achievement_speed_booster = true
-          system.save_state()
-          steam.userStats.setAchievement('SPEED_BOOSTER')
-          steam.userStats.storeStats()
-        elseif self.level == 12 then
-          state.achievement_exploder = true
-          system.save_state()
-          steam.userStats.setAchievement('EXPLODER')
-          steam.userStats.storeStats()
-        elseif self.level == 18 then
-          state.achievement_swarmer = true
-          system.save_state()
-          steam.userStats.setAchievement('SWARMER')
-          steam.userStats.storeStats()
-        elseif self.level == 24 then
-          state.achievement_forcer = true
-          system.save_state()
-          steam.userStats.setAchievement('FORCER')
-          steam.userStats.storeStats()
-        elseif self.level == 25 then
-          state.achievement_cluster = true
-          system.save_state()
-          steam.userStats.setAchievement('CLUSTER')
-          steam.userStats.storeStats()
-        end
       end)
     end)
   else
@@ -479,7 +447,6 @@ function Arena:quit()
             {text = "[fg]so check them out! and to get more games like this:", font = pixul_font, alignment = 'center', height_multiplier = 3.5},
             {text = "[wavy_mid, yellow]thanks for playing!", font = pixul_font, alignment = 'center'},
           }}
-          SteamFollowButton{group = self.ui, x = gw/2 + 40, y = gh/2 + 58, force_update = true}
           Button{group = self.ui, x = gw - 40, y = gh - 44, force_update = true, button_text = 'credits', fg_color = 'bg10', bg_color = 'bg', action = function() self:create_credits() end}
           Button{group = self.ui, x = gw - 39, y = gh - 20, force_update = true, button_text = '  loop  ', fg_color = 'bg10', bg_color = 'bg', action = function() self:endless() end}
           self.try_loop_text = Text2{group = self.ui, x = gw - 144, y = gh - 20, force_update = true, lines = {
@@ -505,7 +472,6 @@ function Arena:quit()
             {text = "[wavy_mid, yellow]thanks for playing!", font = pixul_font, alignment = 'center'},
           }}
           ]]--
-          SteamFollowButton{group = self.ui, x = gw/2 + 40, y = gh/2 - 10, force_update = true}
           Button{group = self.ui, x = gw/2 + 40, y = gh/2 + 33, force_update = true, button_text = 'buy the soundtrack!', fg_color = 'greenm5', bg_color = 'green', action = function(b) open_url(b, 'https://kubbimusic.com/album/ember') end}
           Button{group = self.ui, x = gw - 40, y = gh - 44, force_update = true, button_text = '  loop  ', fg_color = 'bg10', bg_color = 'bg', action = function() self:endless() end}
           RestartButton{group = self.ui, x = gw - 40, y = gh - 20, force_update = true}
@@ -519,137 +485,12 @@ function Arena:quit()
         end
       end)
 
-      if current_new_game_plus == 2 then
-        state.achievement_new_game_1 = true
-        system.save_state()
-        steam.userStats.setAchievement('NEW_GAME_1')
-        steam.userStats.storeStats()
-      end
-
-      if current_new_game_plus == 6 then
-        state.achievement_new_game_5 = true
-        system.save_state()
-        steam.userStats.setAchievement('GAME_COMPLETE')
-        steam.userStats.storeStats()
-      end
-
-      if self.ranger_level >= 2 then
-        state.achievement_rangers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('RANGERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.warrior_level >= 2 then
-        state.achievement_warriors_win = true
-        system.save_state()
-        steam.userStats.setAchievement('WARRIORS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.mage_level >= 2 then
-        state.achievement_mages_win = true
-        system.save_state()
-        steam.userStats.setAchievement('MAGES_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.rogue_level >= 2 then
-        state.achievement_rogues_win = true
-        system.save_state()
-        steam.userStats.setAchievement('ROGUES_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.healer_level >= 2 then
-        state.achievement_healers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('HEALERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.enchanter_level >= 2 then
-        state.achievement_enchanters_win = true
-        system.save_state()
-        steam.userStats.setAchievement('ENCHANTERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.nuker_level >= 2 then
-        state.achievement_nukers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('NUKERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.conjurer_level >= 2 then
-        state.achievement_conjurers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('CONJURERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.psyker_level >= 2 then
-        state.achievement_psykers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('PSYKERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.curser_level >= 2 then
-        state.achievement_cursers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('CURSERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.forcer_level >= 2 then
-        state.achievement_forcers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('FORCERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.swarmer_level >= 2 then
-        state.achievement_swarmers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('SWARMERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.voider_level >= 2 then
-        state.achievement_voiders_win = true
-        system.save_state()
-        steam.userStats.setAchievement('VOIDERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.sorcerer_level >= 3 then
-        state.achievement_sorcerers_win = true
-        system.save_state()
-        steam.userStats.setAchievement('SORCERERS_WIN')
-        steam.userStats.storeStats()
-      end
-
-      if self.mercenary_level >= 2 then
-        state.achievement_mercenaries_win = true
-        system.save_state()
-        steam.userStats.setAchievement('MERCENARIES_WIN')
-        steam.userStats.storeStats()
-      end
-
       local all_units_level_2 = true
       for _, unit in ipairs(self.starting_units) do
         if unit.level ~= 2 then
           all_units_level_2 = false
           break
         end
-      end
-      if all_units_level_2 then
-        state.achievement_level_2_win = true
-        system.save_state()
-        steam.userStats.setAchievement('LEVEL_2_WIN')
-        steam.userStats.storeStats()
       end
 
       local units = self.player:get_all_units()
@@ -659,12 +500,6 @@ function Arena:quit()
           all_units_level_3 = false
           break
         end
-      end
-      if all_units_level_3 then
-        state.achievement_level_3_win = true
-        system.save_state()
-        steam.userStats.setAchievement('LEVEL_3_WIN')
-        steam.userStats.storeStats()
       end
     end
 
@@ -936,23 +771,23 @@ function Arena:create_credits()
   Button{group = self.credits, x = 262, y = 160, button_text = 'InspectorJ', fg_color = 'yellowm5', bg_color = 'yellow', credits_button = true, action = function(b)
     open_url(b, 'https://freesound.org/people/InspectorJ/sounds/458586/') end}
   Text2{group = self.credits, x = 70, y = 190, lines = {{text = '[red]playtesters: ', font = pixul_font}}}
-  Button{group = self.credits, x = 130, y = 190, button_text = 'Jofer', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 130, y = 190, button_text = 'Jofer', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/JofersGames') end}
-  Button{group = self.credits, x = 172, y = 190, button_text = 'ekun', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 172, y = 190, button_text = 'ekun', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/ekunenuke') end}
-  Button{group = self.credits, x = 224, y = 190, button_text = 'cvisy_GN', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 224, y = 190, button_text = 'cvisy_GN', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/cvisy_GN') end}
-  Button{group = self.credits, x = 292, y = 190, button_text = 'Blue Fairy', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 292, y = 190, button_text = 'Blue Fairy', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/blue9fairy') end}
-  Button{group = self.credits, x = 362, y = 190, button_text = 'Phil Blank', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 362, y = 190, button_text = 'Phil Blank', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/PhilBlankGames') end}
-  Button{group = self.credits, x = 440, y = 190, button_text = 'DefineDoddy', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 440, y = 190, button_text = 'DefineDoddy', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/DefineDoddy') end}
-  Button{group = self.credits, x = 140, y = 210, button_text = 'Ge0force', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 140, y = 210, button_text = 'Ge0force', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/Ge0forceBE') end}
-  Button{group = self.credits, x = 193, y = 210, button_text = 'Vlad', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 193, y = 210, button_text = 'Vlad', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/thecryru') end}
-  Button{group = self.credits, x = 258, y = 210, button_text = 'Yongmin Park', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b) 
+  Button{group = self.credits, x = 258, y = 210, button_text = 'Yongmin Park', fg_color = 'redm5', bg_color = 'red', credits_button = true, action = function(b)
     open_url(b, 'https://twitter.com/yongminparks') end}
 end
 
@@ -997,7 +832,7 @@ function Arena:transition()
     main:go_to('buy_screen', self.level+1, self.loop, self.units, self.passives, self.shop_level, self.shop_xp)
     t.t:after(0.1, function()
       t.text:set_text({
-        {text = '[nudge_down, ' .. tostring(state.dark_transitions and 'fg' or 'bg') .. ']gold gained: ' .. tostring(self.gold_gained or 0) .. ' + ' .. tostring(self.gold_picked_up or 0), font = pixul_font, 
+        {text = '[nudge_down, ' .. tostring(state.dark_transitions and 'fg' or 'bg') .. ']gold gained: ' .. tostring(self.gold_gained or 0) .. ' + ' .. tostring(self.gold_picked_up or 0), font = pixul_font,
           alignment = 'center', height_multiplier = 1.5},
         {text = '[wavy_lower, ' .. tostring(state.dark_transitions and 'fg' or 'bg') .. ']interest: 0', font = pixul_font, alignment = 'center', height_multiplier = 1.5},
         {text = '[wavy_lower, ' .. tostring(state.dark_transitions and 'fg' or 'bg') .. ']total: 0', font = pixul_font, alignment = 'center'}

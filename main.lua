@@ -603,7 +603,7 @@ function init()
     ['bomber'] = function(lvl) return '[fg]plants a bomb, when it explodes it deals [yellow]' .. 2*get_character_stat('bomber', lvl, 'dmg') .. ' AoE[fg] damage' end,
     ['stormweaver'] = function(lvl) return '[fg]infuses projectiles with chain lightning that deals [yellow]20%[fg] damage to [yellow]2[fg] enemies' end,
     ['sage'] = function(lvl) return '[fg]shoots a slow projectile that draws enemies in' end,
-    ['squire'] = function(lvl) return '[yellow]+20%[fg] damage and defense to all allies' end, 
+    ['squire'] = function(lvl) return '[yellow]+20%[fg] damage and defense to all allies' end,
     ['cannoneer'] = function(lvl) return '[fg]shoots a projectile that deals [yellow]' .. 2*get_character_stat('cannoneer', lvl, 'dmg') .. ' AoE[fg] damage' end,
     ['dual_gunner'] = function(lvl) return '[fg]shoots two parallel projectiles, each dealing [yellow]' .. get_character_stat('dual_gunner', lvl, 'dmg') .. '[fg] damage' end,
     ['hunter'] = function(lvl) return '[fg]shoots an arrow that deals [yellow]' .. get_character_stat('hunter', lvl, 'dmg') .. '[fg] damage and has a [yellow]20%[fg] chance to summon a pet' end,
@@ -891,28 +891,28 @@ function init()
 
   character_stats = {
     ['vagrant'] = function(lvl) return get_character_stat_string('vagrant', lvl) end,
-    ['swordsman'] = function(lvl) return get_character_stat_string('swordsman', lvl) end, 
-    ['wizard'] = function(lvl) return get_character_stat_string('wizard', lvl) end, 
-    ['magician'] = function(lvl) return get_character_stat_string('magician', lvl) end, 
-    ['archer'] = function(lvl) return get_character_stat_string('archer', lvl) end, 
-    ['scout'] = function(lvl) return get_character_stat_string('scout', lvl) end, 
-    ['cleric'] = function(lvl) return get_character_stat_string('cleric', lvl) end, 
-    ['outlaw'] = function(lvl) return get_character_stat_string('outlaw', lvl) end, 
-    ['blade'] = function(lvl) return get_character_stat_string('blade', lvl) end, 
-    ['elementor'] = function(lvl) return get_character_stat_string('elementor', lvl) end, 
-    ['saboteur'] = function(lvl) return get_character_stat_string('saboteur', lvl) end, 
-    ['bomber'] = function(lvl) return get_character_stat_string('bomber', lvl) end, 
-    ['stormweaver'] = function(lvl) return get_character_stat_string('stormweaver', lvl) end, 
-    ['sage'] = function(lvl) return get_character_stat_string('sage', lvl) end, 
-    ['squire'] = function(lvl) return get_character_stat_string('squire', lvl) end, 
-    ['cannoneer'] = function(lvl) return get_character_stat_string('cannoneer', lvl) end, 
-    ['dual_gunner'] = function(lvl) return get_character_stat_string('dual_gunner', lvl) end, 
-    ['hunter'] = function(lvl) return get_character_stat_string('hunter', lvl) end, 
-    ['sentry'] = function(lvl) return get_character_stat_string('sentry', lvl) end, 
-    ['chronomancer'] = function(lvl) return get_character_stat_string('chronomancer', lvl) end, 
-    ['spellblade'] = function(lvl) return get_character_stat_string('spellblade', lvl) end, 
-    ['psykeeper'] = function(lvl) return get_character_stat_string('psykeeper', lvl) end, 
-    ['engineer'] = function(lvl) return get_character_stat_string('engineer', lvl) end, 
+    ['swordsman'] = function(lvl) return get_character_stat_string('swordsman', lvl) end,
+    ['wizard'] = function(lvl) return get_character_stat_string('wizard', lvl) end,
+    ['magician'] = function(lvl) return get_character_stat_string('magician', lvl) end,
+    ['archer'] = function(lvl) return get_character_stat_string('archer', lvl) end,
+    ['scout'] = function(lvl) return get_character_stat_string('scout', lvl) end,
+    ['cleric'] = function(lvl) return get_character_stat_string('cleric', lvl) end,
+    ['outlaw'] = function(lvl) return get_character_stat_string('outlaw', lvl) end,
+    ['blade'] = function(lvl) return get_character_stat_string('blade', lvl) end,
+    ['elementor'] = function(lvl) return get_character_stat_string('elementor', lvl) end,
+    ['saboteur'] = function(lvl) return get_character_stat_string('saboteur', lvl) end,
+    ['bomber'] = function(lvl) return get_character_stat_string('bomber', lvl) end,
+    ['stormweaver'] = function(lvl) return get_character_stat_string('stormweaver', lvl) end,
+    ['sage'] = function(lvl) return get_character_stat_string('sage', lvl) end,
+    ['squire'] = function(lvl) return get_character_stat_string('squire', lvl) end,
+    ['cannoneer'] = function(lvl) return get_character_stat_string('cannoneer', lvl) end,
+    ['dual_gunner'] = function(lvl) return get_character_stat_string('dual_gunner', lvl) end,
+    ['hunter'] = function(lvl) return get_character_stat_string('hunter', lvl) end,
+    ['sentry'] = function(lvl) return get_character_stat_string('sentry', lvl) end,
+    ['chronomancer'] = function(lvl) return get_character_stat_string('chronomancer', lvl) end,
+    ['spellblade'] = function(lvl) return get_character_stat_string('spellblade', lvl) end,
+    ['psykeeper'] = function(lvl) return get_character_stat_string('psykeeper', lvl) end,
+    ['engineer'] = function(lvl) return get_character_stat_string('engineer', lvl) end,
     ['plague_doctor'] = function(lvl) return get_character_stat_string('plague_doctor', lvl) end,
     ['barbarian'] = function(lvl) return get_character_stat_string('barbarian', lvl) end,
     ['juggernaut'] = function(lvl) return get_character_stat_string('juggernaut', lvl) end,
@@ -1001,8 +1001,8 @@ function init()
     ['forcer'] = function(lvl) return '[' .. ylb1(lvl) .. ']2[light_bg]/[' .. ylb2(lvl) .. ']4 [fg]- [' .. ylb1(lvl) .. ']+25%[light_bg]/[' .. ylb2(lvl) .. ']+50% [fg]knockback force to all allies' end,
     ['swarmer'] = function(lvl) return '[' .. ylb1(lvl) .. ']2[light_bg]/[' .. ylb2(lvl) .. ']4 [fg]- [' .. ylb1(lvl) .. ']+1[light_bg]/[' .. ylb2(lvl) .. ']+3 [fg]hits to critters' end,
     ['voider'] = function(lvl) return '[' .. ylb1(lvl) .. ']2[light_bg]/[' .. ylb2(lvl) .. ']4 [fg]- [' .. ylb1(lvl) .. ']+20%[light_bg]/[' .. ylb2(lvl) .. ']+40% [fg]damage over time to allied voiders' end,
-    ['sorcerer'] = function(lvl) 
-      return '[' .. ylb1(lvl) .. ']2[light_bg]/[' .. ylb2(lvl) .. ']4[light_bg]/[' .. ylb3(lvl) .. ']6 [fg]- sorcerers repeat their attacks once every [' .. 
+    ['sorcerer'] = function(lvl)
+      return '[' .. ylb1(lvl) .. ']2[light_bg]/[' .. ylb2(lvl) .. ']4[light_bg]/[' .. ylb3(lvl) .. ']6 [fg]- sorcerers repeat their attacks once every [' ..
         ylb1(lvl) .. ']4[light_bg]/[' .. ylb2(lvl) .. ']3[light_bg]/[' .. ylb3(lvl) .. ']2[fg] attacks'
     end,
     ['mercenary'] = function(lvl) return '[' .. ylb1(lvl) .. ']2[light_bg]/[' .. ylb2(lvl) .. ']4 [fg]- [' .. ylb1(lvl) .. ']+8%[light_bg]/[' .. ylb2(lvl) .. ']+16% [fg]chance for enemies to drop gold on death' end,
@@ -1080,7 +1080,7 @@ function init()
   }
 
   launches_projectiles = function(character)
-    local classes = {'vagrant', 'archer', 'scout', 'outlaw', 'blade', 'wizard', 'cannoneer', 'dual_gunner', 'hunter', 'spellblade', 'engineer', 'corruptor', 'beastmaster', 'jester', 'assassin', 'barrager', 
+    local classes = {'vagrant', 'archer', 'scout', 'outlaw', 'blade', 'wizard', 'cannoneer', 'dual_gunner', 'hunter', 'spellblade', 'engineer', 'corruptor', 'beastmaster', 'jester', 'assassin', 'barrager',
       'arcanist', 'illusionist', 'artificer', 'miner', 'thief', 'sentry'}
     return table.any(classes, function(v) return v == character end)
   end
@@ -1491,7 +1491,7 @@ function init()
     [4] = {4, 5},
     [5] = {5, 8},
     [6] = {8, 10},
-    [7] = {8, 10}, 
+    [7] = {8, 10},
     [8] = {12, 14},
     [9] = {14, 18},
     [10] = {10, 13},
@@ -1502,9 +1502,9 @@ function init()
     [15] = {14, 18},
     [16] = {12, 12},
     [17] = {12, 12},
-    [18] = {20, 24}, 
+    [18] = {20, 24},
     [19] = {8, 12},
-    [20] = {10, 14}, 
+    [20] = {10, 14},
     [21] = {20, 28},
     [22] = {32, 32},
     [23] = {36, 36},
@@ -1691,12 +1691,12 @@ function init()
   end
 
   unlevellable_items = {
-    'speed_3', 'damage_4', 'shoot_5', 'death_6', 'lasting_7', 'kinetic_bomb', 'porcupine_technique', 'last_stand', 'annihilation', 
+    'speed_3', 'damage_4', 'shoot_5', 'death_6', 'lasting_7', 'kinetic_bomb', 'porcupine_technique', 'last_stand', 'annihilation',
     'tremor', 'heavy_impact', 'fracture', 'meat_shield', 'divine_punishment', 'unleash', 'freezing_field', 'burning_field', 'gravity_field',
     'magnetism', 'insurance', 'dividends', 'haste', 'rearm', 'ceremonial_dagger', 'burning_strike', 'lucky_strike', 'healing_strike', 'psycholeak', 'divine_blessing', 'hardening',
   }
 
-  steam.userStats.requestCurrentStats()
+  -- steam.userStats.requestCurrentStats()
   new_game_plus = state.new_game_plus or 0
   if not state.new_game_plus then state.new_game_plus = new_game_plus end
   current_new_game_plus = state.current_new_game_plus or new_game_plus
@@ -1714,7 +1714,7 @@ function init()
   main:go_to('buy_screen', run.level or 1, run.units or {}, passives, run.shop_level or 1, run.shop_xp or 0)
   -- main:go_to('buy_screen', 7, run.units or {}, {'unleash'})
   ]]--
-  
+
   --[[
   gold = 10
   run_passive_pool = {
@@ -1823,13 +1823,6 @@ function update(dt)
     state.sx, state.sy = sx, sy
     state.fullscreen = false
   end
-
-  --[[
-  if input.f11.pressed then
-    steam.userStats.resetAllStats(true)
-    steam.userStats.storeStats()
-  end
-  ]]--
 end
 
 
@@ -2024,14 +2017,14 @@ function open_options(self)
       love.window.setMode(window_width, window_height)
     end}
 
-    self.screen_shake_button = Button{group = self.ui, x = gw/2 - 57, y = gh - 100, w = 110, force_update = true, button_text = '[bg10]screen shake: ' .. tostring(state.no_screen_shake and 'no' or 'yes'), 
+    self.screen_shake_button = Button{group = self.ui, x = gw/2 - 57, y = gh - 100, w = 110, force_update = true, button_text = '[bg10]screen shake: ' .. tostring(state.no_screen_shake and 'no' or 'yes'),
     fg_color = 'bg10', bg_color = 'bg', action = function(b)
       ui_switch1:play{pitch = random:float(0.95, 1.05), volume = 0.5}
       state.no_screen_shake = not state.no_screen_shake
       b:set_text('screen shake: ' .. tostring(state.no_screen_shake and 'no' or 'yes'))
     end}
 
-    self.cooldown_snake_button = Button{group = self.ui, x = gw/2 + 75, y = gh - 100, w = 145, force_update = true, button_text = '[bg10]cooldowns on snake: ' .. tostring(state.cooldown_snake and 'yes' or 'no'), 
+    self.cooldown_snake_button = Button{group = self.ui, x = gw/2 + 75, y = gh - 100, w = 145, force_update = true, button_text = '[bg10]cooldowns on snake: ' .. tostring(state.cooldown_snake and 'yes' or 'no'),
     fg_color = 'bg10', bg_color = 'bg', action = function(b)
       ui_switch1:play{pitch = random:float(0.95, 1.05), volume = 0.5}
       state.cooldown_snake = not state.cooldown_snake
@@ -2045,7 +2038,7 @@ function open_options(self)
       b:set_text('arrow on snake: ' .. tostring(state.arrow_snake and 'yes' or 'no'))
     end}
 
-    self.screen_movement_button = Button{group = self.ui, x = gw/2 - 69, y = gh - 75, w = 135, force_update = true, button_text = '[bg10]screen movement: ' .. tostring(state.no_screen_movement and 'no' or 'yes'), 
+    self.screen_movement_button = Button{group = self.ui, x = gw/2 - 69, y = gh - 75, w = 135, force_update = true, button_text = '[bg10]screen movement: ' .. tostring(state.no_screen_movement and 'no' or 'yes'),
     fg_color = 'bg10', bg_color = 'bg', action = function(b)
       ui_switch1:play{pitch = random:float(0.95, 1.05), volume = 0.5}
       state.no_screen_movement = not state.no_screen_movement
@@ -2095,7 +2088,6 @@ function open_options(self)
 
     self.quit_button = Button{group = self.ui, x = gw/2, y = gh - 25, force_update = true, button_text = 'quit', fg_color = 'bg10', bg_color = 'bg', action = function()
       system.save_state()
-      steam.shutdown()
       love.event.quit()
     end}
   end, 'pause')
