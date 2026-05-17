@@ -1,0 +1,35 @@
+;; clamp does not exist in atmos, so I added it!
+set math.clamp = func(x, min, max) {
+    math.min(max, math.max(min, x))
+}
+
+;; Directly using engine code that is independent of Love2D
+set package[:path] = package[:path] ++ ";../?.lua;../?/init.lua"
+
+require "atmos.env.pico"
+set pico = require "pico"
+
+require "engine/game/object"
+require "engine/graphics/color"
+require "engine/graphics/text"
+require "atmos-port/shared"
+
+set Text = require "ui.texttag"
+set Button = require "ui.button"
+set MainMenu = require "Screens.mainmenu"
+
+;; Loads all colors, fonts for now
+;; Will also control sound loading and
+;; data structures for battle unit purchases
+shared_init();
+
+pico.zet.window @{ title="SNKRX-Atmos", fullscreen=false }
+pico.zet.dim @{ '!', w=640, h=360 } 
+
+loop {
+    pin mainmenu = spawn mainmenu();
+    
+    ;; other game states go here
+    
+    await (:game_end)
+}

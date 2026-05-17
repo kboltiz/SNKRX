@@ -1,0 +1,97 @@
+require "engine/game/object"
+require "engine/graphics/color"
+require "engine/graphics/text"
+require "engine/math/spring"
+require "shared"
+
+val aspect = 960/540;
+
+func draw_rounded_rect(x, y, w, h, r) {
+    val actual_r = math.min(r, (w/2), (h/2));
+    val r_w = actual_r;
+    val r_h = actual_r * aspect;
+    
+    pico.output.draw.rect(@{'%', x=x, y=y, w=w, h=(h-(2*r_h)), anchor='C'})
+    pico.output.draw.rect(@{'%', x=x, y=y, w=(w-(2*r_w)), h=h, anchor='C'})
+    
+    ;; Rounded Corners (TODO: replace this with pixlmaps)
+    pico.output.draw.oval(@{'%', x=((x-(w/2))+r_w), y=((y-(h/2))+r_h), w=(r_w*2), h=(r_h*2), anchor='C'})
+    pico.output.draw.oval(@{'%', x=((x+(w/2))-r_w), y=((y-(h/2))+r_h), w=(r_w*2), h=(r_h*2), anchor='C'})
+    pico.output.draw.oval(@{'%', x=((x-(w/2))+r_w), y=((y+(h/2))-r_h), w=(r_w*2), h=(r_h*2), anchor='C'})
+    pico.output.draw.oval(@{'%', x=((x+(w/2))-r_w), y=((y+(h/2))-r_h), w=(r_w*2), h=(r_h*2), anchor='C'})
+}
+
+val BUTTON_DEFAULTS = @{
+    w         = 0.15,
+    h         = 0.07 * aspect,
+    font_size = 0.05,
+    radius    = 0.01,
+    k         = 600,
+    d         = 18,
+    pull      = 0.3
+}
+
+func button(args) {
+    set args = args || @{};
+    
+    val x = args.x || 0.5;
+    val y = args.y || 0.5;
+    val text_content = args.text || "";
+    val cfg = @{
+        w         = (args.w         || BUTTON_DEFAULTS.w),
+        h         = (args.h         || BUTTON_DEFAULTS.h),
+        font_size = (args.font_size || BUTTON_DEFAULTS.font_size),
+        radius    = (args.radius    || BUTTON_DEFAULTS.radius),
+        k         = (args.k         || BUTTON_DEFAULTS.k),
+        d         = (args.d         || BUTTON_DEFAULTS.d),
+        pull      = (args.pull      || BUTTON_DEFAULTS.pull)
+    }
+    
+    var scaleSpring = Spring(1, cfg.k, cfg.d);
+    var hovering = false;
+    val rect = @{'%', x=x, y=y, w=cfg.w, h=cfg.h, anchor='C'};
+
+    par {
+    	;; Spring update loop
+    	
+        every i, ms in :clock {
+            scaleSpring::update(ms/1000);
+            set scaleSpring.x = math.clamp(scaleSpring.x, 0.8, 1.5);
+        }
+    } with {
+    	;; Draw loop
+    
+        every :draw {
+            val w = cfg.w * scaleSpring.x;
+            val h = cfg.h * scaleSpring.x;
+
+            pico.zet.color.draw ((hovering && @{ '%', r=1, g=1, b=1 }) || @{ '%', r=0.15, g=0.15, b=0.15 })
+            draw_rounded_rect(x, y, w, h, cfg.radius);
+            
+            pico.zet.color.draw ((hovering && @{ '%', r=0.6, g=0.6, b=0.6 }) || @{ '%', r=0.4, g=0.4, b=0.4 })
+            pico.zet.font (pixul_font);
+            pico.output.draw.text(text_content, @{
+                '%', x=x, y=y, h=(cfg.font_size * scaleSpring.x), anchor='C'
+            });
+        }
+    } with {
+        ;; Interaction loop
+    
+        loop {
+            ;; Wait for hover
+            await(:mouse.motion, \{pico.vs.pos_rect(it, rect)})
+            set hovering = true
+            
+            ;; Yank the button on hover start
+            ;; and play the hover sound 
+            scaleSpring::pull(cfg.pull);
+            pico.output.sound(Sounds.ui_hover1);
+
+            ;; Wait for unhover or click
+            await(:mouse.motion, \{!pico.vs.pos_rect(it, rect)})
+            set hovering = false;
+        }
+    }
+}
+
+button

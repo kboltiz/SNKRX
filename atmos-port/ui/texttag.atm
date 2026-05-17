@@ -1,0 +1,83 @@
+func text(x, y, str, h) {
+	;; Main task
+
+    set characters = make_text(str);
+    set time = 0;
+    
+    par {
+        every i, ms in :clock {
+            set time = time + (ms/1000);
+        }
+    } with {
+        every :draw {
+            draw_text(characters, x, y, h, time)
+        }
+    }
+}
+
+func make_text(str) {
+	;; Parses tags in the content string
+	;; to set colors to individual characters
+	;; Also for wavy effects
+	
+    val characters = @{};
+    var current_color = fg[0];
+    var i = 1;
+    
+    loop {
+        if i > #str { break() }
+        
+        if str[i] == '[' {
+            var j = i + 1;
+            loop {
+                if (j > #str) || (str[j] == ']') { break() }
+                set j = j + 1;
+            }
+            val tag_name = string.sub(str, i+1, j-1);
+            if tag_name == '' {
+                set current_color = fg[0];
+            } else {
+                set current_color = color_lookup[tag_name] || fg[0];
+            }
+            set i = j + 1;
+        } else {
+            table.insert(characters, @{
+                char  = string.sub(str, i, i),
+                color = current_color,
+                ox    = 0,
+                oy    = 0
+            });
+            set i = i + 1;
+        }
+    }
+    
+    characters
+}
+
+func draw_text(characters, x, y, h, time) {
+	;; Calls the text tag function
+	;; on each character (effects)
+
+    val h_px = h * 540;
+	var total_w = 0;
+	
+	loop i, c in characters {
+		val dim = pico.get.text(c.char, @{ '!', h=h_px });
+		set total_w = total_w + (dim.w / 960);
+	}
+	
+	var cx = x - (total_w / 2);
+	loop i, c in characters {
+		val dim = pico.get.text(c.char, @{ '!', h=h_px });
+		val char_w = dim.w / 960;
+		set c.oy = 0.01 * math.sin((4*time) + i);
+		
+		pico.zet.color.draw @{'%', r = 1, g = 1, b = 1};
+		pico.zet.font (fat_font);
+		pico.output.draw.text(c.char, @{
+		    '%', x=(cx + (char_w / 2)), y=(y + c.oy), h=h, anchor='C' 
+		})
+		
+		set cx = cx + char_w;
+	}
+}
