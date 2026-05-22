@@ -1,66 +1,49 @@
 require "atmos.env.pico"
 val pico = require "pico"
 
-val screenWidth = 640
-val screenHeight = 360
+;; "global constants" in uppercase
+;; use simpler local names
+
+val W = 640
+val H = 360
+val PAD = 0.01  ;; padding for buttons
 
 pico.zet.window @{ title="SNKRX Menu" }
-pico.zet.dim @{ '!', w=screenWidth, h=screenHeight }
+pico.zet.dim @{ '!', w=W, h=H }
 
-;; padding constant for buttons
-val btnPadding = 0.01
+func Button(x, y, h, anc, text) {
 
-func Button(x, y, h, anchor, text) {
-    val dim = pico.get.text(@{"%", h=h}, text)
-	
-	;; padding values for button layer
-    val w = dim.w + btnPadding
-    val h2 = dim.h + btnPadding
-
-	;; creating button layer
-    pico.layer.empty(nil, text, false, @{"%", w=w, h=h2})
+	;; creating button layer (original received h)
+    val rect = @{"%", x=x, y=y, h=h, anchor=anc}
+    pico.get.text(rect, text)   ;; no need for 'dim' (rect changed)
+    pico.layer.empty(:world, text, false, rect) ;; pass rect to world layer
     pico.zet.layer(text)
+    pico.zet.effect @{ color=@{"%", r=0.2, g=0.2, b=0.2} }
+    pico.output.clear()
 
-    pico.zet.pencil @{ color=@{"%", r=0.2, g=0.2, b=0.2} }
-    pico.output.draw.rect(@{
-        "%",
-        x=0.5, y=0.5,
-        w=1, h=1,
-        anchor="C"
-    })
+    ;; drawing text inside (pad received h)
+    pico.zet.pencil @{ color='white' }
+    pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=1-PAD })
+    pico.zet.layer(:world)
 
-	;; padding adjusted to layer size
-    pico.zet.pencil @{ color=@{"%", r=1, g=1, b=1} }
-    pico.output.draw.text(text, @{
-        "%",
-        x=0.5, y=0.5,
-        w=dim.w / w,
-        h=dim.h / h2,
-        anchor="C"
-    })
-
-    pico.zet.layer("world")
-
-	;; drawing and hovering
-	val button_rect = @{"%", x=x, y=y, w=w, h=h2, anchor=anchor}
-
-	par {
-		every :draw { pico.output.draw.layer(text, button_rect) }
-	} with {
-		loop {
-		    ;; Idle State
-		    print(text ++ "_idle")
-		    await(:mouse.motion, \{pico.vs.pos.rect(it, button_rect)})
-		    
-		    ;; Hover State
-		    print(text ++ "_hovered")
-		    await(:mouse.motion, \{!pico.vs.pos.rect(it, button_rect)})        
-		}
-	}
+    loop {
+        ;; Idle State
+        print(text ++ "_idle")
+        await(:mouse.motion, \{pico.vs.pos.rect(it, rect)})
+        
+        ;; Hover State
+        print(text ++ "_hovered")
+        await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})        
+    }
 }
 
-pin btn_task = spawn Button(0.01, 0.5, 0.08, "W", "arena run");
-pin btn_task = spawn Button(0.01, 0.6, 0.08, "W", "options");
-pin btn_task = spawn Button(0.01, 0.7, 0.08, "W", "quit");
+;; shared values
+val x = 0.01
+val h = 0.08
+
+;; no need for ids yet (pin v = ...)
+spawn Button(x, 0.5, h, 'W', "arena run")
+spawn Button(x, 0.6, h, 'W', "options")
+spawn Button(x, 0.7, h, 'W', "quit")
 
 await (:game_ended)
