@@ -41,10 +41,22 @@ func Button(x, y, h, anchor, text) {
 
     pico.zet.layer("world")
 
-	;; draw the button layer
-    every :draw {
-        pico.output.draw.layer(text, @{"%", x=x, y=y, anchor=anchor})
-    }
+	;; drawing and hovering
+	val button_rect = @{"%", x=x, y=y, w=w, h=h2, anchor=anchor}
+
+	par {
+		every :draw { pico.output.draw.layer(text, button_rect) }
+	} with {
+		loop {
+		    ;; Idle State
+		    print(text ++ "_idle")
+		    await(:mouse.motion, \{pico.vs.pos.rect(it, button_rect)})
+		    
+		    ;; Hover State
+		    print(text ++ "_hovered")
+		    await(:mouse.motion, \{!pico.vs.pos.rect(it, button_rect)})        
+		}
+	}
 }
 
 pin btn_task = spawn Button(0.01, 0.5, 0.08, "W", "arena run");
