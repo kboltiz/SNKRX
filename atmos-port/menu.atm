@@ -1,19 +1,54 @@
 require "atmos.env.pico"
 val pico = require "pico"
 
-pico.zet.window @{ title="SNKRX Menu" }
-pico.zet.dim @{ '!', w=640, h=360 } 
+val screenWidth = 640
+val screenHeight = 360
 
-every :draw {
-    ;; arena_start button
-    pico.zet.color.draw @{ '%', r=0.2, g=0.2, b=0.2 }
-    pico.output.draw.rect(@{ '%', x=0.01, y=0.5, w=0.18, h=0.08, anchor='W' })
-    
-    ;; options button 
-    pico.zet.color.draw @{ '%', r=0.2, g=0.2, b=0.2 }
-    pico.output.draw.rect(@{ '%', x=0.01, y=0.6, w=0.15, h=0.08, anchor='W' })
-    
-    ;; quit button
-    pico.zet.color.draw @{ '%', r=0.2, g=0.2, b=0.2 }
-    pico.output.draw.rect(@{ '%', x=0.01, y=0.7, w=0.13, h=0.08, anchor='W' })
+pico.zet.window @{ title="SNKRX Menu" }
+pico.zet.dim @{ '!', w=screenWidth, h=screenHeight }
+
+;; padding constant for buttons
+val btnPadding = 0.01
+
+func Button(x, y, h, anchor, text) {
+    val dim = pico.get.text(@{"%", h=h}, text)
+	
+	;; padding values for button layer
+    val w = dim.w + btnPadding
+    val h2 = dim.h + btnPadding
+
+	;; creating button layer
+    pico.layer.empty(nil, text, false, @{"%", w=w, h=h2})
+    pico.zet.layer(text)
+
+    pico.zet.pencil @{ color=@{"%", r=0.2, g=0.2, b=0.2} }
+    pico.output.draw.rect(@{
+        "%",
+        x=0.5, y=0.5,
+        w=1, h=1,
+        anchor="C"
+    })
+
+	;; padding adjusted to layer size
+    pico.zet.pencil @{ color=@{"%", r=1, g=1, b=1} }
+    pico.output.draw.text(text, @{
+        "%",
+        x=0.5, y=0.5,
+        w=dim.w / w,
+        h=dim.h / h2,
+        anchor="C"
+    })
+
+    pico.zet.layer("world")
+
+	;; draw the button layer
+    every :draw {
+        pico.output.draw.layer(text, @{"%", x=x, y=y, anchor=anchor})
+    }
 }
+
+pin btn_task = spawn Button(0.01, 0.5, 0.08, "W", "arena run");
+pin btn_task = spawn Button(0.01, 0.6, 0.08, "W", "options");
+pin btn_task = spawn Button(0.01, 0.7, 0.08, "W", "quit");
+
+await (:game_ended)
