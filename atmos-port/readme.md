@@ -89,3 +89,43 @@ every :draw { pico.output.draw.layer(text, rect) }
 ## Analysis
 
 In the original Lua code, sizing and rendering are spread across `init` and `draw`, each only tells part of the story. In Atmos, the button is a single task: `pico.get.text` derives the size from text content, the button layer confines rendering to its own coordinate space where centering is simplified, and the same `rect` serves sizing, drawing, and collision detection for hovering.
+
+---
+
+# Hover Detection
+
+## Lua + LOVE2D
+
+Hover behavior is split across two callbacks [(buy_screen.lua)](https://github.com/kboltiz/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/buy_screen.lua#L649):
+
+```lua
+function Button:on_mouse_enter()
+    self.selected = true
+    ...
+end
+function Button:on_mouse_exit()
+    self.selected = false
+    ...
+end
+```
+
+The hover state is tracked by `self.selected`, a flag initialized in one method and accessed in others for rendering a different button visual based on hover state in the `:draw()` method. Understanding the full hover behavior requires reading across the entire class.
+
+## Atmos + Pico
+
+In Atmos, hover detection requires no explicit state variables [(menu.atm)](https://github.com/kboltiz/SNKRX/blob/15a1aed72edf9af568b8a7e7222de1a206a981dc/atmos-port/menu.atm#L29):
+
+```lua
+loop {
+    ;; idle
+    await(:mouse.motion, \{pico.vs.pos.rect(it, rect)})
+    ;; hovered
+    await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
+}
+```
+
+The two states (idle and hovered) are part of a sequential loop, entirely self-contained. This is an example of a simple state machine. No flags are needed to track which state the button is in. The flow of the loop decides the transitions.
+
+## Analysis
+
+In the original Lua code, hover state is spread across two callbacks connected only by `self.selected`. What triggers the transition, what resets it, is implicit and scattered across methods that each only tell part of the story. In Atmos, enter and exit are not disconnected callbacks but two consecutive steps in the same loop. The hover behavior is entirely self-contained: no flags, no cross-method state, and the sequence itself communicates the intent.
