@@ -13,14 +13,14 @@ pico.zet.window @{ title="SNKRX Menu" }
 pico.zet.dim @{ '!', w=W, h=H }
 
 val colors = @{
-    bg = @{
-        @{ "%", r=0.18, g=0.18, b=0.18 }, ;; idle
-        @{ "%", r=0.85, g=0.85, b=0.85 }, ;; hover
+    idle = @{
+        bg = @{ "%", r=0.18, g=0.18, b=0.18 },
+        fg = @{ "%", r=0.43, g=0.43, b=0.43 },
     },
-    text = @{
-        @{ "%", r=0.43, g=0.43, b=0.43 }, ;; idle
-        @{ "%", r=0.72, g=0.72, b=0.72 }, ;; hover
-    }
+    hover = @{
+        bg = @{ "%", r=0.85, g=0.85, b=0.85 },
+        fg = @{ "%", r=0.72, g=0.72, b=0.72 },
+    },
 }
 
 func Button(x, y, h, anc, text) {
@@ -32,18 +32,17 @@ func Button(x, y, h, anc, text) {
     pico.get.text(rect, text)   ;; no need for 'dim' (rect changed)
     pico.layer.empty(:world, text, false, rect) ;; pass rect to world layer
 
-    var bg_color = colors.bg[1];
-    var text_color = colors.text[1];
+    var color = colors.idle
 
     par {
         ;; draw loop
         every :draw {
             pico.zet.layer(text)
-            pico.zet.effect @{ color=bg_color }
+            pico.zet.effect @{ color=color.bg }
             pico.output.clear()
 
             ;; drawing text inside (pad received h)
-            pico.zet.pencil @{ color=text_color }
+            pico.zet.pencil @{ color=color.fg }
             pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*(state.scale), anchor="C" })
 
             pico.zet.layer(:world)
@@ -58,15 +57,11 @@ func Button(x, y, h, anc, text) {
     } with {
         loop {
             ;; Idle State
-            set bg_color = colors.bg[1];
-            set text_color = colors.text[1];
-
+            set color = colors.idle
             await(:mouse.motion, \{pico.vs.pos.rect(it, rect)})
 
             ;; Hover State
-            set bg_color   = colors.bg[2];
-            set text_color = colors.text[2];
-
+            set color = colors.hover
             spawn SpringTask(1.3, 1, state) ;; auto aborts with hover out
             await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
         }
