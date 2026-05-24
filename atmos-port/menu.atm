@@ -1,4 +1,5 @@
 require "atmos.env.pico"
+require "Spring"
 val pico = require "pico"
 
 ;; "global constants" in uppercase
@@ -11,29 +12,67 @@ val PAD = 0.01  ;; padding for buttons
 pico.zet.window @{ title="SNKRX Menu" }
 pico.zet.dim @{ '!', w=W, h=H }
 
+val colors = @{
+    bg = @{
+        @{ "%", r=0.18, g=0.18, b=0.18 }, ;; idle
+        @{ "%", r=0.85, g=0.85, b=0.85 }, ;; hover
+    },
+    text = @{
+        @{ "%", r=0.43, g=0.43, b=0.43 }, ;; idle
+        @{ "%", r=0.72, g=0.72, b=0.72 }, ;; hover
+    }
+}
+
 func Button(x, y, h, anc, text) {
+	;; reference table to pass to spring
+	var state = @{ scale = 1 };
 
 	;; creating button layer (original received h)
     val rect = @{"%", x=x, y=y, h=h, anchor=anc}
     pico.get.text(rect, text)   ;; no need for 'dim' (rect changed)
     pico.layer.empty(:world, text, false, rect) ;; pass rect to world layer
-    pico.zet.layer(text)
-    pico.zet.effect @{ color=@{"%", r=0.2, g=0.2, b=0.2} }
-    pico.output.clear()
 
-    ;; drawing text inside (pad received h)
-    pico.zet.pencil @{ color='white' }
-    pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=1-PAD })
-    pico.zet.layer(:world)
+    var bg_color = colors.bg[1];
+    var text_color = colors.text[1];
 
-    loop {
-        ;; Idle State
-        print(text ++ "_idle")
-        await(:mouse.motion, \{pico.vs.pos.rect(it, rect)})
-        
-        ;; Hover State
-        print(text ++ "_hovered")
-        await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})        
+	par {
+        ;; draw loop
+        every :draw {
+			pico.zet.layer(text)
+			pico.zet.effect @{ color=bg_color }
+			pico.output.clear()
+			
+			;; drawing text inside (pad received h)
+			pico.zet.pencil @{ color=text_color }
+			pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*(state.scale), anchor="C" })
+			
+			pico.zet.layer(:world)
+			pico.output.draw.layer(text, @{
+				"%",
+				x=x, y=y,
+				w=rect.w * state.scale,
+				h=rect.h * state.scale,
+				anchor=anc
+			})
+		}
+    } with {
+        loop {
+        	;; Idle State
+			set bg_color = colors.bg[1];
+			set text_color = colors.text[1];
+			
+			await(:mouse.motion, \{pico.vs.pos.rect(it, rect)})
+			
+			;; Hover State
+			set bg_color   = colors.bg[2];
+			set text_color = colors.text[2];
+			
+			;; SpringTask automatically dies when not hovering
+			watching :mouse.motion, \{!pico.vs.pos.rect(it, rect)} {
+				spawn SpringTask(1.3, 1, state)
+				await (:never)
+			}
+		}
     }
 }
 
