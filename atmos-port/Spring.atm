@@ -1,4 +1,4 @@
-func SpringTask(initial, target, state) {
+func (initial, target, state) {
     var x = initial;
     var v = 0;
     val k = 400;

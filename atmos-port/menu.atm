@@ -1,5 +1,5 @@
 require "atmos.env.pico"
-require "Spring"
+val SpringTask = require "Spring"
 val pico = require "pico"
 
 ;; "global constants" in uppercase
