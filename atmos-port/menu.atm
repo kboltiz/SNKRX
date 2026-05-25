@@ -58,12 +58,12 @@ func Button(x, y, h, anc, text) {
         loop {
             ;; Idle State
             set color = colors.idle
-            await(:mouse.motion, \{pico.vs.pos.rect(it, rect)})
+            await(:mouse.motion, \{pico.vs.pos.rect(it, text)})
 
             ;; Hover State
             set color = colors.hover
             spawn SpringTask(1.3, 1, state) ;; auto aborts with hover out
-            await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
+            await(:mouse.motion, \{!pico.vs.pos.rect(it, text)})
         }
     }
 }
