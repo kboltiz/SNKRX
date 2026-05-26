@@ -1,27 +1,31 @@
-func () {
+func (hoverPullSize) {
     val k = 400
     val d = 15
 
-    set pub = @{ scale=1.0, target=1.0, v=0.0 }
+    set pub = @{ scale=1.0 }
 
     await :start
+    
+    var v = 1;
+    var target = 1;
 
     loop {
-        set a = 0;
+        set pub.scale = hoverPullSize;
         watching :start {
             every i, ms in :clock {
                 val dt = ms/1000;
-                val a  = (-k * (pub.scale - pub.target)) - (d * pub.v);
-                set pub.v  = pub.v + (a * dt);
-                set pub.scale  = pub.scale + (pub.v * dt);
+                val a  = (-k * (pub.scale - target)) - (d * v);
+                set v  = v + (a * dt);
+                set pub.scale  = pub.scale + (v * dt);
                 
-                if math.abs(pub.scale - pub.target) < 0.0001 {
+                if math.abs(pub.scale - target) < 0.0001 {
                     ;; send to target when close enough
                     ;; and wait for next :start call
-                    set pub.scale = pub.target;
+                    set pub.scale = target;
                     await :start
                 }
             }
         }
     }
 }
+
