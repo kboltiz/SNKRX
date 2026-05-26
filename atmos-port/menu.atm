@@ -12,7 +12,7 @@ val PAD = 0.01  ;; padding for buttons
 pico.zet.window @{ title="SNKRX Menu" }
 pico.zet.dim @{ '!', w=W, h=H }
 
-
+val font = "../assets/fonts/PixulBrush.ttf"
 val colors = @{
     idle = @{
         bg = @{ "%", r=0.18, g=0.18, b=0.18 },
@@ -45,7 +45,7 @@ func Button(x, y, h, anc, text) {
             pico.output.clear()
 
             ;; drawing text inside
-            pico.zet.pencil @{ color=color.fg }
+            pico.zet.pencil @{ color=color.fg, font=font }
             pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*scale, anchor="C" })
 
             pico.zet.scene @{
