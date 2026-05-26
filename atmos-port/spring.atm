@@ -1,0 +1,21 @@
+func (initial, target, state) {
+    var x = initial;
+    var v = 0;
+    val k = 400;
+    val d = 15;
+    
+    defer {
+        set state.scale = target;
+    }
+
+    every i, ms in :clock {
+        val dt = ms/1000;
+        val a  = (-k * (x - target)) - (d * v);
+        set v  = v + (a * dt);
+        set x  = x + (v * dt);
+        set state.scale = x;
+        if math.abs(x - target) < 0.0001 {
+            return()
+        }
+    }
+}
