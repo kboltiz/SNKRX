@@ -22,9 +22,10 @@ func (hoverPullSize) {
                     ;; send to target when close enough
                     ;; and wait for next :start call
                     set pub.scale = target;
-                    await :start
+                    break() ;; TODO: fix breaking out of outer loop 
                 }
             }
+            await(false)
         }
     }
 }
