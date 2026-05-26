@@ -12,19 +12,22 @@ func (hoverPullSize) {
     loop {
         set pub.scale = hoverPullSize;
         watching :start {
-            every i, ms in :clock {
-                val dt = ms/1000;
-                val a  = (-k * (pub.scale - target)) - (d * v);
-                set v  = v + (a * dt);
-                set pub.scale  = pub.scale + (v * dt);
-                
-                if math.abs(pub.scale - target) < 0.0001 {
-                    ;; send to target when close enough
-                    ;; and wait for next :start call
-                    set pub.scale = target;
-                    break() ;; TODO: fix breaking out of outer loop 
+            do :target_reached {
+                every i, ms in :clock {
+                    val dt = ms/1000;
+                    val a  = (-k * (pub.scale - target)) - (d * v);
+                    set v  = v + (a * dt);
+                    set pub.scale  = pub.scale + (v * dt);
+                    
+                    if math.abs(pub.scale - target) < 0.0001 {
+                        ;; send to target when close enough
+                        ;; and wait for next :start call
+                        set pub.scale = target;
+                        escape (:target_reached)
+                    }
                 }
             }
+            ;; wait for next :start
             await(false)
         }
     }
