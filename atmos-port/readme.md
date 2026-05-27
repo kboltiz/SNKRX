@@ -179,7 +179,7 @@ Once `self.objects` is empty, the group stops calling `:update()` on its buttons
 
 In Atmos, the spring is a self-contained task pinned to the button's lifetime [(spring.atm)](https://github.com/kboltiz/SNKRX/blob/8d708668291547f2905fbb82d60c5584cdea291d/atmos-port/spring.atm):
 
-```
+```lua
 func (hoverPullSize) {
     ...
     await :start        ;; idle until first hover
@@ -197,12 +197,11 @@ func (hoverPullSize) {
         }
     }
 }
-
 ```
 
 The spring starts idle at `await :start`. On hover enter, Button emits `:start` to the spring task:
 
-```
+```lua
 emit [spring] (:start)
 ```
 and the spring's calculative work begins.
