@@ -129,3 +129,90 @@ The two states (idle and hovered) are part of a sequential loop, entirely self-c
 ## Analysis
 
 In the original Lua code, hover state is spread across two callbacks connected only by `self.selected`. What triggers the transition, what resets it, is implicit and scattered across methods that each only tell part of the story. In Atmos, enter and exit are not disconnected callbacks but two consecutive steps in the same loop. The hover behavior is entirely self-contained: no flags, no cross-method state, and the sequence itself communicates the intent.
+
+# Spring based Scaling
+
+In SNKRX, buttons scale up on hover using a spring simulation — a physics-based animation that overshoots and oscillates before settling at the target value.
+
+## Lua + LOVE2D
+
+1. The spring in SNKRX runs for the entire lifetime of the button. Every Button object is added to a `Group` on creation:
+
+```lua
+self.arena_run_button = Button{group = self.main_ui, x = 55, ...}
+```
+
+2. The group calls `:update(dt)` on every object it contains each frame [(group.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/engine/game/group.lua#L54):
+
+
+3. `Button:update()` calls `self:update_game_object(dt)` [(buy_screen.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/buy_screen.lua#L601), which updates the spring every frame [(gameobject.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/engine/game/gameobject.lua#L42):
+
+```lua
+function GameObject:update_game_object(dt)
+    self.spring:update(dt)
+    ...
+end
+```
+
+4. The hover effect is triggered by `:pull()`, which instantly sets the spring's current value to a new position and lets physics ease it back to idle scale:
+
+```lua
+function Button:on_mouse_enter()
+    self.spring:pull(0.2, 200, 10)
+    ...
+end
+```
+
+5. The spring calculations stop only when the screen exits — `MainMenu:on_exit()` destroys the group [(mainmenu.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/mainmenu.lua#L148):
+
+6. `Group:destroy()` clears `self.objects` [(group.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/engine/game/group.lua#L164):
+
+```lua
+function Group:destroy()
+    self.objects = {}
+end
+```
+
+Once `self.objects` is empty, the group stops calling `:update()` on its buttons. The spring stops with it. It runs every frame from button creation to screen exit, regardless of whether it is animating or at rest.
+
+## Atmos + Pico
+
+In Atmos, the spring is a self-contained task pinned to the button's lifetime [(spring.atm)](https://github.com/kboltiz/SNKRX/blob/8d708668291547f2905fbb82d60c5584cdea291d/atmos-port/spring.atm):
+
+```
+func (hoverPullSize) {
+    ...
+    await :start        ;; idle until first hover
+
+    loop {
+        set pub.scale = hoverPullSize   ;; teleport to hover size
+        watching :start {               ;; abort and restart if hovered again
+            every i, ms in :clock {
+                ...                     ;; spring physics
+                if math.abs(pub.scale - target) < 0.0001 {
+                    escape(:target_reached) ;; stop calculating
+                }
+            }
+            await(false)                ;; idle until next hover
+        }
+    }
+}
+
+```
+
+The spring starts idle at `await :start`. On hover enter, Button emits `:start` to the spring task:
+
+```
+emit [spring] (:start)
+```
+and the spring's calculative work begins.
+
+The spring teleports `pub.scale` to `hoverPullSize` and begins animating back toward `target = 1.0`. When the difference from target and spring pos are both negligible, the spring escapes the `every` loop and suspends at `await(false)`. Calculations stop entirely until the next `:start`.
+
+If another hover enter occurs while the spring is still animating, `watching :start` aborts the current flow, the outer loop restarts, and the spring snaps to `hoverPullSize` and begins again from the top. 
+
+## Analysis
+
+In the original Lua code, the spring runs from creation to screen exit regardless of whether it is useful. The spring only halts on the button's `group` being destroyed on screen exit, which stops the update chain that "drills" four calls deep: `group:update` -> `button:update` -> `update_game_object` -> `spring:update`. Understanding why the spring stops requires tracing this chain.
+
+In Atmos, the spring is a task that owns its own lifecycle. It suspends when converged and resumes only when `:start` is emitted. When the button task exits for any reason, including screen change, the pinned spring task is aborted automatically.
