@@ -215,3 +215,87 @@ If another hover enter occurs while the spring is still animating, `watching :st
 In the original Lua code, the spring runs from creation to screen exit regardless of whether it is useful. The spring only halts on the button's `group` being destroyed on screen exit, which stops the update chain that "drills" four calls deep: `group:update` -> `button:update` -> `update_game_object` -> `spring:update`. Understanding why the spring stops requires tracing this chain.
 
 In Atmos, the spring is a task that owns its own lifecycle. It suspends when converged and resumes only when `:start` is emitted. When the button task exits for any reason, including screen change, the pinned spring task is aborted automatically.
+
+# Button Click Action Flow
+
+In SNKRX, clicking a button triggers the next screen or action. Each button carries its own callback and is responsible for knowing the action that should execute after the click. In Atmos, the continuation is held by the caller waiting for the button's result.
+
+## Lua + LOVE2D
+
+Each button in the main menu is constructed with an `action` callback that fires on click [(mainmenu.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/mainmenu.lua#L85):
+
+```lua
+self.arena_run_button = Button{
+    group = ..., x = ..., y = ...,
+    button_text = 'arena run',
+    action = function(b)
+        TransitionEffect{
+            transition_action = function()
+                self.transitioning = true
+                main:add(BuyScreen'buy_screen')
+                main:go_to('buy_screen', run.level or 1, ...)
+            end
+        }
+    end
+}
+```
+
+The destination screen is never called directly. The click fires a `TransitionEffect`, which fires `transition_action`, which calls `main:go_to`. The actual navigation is three callbacks deep. Each button holds a direct reference to the next screen it transitions to.
+
+Each screen is responsible for cleaning up after itself but also for knowing what comes after it.
+
+The options button manages its own paused state:
+
+```lua
+self.options_button = Button{
+    action = function(b)
+        if not self.paused then
+            open_options(self) -- implemented in main.lua
+        else
+            close_options(self)
+        end
+    end
+}
+```
+
+and the quit button simply saves game state, and quits using `love.event.quit()` 
+
+## Atmos + Pico
+
+In Atmos, each button returns the id it was given when clicked [(menu.atm)](https://github.com/kboltiz/SNKRX/blob/25ff89b97dc56d6444491f0bd917846a298ef27c/atmos-port/menu.atm#L84):
+
+```lua
+func Button(id, x, y, h, anc, text) {
+    ...
+    par {
+        ...
+    } with {
+        await(:mouse.button.dn, \{pico.vs.pos.rect(it, text)})
+        return(id)
+    }
+}
+```
+
+When a button is clicked, `return(id)` terminates the button task entirely, aborting its draw loop, hover loop, and spring task automatically. The tasks' `await` in the caller receives the first button to terminate:
+
+```lua
+pin bs = tasks(3)
+spawn [bs] Button(:arena_run, ...)
+spawn [bs] Button(:options, ...)
+spawn [bs] Button(:quit, ...)
+
+val clicked_id = await(bs)
+match clicked_id {
+    :arena_run => print("Arena Run!")
+    :options   => print("Options!")
+    :quit      => print("Quit.")
+}
+```
+
+The buttons know nothing about what happens after they are clicked. The caller decides. Each button is only responsible for returning its own id.
+
+## Analysis
+
+In the original Lua code, each button holds a reference to the next screen and is responsible for the transition logic. The arena run button references `BuyScreen` directly, constructs a `TransitionEffect`, and calls `main:go_to`. Understanding what a button click does requires tracing three levels of callbacks across multiple files. The continuation is carried through these callbacks.
+
+A button click terminates the task and returns an id. The caller handles the result in a single match block. Using await and sequential control flow, Atmos keeps the continuation in the parent task rather than passing it to the button. Activities remain decoupled and hold no references to one another.
