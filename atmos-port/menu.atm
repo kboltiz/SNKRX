@@ -12,8 +12,10 @@ val PAD = 0.01  ;; padding for buttons
 pico.zet.window @{ title="SNKRX Menu" }
 pico.zet.dim @{ '!', w=W, h=H }
 
-val pop2_sound = "../assets/sounds/bamboo_hit_by_lord.ogg"
-val ui_hover1_sound = "../assets/sounds/467951__benzix2__ui-button-click.ogg"
+val sounds = @{
+    pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
+    hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
+}
 val font = "../assets/fonts/PixulBrush.ttf"
 val colors = @{
     idle = @{
@@ -67,8 +69,8 @@ func Button(x, y, h, anc, text) {
 
             ;; Hover State
             ;; TODO: randomize pitch of sound on every hover
-            pico.output.sound(pop2_sound);
-            pico.output.sound(ui_hover1_sound);
+            pico.output.sound(sounds.pop);
+            pico.output.sound(sounds.hover);
             
             set color = colors.hover
             emit [spring] (:start)
