@@ -38,14 +38,12 @@ func MainMenu() {
     pin bs = tasks(3)
 
     ;; no need for ids yet (pin v = ...)
-    spawn [bs] Button(:arena_run, x, 0.5, h, 'W', "arena run")
+    spawn [bs] Button(:arena,   x, 0.5, h, 'W', "arena run")
     spawn [bs] Button(:options, x, 0.6, h, 'W', "options")
-    spawn [bs] Button(:quit, x, 0.7, h, 'W', "quit")
+    spawn [bs] Button(:quit,    x, 0.7, h, 'W', "quit")
 
-    val b  = await(bs)
-    val clicked_id = await(b)
-    
-    return(clicked_id)
+    val id = await(bs)
+    return(id)
 }
 
 func GameLoop() {

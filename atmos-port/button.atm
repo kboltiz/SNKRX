@@ -6,7 +6,7 @@ func Button(id, x, y, h, anc, text) {
     ;; creating button layer
     val rect = @{"%", x=x, y=y, h=h, anchor=anc}
     pico.get.text(rect, text)
-    pico.layer.empty(:world, text, false, rect)
+    pico.layer.empty(:world, id, false, rect)
 
     var color = colors.idle
 
@@ -14,47 +14,47 @@ func Button(id, x, y, h, anc, text) {
     ;; reaches target value or next :start
     pin spring = spawn Spring(1.3);
 
-    par {
-        ;; draw loop
-        every :draw {
-            val scale = spring.pub.scale
-            pico.zet.layer(text)
-            pico.zet.effect @{ color=color.bg }
-            pico.output.clear()
+    ;; click detection
+    ;; returns id when clicked
+    watching :mouse.button.dn, \{(pico.vs.pos.rect(it, id))} {
+        par {
+            ;; draw loop
+            every :draw {
+                val scale = spring.pub.scale
+                pico.zet.layer(id)
+                pico.zet.effect @{ color=color.bg }
+                pico.output.clear()
 
-            ;; drawing text inside
-            pico.zet.pencil @{ color=color.fg, font=font }
-            pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*scale, anchor="C" })
+                ;; drawing text inside
+                pico.zet.pencil @{ color=color.fg, font=font }
+                pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*scale, anchor="C" })
 
-            pico.zet.scene @{
-                target = @{ '%', anchor=rect.anchor,
-                    x=rect.x, y=rect.y,
-                    w = rect.w * scale,
-                    h = rect.h * scale,
+                pico.zet.scene @{
+                    target = @{ '%', anchor=rect.anchor,
+                        x=rect.x, y=rect.y,
+                        w = rect.w * scale,
+                        h = rect.h * scale,
+                    }
                 }
+                pico.zet.layer(:world)
             }
-            pico.zet.layer(:world)
-        }
-    } with {
-        loop {
-            ;; Idle State
-            set color = colors.idle
-            await(:mouse.motion, \{pico.vs.pos.rect(it, text)})
+        } with {
+            loop {
+                ;; Idle State
+                set color = colors.idle
+                await(:mouse.motion, \{pico.vs.pos.rect(it, id)})
 
-            ;; Hover State
-            ;; TODO: randomize pitch of sound on every hover
-            pico.output.sound(sounds.pop);
-            pico.output.sound(sounds.hover);
-            
-            set color = colors.hover
-            emit [spring] (:start)
+                ;; Hover State
+                ;; TODO: randomize pitch of sound on every hover
+                pico.output.sound(sounds.pop);
+                pico.output.sound(sounds.hover);
 
-            await(:mouse.motion, \{!pico.vs.pos.rect(it, text)})
+                set color = colors.hover
+                emit [spring] (:start)
+
+                await(:mouse.motion, \{!pico.vs.pos.rect(it, id)})
+            }
         }
-    } with {
-        ;; click detection
-        ;; returns id when clicked
-        await(:mouse.button.dn, \{(pico.vs.pos.rect(it, text))})
-        return(id)
     }
+    return(id)
 }
