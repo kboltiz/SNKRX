@@ -33,20 +33,30 @@ set colors = @{
 val x = 0.01
 val h = 0.08
 
-;; menu button tasks
-pin bs = tasks(3)
+func MainMenu() {
+    ;; menu button tasks
+    pin bs = tasks(3)
 
-;; no need for ids yet (pin v = ...)
-spawn [bs] Button(:arena_run, x, 0.5, h, 'W', "arena run")
-spawn [bs] Button(:options, x, 0.6, h, 'W', "options")
-spawn [bs] Button(:quit, x, 0.7, h, 'W', "quit")
+    ;; no need for ids yet (pin v = ...)
+    spawn [bs] Button(:arena_run, x, 0.5, h, 'W', "arena run")
+    spawn [bs] Button(:options, x, 0.6, h, 'W', "options")
+    spawn [bs] Button(:quit, x, 0.7, h, 'W', "quit")
 
-val b  = await(bs)
-val clicked_id = await(b)
-
-;; arena_run and options will later call a game state func
-match clicked_id {
-    :arena_run => print("Arena Run!")
-    :options   => print("Options!")
-    :quit      => print("Quit.")
+    val b  = await(bs)
+    val clicked_id = await(b)
+    
+    return(clicked_id)
 }
+
+func GameLoop() {
+    loop {
+        val id = await MainMenu()
+        match id {
+            :arena_run => print("Arena Run!")
+            :options   => print("Options!")
+            :quit      => return();
+        }
+    }
+}
+
+await GameLoop()
