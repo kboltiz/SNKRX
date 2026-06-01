@@ -33,35 +33,54 @@ set colors = @{
 val x = 0.01
 val h = 0.08
 
+func Options() {
+    ;; dummy interaction
+    print("Options Opened")
+    await @1
+}
+
+func Arena() {
+    ;; dummy interaction
+    print("Arena Started")
+    await @1
+}
+
 func MainMenu() {
     ;; menu button tasks
-    pin bs = tasks(3)
+    pin bs = tasks(2)
     
     pico.push(:arena_run)
-    pico.push(:options)
     pico.push(:quit)
     
     defer {
-    	pico.pop(:arena_run)
-    	pico.pop(:options)
-    	pico.pop(:quit)
+        pico.pop(:arena_run)
+        pico.pop(:quit)
     }
 
     ;; no need for ids yet (pin v = ...)
-    spawn [bs] Button(:arena_run,   x, 0.5, h, 'W', "arena run")
-    spawn [bs] Button(:options, x, 0.6, h, 'W', "options")
-    spawn [bs] Button(:quit,    x, 0.7, h, 'W', "quit")
+    spawn [bs] Button(:arena_run, x, 0.5, h, 'W', "arena run")
+    spawn [bs] Button(:quit,      x, 0.7, h, 'W', "quit")
 
-    val id = await(bs)
-    return(id)
+    par {
+        return(await(bs))
+    } with {
+        loop {
+            ;; options now exists on "top" of mainmenu
+            pico.push(:options)
+            defer { pico.pop(:options) }
+            await Button(:options, x, 0.6, h, 'W', "options")
+            
+            ;; wait till options is closed
+            await Options()
+        }
+    }
 }
 
 func GameLoop() {
     loop {
         val id = MainMenu()
         match id {
-            :arena_run => print("Arena Run!")
-            :options   => print("Options!")
+            :arena_run => Arena();
             :quit      => return();
         }
     }
