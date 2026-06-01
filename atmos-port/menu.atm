@@ -36,9 +36,19 @@ val h = 0.08
 func MainMenu() {
     ;; menu button tasks
     pin bs = tasks(3)
+    
+    pico.push(:arena_run)
+    pico.push(:options)
+    pico.push(:quit)
+    
+    defer {
+    	pico.pop(:arena_run)
+    	pico.pop(:options)
+    	pico.pop(:quit)
+    }
 
     ;; no need for ids yet (pin v = ...)
-    spawn [bs] Button(:arena,   x, 0.5, h, 'W', "arena run")
+    spawn [bs] Button(:arena_run,   x, 0.5, h, 'W', "arena run")
     spawn [bs] Button(:options, x, 0.6, h, 'W', "options")
     spawn [bs] Button(:quit,    x, 0.7, h, 'W', "quit")
 
@@ -48,7 +58,7 @@ func MainMenu() {
 
 func GameLoop() {
     loop {
-        val id = await MainMenu()
+        val id = MainMenu()
         match id {
             :arena_run => print("Arena Run!")
             :options   => print("Options!")
