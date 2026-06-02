@@ -33,10 +33,26 @@ set colors = @{
 val x = 0.01
 val h = 0.08
 
-func Options() {
-    ;; dummy interaction
+func Options(screenshot) {
     print("Options Opened")
-    await @1
+
+    par_or {
+        ;; dummy interaction
+        await @1
+    } with {
+        ;; screenshot bg drawing
+        every :draw {
+            pico.output.draw.image(
+                screenshot,
+                @{
+                    "%",
+                    x=0.5, y=0.5,
+                    w=1, h=1,
+                    anchor="C"
+                }
+            )
+        }
+    }
 }
 
 func Arena() {
@@ -48,13 +64,10 @@ func Arena() {
 func MainMenu() {
     ;; menu button tasks
     pin bs = tasks(2)
-    
-    pico.push(:arena_run)
-    pico.push(:quit)
-    
+
+    pico.push()
     defer {
-        pico.pop(:arena_run)
-        pico.pop(:quit)
+        pico.pop()
     }
 
     ;; no need for ids yet (pin v = ...)
@@ -69,9 +82,18 @@ func MainMenu() {
             pico.push(:options)
             defer { pico.pop(:options) }
             await Button(:options, x, 0.6, h, 'W', "options")
-            
+
+            ;; Take screenshot when opening options
+            val screenshot = pico.output.screenshot()
+
+            ;; Freeze menu buttons
+            ;; TODO, not freeze :draw calls
+            toggle bs(false)
+
             ;; wait till options is closed
-            await Options()
+            await Options(screenshot)
+
+            toggle bs(true)
         }
     }
 }
