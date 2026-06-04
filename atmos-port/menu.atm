@@ -84,16 +84,12 @@ func MainMenu() {
             await Button(:options, x, 0.6, h, 'W', "options")
 
             ;; Take screenshot when opening options
-            val screenshot = pico.output.screenshot()
+            val screenshot = pico.output.screenshot(@{ path = "" })
 
             ;; Freeze menu buttons
-            ;; TODO, not freeze :draw calls
-            toggle bs(false)
-
-            ;; wait till options is closed
-            await Options(screenshot)
-
-            toggle bs(true)
+            toggle :MenuFreeze with :draw, :mouse.motion {
+                await Options(screenshot)
+            }
         }
     }
 }
