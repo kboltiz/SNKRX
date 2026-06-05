@@ -1,4 +1,5 @@
 val SPEED = 5
+val OUT_DELAY = 1
 
 ;; distance from screen center (0.5, 0.5) to corner (0, 0) in % space
 ;; so the circle covers the entire screen at peak
@@ -26,6 +27,12 @@ func Transition(screenshot) {
             if r >= COVER { break() }
         }
         
+        ;; signal to start next state
+        emit(:covered)
+
+        ;; wait at max size
+        await @OUT_DELAY
+
         ;; shrink
         every i, ms in :clock {
             val dt = (ms / 1000)

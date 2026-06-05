@@ -102,9 +102,13 @@ func GameLoop() {
         val id = MainMenu()
         match id {
             :arena_run => {
-                Transition()
-                Arena()
-        	}
+                par_and {
+                    Transition(screenshot)
+                } with {
+                    await :covered
+                    Arena()
+                }
+            }
             :quit      => return();
         }
     }
