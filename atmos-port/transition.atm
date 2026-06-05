@@ -12,6 +12,12 @@ func Transition(screenshot) {
     par {
         ;; draw loop runs for entire transition
         every :draw {
+        	;; draw screenshot behind circle
+            pico.output.draw.image(screenshot, @{
+                "%", x=0.5, y=0.5,
+                w=1, h=1,
+                anchor="C"
+            })
             pico.zet.pencil @{ color=colors.hover.bg, font=font }
             pico.output.draw.oval(@{
                 "%", x=0.5, y=0.5,
@@ -30,8 +36,18 @@ func Transition(screenshot) {
         ;; signal to start next state
         emit(:covered)
 
-        ;; wait at max size
-        await @OUT_DELAY
+        ;; show loading text while waiting
+        par_or {
+            await @OUT_DELAY
+        } with {
+            every :draw {
+                pico.zet.pencil @{ color=colors.idle.bg, font=font }
+                pico.output.draw.text("Loading...", @{
+                    "%", x=0.5, y=0.5,
+                    h=0.05, anchor="C"
+                })
+            }
+        }
 
         ;; shrink
         every i, ms in :clock {

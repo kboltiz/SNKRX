@@ -102,6 +102,9 @@ func GameLoop() {
         val id = MainMenu()
         match id {
             :arena_run => {
+            	;; TODO take screenshot to draw during transition
+                val screenshot = pico.output.screenshot()
+
                 par_and {
                     Transition(screenshot)
                 } with {
