@@ -2,12 +2,14 @@ require "atmos.env.pico"
 set pico = require "pico"
 
 require "button"
+require "transition"
 
 ;; "global constants" in uppercase
 ;; use simpler local names
 
-val W = 640
-val H = 360
+set W = 640
+set H = 360
+set ASPECT_RATIO = W/H
 
 pico.zet.window @{ title="SNKRX Menu" }
 pico.zet.dim @{ '!', w=W, h=H }
@@ -58,7 +60,8 @@ func Options(screenshot) {
 func Arena() {
     ;; dummy interaction
     print("Arena Started")
-    await @1
+    await @5
+    print("Arena Ended")
 }
 
 func MainMenu() {
@@ -98,7 +101,10 @@ func GameLoop() {
     loop {
         val id = MainMenu()
         match id {
-            :arena_run => Arena();
+            :arena_run => {
+                Transition()
+                Arena()
+        	}
             :quit      => return();
         }
     }
