@@ -108,7 +108,7 @@ func GameLoop() {
                 
                 par_and {    
                     pico.layer.screenshot (nil, :screenshot, :window)
-                    Transition(:screenshot)
+                    Transition(:screenshot, 0.5, 0.5)
                 } with {
                     await :covered
                     Arena()
