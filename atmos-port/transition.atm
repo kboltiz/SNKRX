@@ -9,10 +9,10 @@ val COVER = CORNER_DIST + 0.1 ;; small epsilon for edge bleeds
 func Transition(screenshot) {
     var r = 0.0
 
-    par {
-        ;; draw loop runs for entire transition
+    ;; grow
+    par_or {
         every :draw {
-        	;; draw screenshot behind circle
+            ;; draw screenshot behind circle
             pico.output.draw.image(screenshot, @{
                 "%", x=0.5, y=0.5,
                 w=1, h=1,
@@ -26,30 +26,49 @@ func Transition(screenshot) {
             })
         }
     } with {
-        ;; grow
         every i, ms in :clock {
             val dt = (ms / 1000)
             set r = (r + (COVER * SPEED * dt))
             if r >= COVER { break() }
         }
-        
-        ;; signal to start next state
-        emit(:covered)
+    }
 
-        ;; show loading text while waiting
-        par_or {
-            await @OUT_DELAY
-        } with {
-            every :draw {
-                pico.zet.pencil @{ color=colors.idle.bg, font=font }
-                pico.output.draw.text("Loading...", @{
-                    "%", x=0.5, y=0.5,
-                    h=0.05, anchor="C"
-                })
-            }
+    ;; signal to start next state
+    emit(:covered)
+
+    ;; idle stage at peak
+    par_or {
+        await @OUT_DELAY
+    } with {
+        every :draw {
+            ;; circle at peak size
+            pico.zet.pencil @{ color=colors.hover.bg, font=font }
+            pico.output.draw.oval(@{
+                "%", x=0.5, y=0.5,
+                w=(COVER * 2), h=(COVER * 2 * ASPECT_RATIO),
+                anchor="C"
+            })
+            
+            ;; show loading text while waiting
+            pico.zet.pencil @{ color=colors.idle.bg, font=font }
+            pico.output.draw.text("Loading...", @{
+                "%", x=0.5, y=0.5,
+                h=0.05, anchor="C"
+            })
         }
+    }
 
-        ;; shrink
+    ;; shrink
+    par_or {
+        every :draw {
+            pico.zet.pencil @{ color=colors.hover.bg, font=font }
+            pico.output.draw.oval(@{
+                "%", x=0.5, y=0.5,
+                w=(r*2), h=((r*2) * ASPECT_RATIO),
+                anchor="C"
+            })
+        }
+    } with {
         every i, ms in :clock {
             val dt = (ms / 1000)
             set r = (r - (COVER * SPEED * dt))

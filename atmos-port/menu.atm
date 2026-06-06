@@ -102,11 +102,13 @@ func GameLoop() {
         val id = MainMenu()
         match id {
             :arena_run => {
-            	;; TODO take screenshot to draw during transition
-                val screenshot = pico.output.screenshot()
-
-                par_and {
-                    Transition(screenshot)
+                ;; cleaning up screenshot tag
+                pico.push(:screenshot)
+                defer { pico.pop(:screenshot) }
+                
+                par_and {    
+                    pico.layer.screenshot (nil, :screenshot, :window)
+                    Transition(:screenshot)
                 } with {
                     await :covered
                     Arena()
