@@ -60,7 +60,14 @@ func Options(screenshot) {
 func Arena() {
     ;; dummy interaction
     print("Arena Started")
-    await @5
+    
+    ;; example button to test draws 
+    par_or {
+        await Button(:example_button, x, 0.5, h, 'W', "example")
+    } with {
+        await @5
+    }
+    
     print("Arena Ended")
 }
 
@@ -105,18 +112,20 @@ func GameLoop() {
                 ;; cleaning up screenshot tag
                 pico.push(:screenshot)
                 defer { pico.pop(:screenshot) }
+
+                pico.layer.screenshot(nil, :screenshot, :window)
                 
-                par_and {    
-                    pico.layer.screenshot (nil, :screenshot, :window)
-                    Transition(:screenshot, 0.5, 0.5)
-                } with {
-                    await :covered
+                ;; grow transition
+                TransitionIn(:screenshot, 0.5, 0.5)
+                
+                par_or {
                     Arena()
+                } with {
+                    TransitionOut(0.5, 0.5)
                 }
             }
             :quit      => return();
         }
     }
 }
-
 await GameLoop()

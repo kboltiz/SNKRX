@@ -6,7 +6,7 @@ val OUT_DELAY = 1
 val CORNER_DIST = math.sqrt(((0.5*0.5) + (0.5*0.5)))
 val COVER = CORNER_DIST + 0.1 ;; small epsilon for edge bleeds
 
-func Transition(screenshot, x, y) {
+func TransitionIn(screenshot, x, y) {
     var r = 0.0
 
     ;; grow
@@ -32,10 +32,6 @@ func Transition(screenshot, x, y) {
             if r >= COVER { break() }
         }
     }
-
-    ;; signal to start next state
-    emit(:covered)
-
     ;; idle stage at peak
     par_or {
         await @OUT_DELAY
@@ -57,21 +53,34 @@ func Transition(screenshot, x, y) {
             })
         }
     }
+}
 
+func TransitionOut(x, y) {
+    var r = COVER
+    
+    ;; size=0.8 to notice the transition_out layer drawing over the arena's example button
+    pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=0.8, h=0.8 })
+    
+    
     ;; shrink
     par_or {
         every :draw {
+            pico.zet.layer(:transition_out)
+            pico.output.clear()
             pico.zet.pencil @{ color=colors.hover.bg, font=font }
             pico.output.draw.oval(@{
                 "%", x=x, y=y,
                 w=(r*2), h=((r*2) * ASPECT_RATIO),
                 anchor="C"
             })
+            
+            pico.zet.layer(:world)
         }
     } with {
         every i, ms in :clock {
             val dt = (ms / 1000)
             set r = (r - (COVER * SPEED * dt))
+            print(r)
             if r <= 0 { return() }
         }
     }
