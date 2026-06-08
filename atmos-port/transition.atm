@@ -57,15 +57,25 @@ func TransitionIn(screenshot, x, y) {
 
 func TransitionOut(x, y) {
     var r = COVER
+
+    pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
     
-    ;; size=0.8 to notice the transition_out layer drawing over the arena's example button
-    pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=0.8, h=0.8 })
-    
-    
+    pico.push(:transition_out)
+    defer {
+        ;; clearing the transition_out layer on exit
+        pico.zet.layer(:transition_out)
+        pico.output.clear()
+        pico.zet.layer(:world)
+        
+        pico.pop(:transition_out)
+    }
+
     ;; shrink
     par_or {
         every :draw {
             pico.zet.layer(:transition_out)
+            ;; setting the overlay's clear color to alpha = 0
+            pico.zet.effect @{ color=@{ "%", r=0, g=0, b=0, a=0 } }
             pico.output.clear()
             pico.zet.pencil @{ color=colors.hover.bg, font=font }
             pico.output.draw.oval(@{
@@ -80,7 +90,6 @@ func TransitionOut(x, y) {
         every i, ms in :clock {
             val dt = (ms / 1000)
             set r = (r - (COVER * SPEED * dt))
-            print(r)
             if r <= 0 { return() }
         }
     }

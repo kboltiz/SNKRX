@@ -118,7 +118,7 @@ func GameLoop() {
                 ;; grow transition
                 TransitionIn(:screenshot, 0.5, 0.5)
                 
-                par_or {
+                par_and {
                     Arena()
                 } with {
                     TransitionOut(0.5, 0.5)
