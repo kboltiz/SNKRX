@@ -109,20 +109,7 @@ func GameLoop() {
         val id = MainMenu()
         match id {
             :arena_run => {
-                ;; cleaning up screenshot tag
-                pico.push(:screenshot)
-                defer { pico.pop(:screenshot) }
-
-                pico.layer.screenshot(nil, :screenshot, :window)
-                
-                ;; grow transition
-                TransitionIn(:screenshot, 0.5, 0.5)
-                
-                par_and {
-                    Arena()
-                } with {
-                    TransitionOut(0.5, 0.5)
-                }
+                Transition(Arena, 0.5, 0.5)
             }
             :quit      => return();
         }

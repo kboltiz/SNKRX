@@ -6,6 +6,22 @@ val OUT_DELAY = 1
 val CORNER_DIST = math.sqrt(((0.5*0.5) + (0.5*0.5)))
 val COVER = CORNER_DIST + 0.1 ;; small epsilon for edge bleeds
 
+;; combined transition methods for general usage
+func Transition(next, x, y) {
+    pico.push(:screenshot)
+    defer { pico.pop(:screenshot) }
+
+    pico.layer.screenshot(nil, :screenshot, :window)
+    
+    TransitionIn(:screenshot, x, y)
+    
+    par_and {
+        next()
+    } with {
+        TransitionOut(x, y)
+    }
+}
+
 func TransitionIn(screenshot, x, y) {
     var r = 0.0
 
