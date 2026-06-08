@@ -299,3 +299,59 @@ The buttons know nothing about what happens after they are clicked. The caller d
 In the original Lua code, each button holds a reference to the next screen and is responsible for the transition logic. The arena run button references `BuyScreen` directly, constructs a `TransitionEffect`, and calls `main:go_to`. Understanding what a button click does requires tracing three levels of callbacks across multiple files. The continuation is carried through these callbacks.
 
 A button click terminates the task and returns an id. The caller handles the result in a single match block. Using await and sequential control flow, Atmos keeps the continuation in the parent task rather than passing it to the button. Activities remain decoupled and hold no references to one another.
+
+---
+
+# Transition Effect Control Flow
+
+In SNKRX, screen transitions are handled by a `TransitionEffect` object that executes navigation logic after completing a sequence of timed animations. In Atmos, the next activity is passed directly to the transition and executed through normal control flow.
+
+## Lua + LOVE2D
+
+In the original SNKRX implementation, a button does not directly change screens. Instead, it creates a `TransitionEffect` and provides a `transition_action` callback describing what should happen once the transition completes [(mainmenu.lua)](https://github.com/kboltiz/SNKRX/blob/c73637d484e6814c0e9615faf5c560e30aa57e4d/mainmenu.lua#L86):
+
+```lua
+self.arena_run_button = Button{
+    action = function()
+        TransitionEffect{
+            transition_action = function()
+                self.transitioning = true
+                main:add(BuyScreen'buy_screen')
+                main:go_to('buy_screen', run.level or 1, ...)
+            end
+        }
+    end
+}
+```
+
+The screen change occurs inside a tween completion handler deep within the transition object. The arena run button holds a direct reference to `BuyScreen` and is responsible for constructing the transition, passing the continuation, and describing the navigation. Understanding what a click does requires following the flow from the button action, into the transition object, and finally into the tween callback that performs it.
+
+## Atmos + Pico
+
+In Atmos, the menu task is the only place that touches all three screens. After `await(bs)` returns the clicked button's id, it decides what follows [(menu.atm)](https://github.com/kboltiz/SNKRX/blob/1aceac8ed74dad0f034e9a32d57508ea7114e899/atmos-port/menu.atm#L112):
+
+```lua
+match id {
+    :arena_run => Transition(Arena, 0.5, 0.5)
+    :quit      => return()
+}
+```
+
+`Transition` covers the screen, starts the next activity, and reveals it, all in sequence [(transition.atm)](https://github.com/kboltiz/SNKRX/blob/1aceac8ed74dad0f034e9a32d57508ea7114e899/atmos-port/transition.atm#L16):
+
+```lua
+TransitionIn(screenshot, x, y)
+par_and {
+    next()
+} with {
+    TransitionOut(x, y)
+}
+```
+
+The transition knows nothing about which activity comes next. It receives it as an argument and calls it at the right point in its own control flow.
+
+## Analysis
+
+In the original Lua code, the arena run button holds a direct reference to `BuyScreen` and carries the continuation through three levels of callbacks before the screen actually changes. Each button is responsible for knowing what comes after it.
+
+In Atmos, the buttons know nothing about what follows them. The menu task is the single parent that describes the full flow. It awaits the first button to be clicked, then decides the next screen in one place. The transition itself is decoupled from the activity it leads into. It receives the next activity as an argument rather than encoding it internally.
