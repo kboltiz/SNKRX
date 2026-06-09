@@ -35,24 +35,42 @@ set colors = @{
 val x = 0.01
 val h = 0.08
 
-func Options(screenshot) {
+func Options() {
     print("Options Opened")
 
+    ;; options overlay layer
+    pico.layer.empty(:world, :options_overlay, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
+    pico.push(:options_overlay)
+    defer { pico.pop(:options_overlay) }
+    
+    ;; overlay translucent bg
+    val overlayBackgroundColor = pico.color.alpha(colors.idle.bg, 25)
+    
     par_or {
-        ;; dummy interaction
-        await @1
+        ;; this is where all option settings go
+        await Button(:options_close, 0.5, 0.4, 0.08, 'C', "return to menu")
     } with {
-        ;; screenshot bg drawing
         every :draw {
-            pico.output.draw.image(
-                screenshot,
-                @{
-                    "%",
-                    x=0.5, y=0.5,
-                    w=1, h=1,
-                    anchor="C"
-                }
-            )
+            pico.zet.layer(:options_overlay)
+            pico.zet.effect @{ color=@{ "%", r=0, g=0, b=0, a=0 } }
+            pico.output.clear()
+            
+            ;; screenshot bg drawing
+            pico.output.draw.image(:options_screenshot, @{
+                "%", x=0.5, y=0.5,
+                w=1, h=1,
+                anchor="C"
+            })
+            
+            ;; translucent black overlay
+            pico.zet.pencil @{ color=overlayBackgroundColor }
+            pico.output.draw.rect(@{
+                "%", x=0.5, y=0.5,
+                w=1, h=1,
+                anchor="C"
+            })
+            
+            pico.zet.layer(:world)
         }
     }
 }
@@ -94,12 +112,13 @@ func MainMenu() {
             await Button(:options, x, 0.6, h, 'W', "options")
 
             ;; Take screenshot when opening options
-            val screenshot = pico.output.screenshot(@{ path = "" })
+            pico.layer.screenshot(nil, :options_screenshot, :window)
 
             ;; Freeze menu buttons
-            toggle :MenuFreeze with :draw, :mouse.motion {
-                await Options(screenshot)
-            }
+            toggle bs(false)
+            defer { toggle bs(true) }
+            
+            await Options()
         }
     }
 }
