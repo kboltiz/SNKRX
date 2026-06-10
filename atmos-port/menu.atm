@@ -40,8 +40,8 @@ func Options() {
 
     ;; options overlay layer
     pico.layer.empty(:world, :options_overlay, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
-    pico.push(:options_overlay)
-    defer { pico.pop(:options_overlay) }
+    pico.push()
+    defer { pico.pop() }
     
     ;; overlay translucent bg
     val overlayBackgroundColor = pico.color.alpha(colors.idle.bg, 25)
@@ -107,8 +107,9 @@ func MainMenu() {
     } with {
         loop {
             ;; options now exists on "top" of mainmenu
-            pico.push(:options)
-            defer { pico.pop(:options) }
+            pico.push()
+            defer { pico.pop() }
+            
             await Button(:options, x, 0.6, h, 'W', "options")
 
             ;; Take screenshot when opening options

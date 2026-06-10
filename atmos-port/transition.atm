@@ -8,8 +8,8 @@ val COVER = CORNER_DIST + 0.1 ;; small epsilon for edge bleeds
 
 ;; combined transition methods for general usage
 func Transition(next, x, y) {
-    pico.push(:screenshot)
-    defer { pico.pop(:screenshot) }
+    pico.push()
+    defer { pico.pop() }
 
     pico.layer.screenshot(nil, :screenshot, :window)
     
@@ -76,14 +76,14 @@ func TransitionOut(x, y) {
 
     pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
     
-    pico.push(:transition_out)
+    pico.push()
     defer {
         ;; clearing the transition_out layer on exit
         pico.zet.layer(:transition_out)
         pico.output.clear()
         pico.zet.layer(:world)
         
-        pico.pop(:transition_out)
+        pico.pop()
     }
 
     ;; shrink
@@ -106,7 +106,7 @@ func TransitionOut(x, y) {
         every i, ms in :clock {
             val dt = (ms / 1000)
             set r = (r - (COVER * SPEED * dt))
-            if r <= 0 { return() }
+            until (r <= 0)
         }
     }
 }
