@@ -3,6 +3,7 @@ set pico = require "pico"
 
 require "button"
 require "transition"
+require "settings"
 
 ;; "global constants" in uppercase
 ;; use simpler local names
@@ -35,6 +36,25 @@ set colors = @{
 val x = 0.01
 val h = 0.08
 
+func ToggleButton(id, x, y, property) {
+    val current = settings[property];
+    await Button(id, x, y, h, "C", property ++ ": " ++ ((current && "yes") || "no"))
+    set settings[property] = !current
+}
+
+func ActionButton(id, x, y, property, action) {
+    await Button(id, x, y, h, "C", property)
+    action();
+}
+
+func NumRangeButton(id, x, y, property) {
+    val pair = settings[property]
+    val current = pair[1]
+    val max = pair[2]
+    await Button(id, x, y, h, "C", property ++ ": " ++ current)
+    set settings[property] = @{(current + 1) % (max + 1), max}
+}
+
 func Options() {
     print("Options Opened")
 
@@ -45,7 +65,23 @@ func Options() {
     
     par_or {
         ;; this is where all option settings go
-        await Button(:options_close, 0.5, 0.4, 0.08, 'C', "return to menu")
+        await Button(:options_close, 0.5, 0.2, h, 'C', "main menu")
+    } with {
+        loop {
+            pico.push()
+            defer { pico.pop() }
+        
+            pin bs = tasks(3)
+
+            ;; 3 main types of values
+            spawn [bs] ToggleButton(:screen_shake, 0.5, 0.4, "screen shake")
+            spawn [bs] NumRangeButton(:music_volume, 0.5, 0.5, "music volume")
+            spawn [bs] ActionButton(:opts_quit, 0.5, 0.6, "quit", \{ pico.quit() })
+            
+            ;; TODO text-dependent center alignment of option buttons
+            
+            await(bs);
+        }
     } with {
         every :draw {
             pico.zet.layer(:options_overlay)
