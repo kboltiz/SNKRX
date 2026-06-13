@@ -40,9 +40,6 @@ func Options() {
 
     ;; options overlay layer
     pico.layer.empty(:world, :options_overlay, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
-    pico.push()
-    defer { pico.pop() }
-    
     ;; overlay translucent bg
     val overlayBackgroundColor = pico.color.alpha(colors.idle.bg, 25)
     
@@ -79,11 +76,12 @@ func Arena() {
     ;; dummy interaction
     print("Arena Started")
     
-    ;; example button to test draws 
-    par_or {
+    ;; example button to test draws
+    pico.push()
+    defer { pico.pop() }
+    
+    watching @5 {
         await Button(:example_button, x, 0.5, h, 'W', "example")
-    } with {
-        await @5
     }
     
     print("Arena Ended")
@@ -94,13 +92,11 @@ func MainMenu() {
     pin bs = tasks(2)
 
     pico.push()
-    defer {
-        pico.pop()
-    }
+    defer { pico.pop() }
 
     ;; no need for ids yet (pin v = ...)
-    spawn [bs] Button(:arena_run, x, 0.5, h, 'W', "arena run")
-    spawn [bs] Button(:quit,      x, 0.7, h, 'W', "quit")
+    spawn [bs] Button(:arena, x, 0.5, h, 'W', "arena run")
+    spawn [bs] Button(:quit,  x, 0.7, h, 'W', "quit")
 
     par {
         return(await(bs))
@@ -128,10 +124,8 @@ func GameLoop() {
     loop {
         val id = MainMenu()
         match id {
-            :arena_run => {
-                Transition(Arena, 0.5, 0.5)
-            }
-            :quit      => return();
+            :arena => Transition(Arena, 0.5, 0.5)
+            :quit  => return()
         }
     }
 }

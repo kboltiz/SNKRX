@@ -7,18 +7,18 @@ val CORNER_DIST = math.sqrt(((0.5*0.5) + (0.5*0.5)))
 val COVER = CORNER_DIST + 0.1 ;; small epsilon for edge bleeds
 
 ;; combined transition methods for general usage
-func Transition(next, x, y) {
+func Transition(Next, x, y) {
     pico.push()
     defer { pico.pop() }
 
     pico.layer.screenshot(nil, :screenshot, :window)
     
-    TransitionIn(:screenshot, x, y)
+    await TransitionIn(:screenshot, x, y)
     
     par_and {
-        next()
+        Next()
     } with {
-        TransitionOut(x, y)
+        await TransitionOut(x, y)
     }
 }
 
@@ -49,9 +49,7 @@ func TransitionIn(screenshot, x, y) {
         }
     }
     ;; idle stage at peak
-    par_or {
-        await @OUT_DELAY
-    } with {
+    watching @OUT_DELAY {
         every :draw {
             ;; circle at peak size
             pico.zet.pencil @{ color=colors.hover.bg, font=font }
