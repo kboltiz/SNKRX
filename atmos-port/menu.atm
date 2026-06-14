@@ -113,9 +113,6 @@ func Arena() {
     print("Arena Started")
     
     ;; example button to test draws
-    pico.push()
-    defer { pico.pop() }
-    
     watching @5 {
         await Button(:example_button, x, 0.5, h, 'W', "example")
     }
@@ -126,9 +123,6 @@ func Arena() {
 func MainMenu() {
     ;; menu button tasks
     pin bs = tasks(2)
-
-    pico.push()
-    defer { pico.pop() }
 
     ;; no need for ids yet (pin v = ...)
     spawn [bs] Button(:arena, x, 0.5, h, 'W', "arena run")
@@ -158,7 +152,10 @@ func MainMenu() {
 
 func GameLoop() {
     loop {
+    	pico.push()
         val id = MainMenu()
+        pico.pop() ;; cleans up menu buttons on transitions
+        
         match id {
             :arena => Transition(Arena, 0.5, 0.5)
             :quit  => return()
