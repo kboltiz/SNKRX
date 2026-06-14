@@ -1,0 +1,165 @@
+require "atmos.env.pico"
+set pico = require "pico"
+
+require "button"
+require "transition"
+require "settings"
+
+;; "global constants" in uppercase
+;; use simpler local names
+
+set W = 640
+set H = 360
+set ASPECT_RATIO = W/H
+
+pico.zet.window @{ title="SNKRX Menu" }
+pico.zet.dim @{ '!', w=W, h=H }
+
+;; will be moved a "shared.atm"
+set sounds = @{
+    pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
+    hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
+}
+set font = "../assets/fonts/PixulBrush.ttf"
+set colors = @{
+    idle = @{
+        bg = @{ "%", r=0.18, g=0.18, b=0.18 },
+        fg = @{ "%", r=0.43, g=0.43, b=0.43 },
+    },
+    hover = @{
+        bg = @{ "%", r=0.85, g=0.85, b=0.85 },
+        fg = @{ "%", r=0.72, g=0.72, b=0.72 },
+    },
+}
+
+;; shared values
+val x = 0.01
+val h = 0.08
+
+func ToggleButton(id, x, y, property) {
+    val current = settings[property];
+    await Button(id, x, y, h, "C", property ++ ": " ++ ((current && "yes") || "no"))
+    set settings[property] = !current
+}
+
+func ActionButton(id, x, y, property, action) {
+    await Button(id, x, y, h, "C", property)
+    action();
+}
+
+func NumRangeButton(id, x, y, property) {
+    val pair = settings[property]
+    val current = pair[1]
+    val max = pair[2]
+    await Button(id, x, y, h, "C", property ++ ": " ++ current)
+    set settings[property] = @{(current + 1) % (max + 1), max}
+}
+
+func Options() {
+    print("Options Opened")
+
+    ;; options overlay layer
+    pico.layer.empty(:world, :options_overlay, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
+    ;; overlay translucent bg
+    val overlayBackgroundColor = pico.color.alpha(colors.idle.bg, 25)
+    
+    par_or {
+        ;; this is where all option settings go
+        await Button(:options_close, 0.5, 0.2, h, 'C', "main menu")
+    } with {
+        loop {
+            pico.push()
+            defer { pico.pop() }
+        
+            pin bs = tasks(3)
+
+            ;; 3 main types of values
+            spawn [bs] ToggleButton(:screen_shake, 0.5, 0.4, "screen shake")
+            spawn [bs] NumRangeButton(:music_volume, 0.5, 0.5, "music volume")
+            spawn [bs] ActionButton(:opts_quit, 0.5, 0.6, "quit", \{ pico.quit() })
+            
+            ;; TODO text-dependent center alignment of option buttons
+            
+            await(bs);
+        }
+    } with {
+        every :draw {
+            pico.zet.layer(:options_overlay)
+            pico.zet.effect @{ color=@{ "%", r=0, g=0, b=0, a=0 } }
+            pico.output.clear()
+            
+            ;; screenshot bg drawing
+            pico.output.draw.image(:options_screenshot, @{
+                "%", x=0.5, y=0.5,
+                w=1, h=1,
+                anchor="C"
+            })
+            
+            ;; translucent black overlay
+            pico.zet.pencil @{ color=overlayBackgroundColor }
+            pico.output.draw.rect(@{
+                "%", x=0.5, y=0.5,
+                w=1, h=1,
+                anchor="C"
+            })
+            
+            pico.zet.layer(:world)
+        }
+    }
+}
+
+func Arena() {
+    ;; dummy interaction
+    print("Arena Started")
+    
+    ;; example button to test draws
+    watching @5 {
+        await Button(:example_button, x, 0.5, h, 'W', "example")
+    }
+    
+    print("Arena Ended")
+}
+
+func MainMenu() {
+    ;; menu button tasks
+    pin bs = tasks(2)
+
+    ;; no need for ids yet (pin v = ...)
+    spawn [bs] Button(:arena, x, 0.5, h, 'W', "arena run")
+    spawn [bs] Button(:quit,  x, 0.7, h, 'W', "quit")
+
+    par {
+        return(await(bs))
+    } with {
+        loop {
+            ;; options now exists on "top" of mainmenu
+            pico.push()
+            defer { pico.pop() }
+            
+            await Button(:options, x, 0.6, h, 'W', "options")
+
+            ;; Take screenshot when opening options
+            pico.layer.screenshot(nil, :options_screenshot, :window)
+
+            ;; Freeze menu buttons
+            toggle bs(false)
+            defer { toggle bs(true) }
+            
+            await Options()
+        }
+    }
+}
+
+func GameLoop() {
+    loop {
+    	pico.push()
+        val id = MainMenu()
+        pico.pop() ;; cleans up menu buttons on transitions
+        
+        match id {
+            :arena => Transition(Arena, 0.5, 0.5)
+            :quit  => return()
+        }
+    }
+}
+await GameLoop()
