@@ -39,6 +39,16 @@ func Button(id, x, y, h, anc, text) {
                 pico.zet.layer(:world)
             }
         } with {
+            ;; checking for hover on button creation
+            val e = pico.get.mouse(@{ "%", x=0, y=0 })
+            if pico.vs.pos.rect(e, rect) {
+                set color = colors.hover
+                emit [spring] (:start)
+                pico.output.sound(sounds.pop)
+                
+                await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
+            }
+            
             loop {
                 ;; Idle State
                 set color = colors.idle
@@ -46,7 +56,6 @@ func Button(id, x, y, h, anc, text) {
 
                 ;; Hover State
                 ;; TODO: randomize pitch of sound on every hover
-                pico.output.sound(sounds.pop);
                 pico.output.sound(sounds.hover);
 
                 set color = colors.hover
