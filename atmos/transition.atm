@@ -1,19 +1,26 @@
 val SPEED = 5
 val OUT_DELAY = 1
 
-;; distance from screen center (0.5, 0.5) to corner (0, 0) in % space
-;; so the circle covers the entire screen at peak
-val CORNER_DIST = math.sqrt(((0.5*0.5) + (0.5*0.5)))
-val COVER = CORNER_DIST + 0.1 ;; small epsilon for edge bleeds
-
 pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
+
+;; so the circle covers the entire screen at peak
+func CoverRadius(x, y) {
+    val d1 = math.sqrt((x*x) + (y*y))
+    val d2 = math.sqrt(((1-x)*(1-x)) + (y*y))
+    val d3 = math.sqrt((x*x) + ((1-y)*(1-y)))
+    val d4 = math.sqrt(((1-x)*(1-x)) + ((1-y)*(1-y)))
+
+    math.max(d1, d2, d3, d4) + 0.1
+}
 
 ;; combined transition methods for general usage
 func Transition(Next, x, y) {
+	val cover = CoverRadius(x, y)
+
     pico.push() ;; required to clear up :screenshot
 
     pico.layer.screenshot(nil, :screenshot, :window)    
-    await TransitionIn(:screenshot, x, y)
+    await TransitionIn(:screenshot, x, y, cover)
 
     pico.pop()
     
@@ -24,11 +31,11 @@ func Transition(Next, x, y) {
         Next()
         pico.pop()
     } with {
-        await TransitionOut(x, y)
+        await TransitionOut(x, y, cover)
     }
 }
 
-func TransitionIn(screenshot, x, y) {
+func TransitionIn(screenshot, x, y, cover) {
     var r = 0.0
 
     ;; grow
@@ -50,8 +57,8 @@ func TransitionIn(screenshot, x, y) {
     } with {
         every i, ms in :clock {
             val dt = (ms / 1000)
-            set r = (r + (COVER * SPEED * dt))
-            if r >= COVER { break() }
+            set r = (r + (cover * SPEED * dt))
+            if r >= cover { break() }
         }
     }
     ;; idle stage at peak
@@ -61,7 +68,7 @@ func TransitionIn(screenshot, x, y) {
             pico.zet.pencil @{ color=colors.hover.bg, font=font }
             pico.output.draw.oval(@{
                 "%", x=y, y=y,
-                w=(COVER * 2), h=(COVER * 2 * ASPECT_RATIO),
+                w=(cover * 2), h=(cover * 2 * ASPECT_RATIO),
                 anchor="C"
             })
             
@@ -75,8 +82,8 @@ func TransitionIn(screenshot, x, y) {
     }
 }
 
-func TransitionOut(x, y) {
-    var r = COVER
+func TransitionOut(x, y, cover) {
+    var r = cover
     
     pico.push()
     defer {
@@ -107,7 +114,7 @@ func TransitionOut(x, y) {
     } with {
         every i, ms in :clock {
             val dt = (ms / 1000)
-            set r = (r - (COVER * SPEED * dt))
+            set r = (r - (cover * SPEED * dt))
             until (r <= 0)
         }
     }
