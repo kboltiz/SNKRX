@@ -5,6 +5,8 @@ require "button"
 require "transition"
 require "settings"
 
+require "arena"
+
 ;; "global constants" in uppercase
 ;; use simpler local names
 
@@ -108,18 +110,6 @@ func Options() {
     }
 }
 
-func Arena() {
-    ;; dummy interaction
-    print("Arena Started")
-    
-    ;; example button to test draws
-    watching @5 {
-        await Button(:example_button, x, 0.5, h, 'W', "example")
-    }
-    
-    print("Arena Ended")
-}
-
 func MainMenu() {
     ;; menu button tasks
     pin bs = tasks(2)
@@ -157,7 +147,7 @@ func GameLoop() {
         pico.pop() ;; cleans up menu buttons on transitions
         
         match id {
-            :arena => Transition(Arena, 0.5, 0.5)
+            :arena => await Arena()
             :quit  => return()
         }
     }

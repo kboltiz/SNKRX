@@ -6,17 +6,23 @@ val OUT_DELAY = 1
 val CORNER_DIST = math.sqrt(((0.5*0.5) + (0.5*0.5)))
 val COVER = CORNER_DIST + 0.1 ;; small epsilon for edge bleeds
 
+pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
+
 ;; combined transition methods for general usage
 func Transition(Next, x, y) {
-    pico.push()
-    defer { pico.pop() }
+    pico.push() ;; required to clear up :screenshot
 
-    pico.layer.screenshot(nil, :screenshot, :window)
-    
+    pico.layer.screenshot(nil, :screenshot, :window)    
     await TransitionIn(:screenshot, x, y)
+
+    pico.pop()
     
     par_and {
+        ;; TODO alt usage to allow funcs to call Transition() within them
+        ;; this is a temporary solution
+        pico.push()
         Next()
+        pico.pop()
     } with {
         await TransitionOut(x, y)
     }
@@ -71,8 +77,6 @@ func TransitionIn(screenshot, x, y) {
 
 func TransitionOut(x, y) {
     var r = COVER
-
-    pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
     
     pico.push()
     defer {

@@ -1,0 +1,28 @@
+func Battle() {
+    print("Battle Started!")
+    
+    watching @5 {
+        every :draw{
+            ;; battle arena
+            pico.zet.pencil @{ color=colors.idle.bg, font=font }
+            pico.output.draw.rect(@{
+                "%", x=0.5, y=0.5,
+                w=(0.8), h=(0.4 * ASPECT_RATIO),
+                anchor="C"
+            })
+        }
+    }
+}
+
+func BuyScreen() { 
+    print("Buy Screen Started!")
+    
+    await Button(:go_battle, 0.88, 0.9, 0.1, 'C', "Go!")
+}
+
+func Arena() {
+    loop {
+        await Transition(BuyScreen, 0.5, 0.5)
+        await Transition(Battle, 0.9, 0.9)
+    }
+}
