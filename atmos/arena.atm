@@ -1,3 +1,58 @@
+var RunData = @{
+    Gold = 0,
+    Rerolls = 3,
+}
+
+func RerollButton(x, y, h) {
+    val PAD = 0.03
+    val rect = @{"%", x=x, y=y, h=h, anchor="C"}
+
+    pico.get.text(rect, "reroll:  " ++ RunData[:Rerolls])
+
+    pin hover = spawn Hoverable(:reroll, rect)
+
+    watching :mouse.button.dn, \{pico.vs.pos.rect(it, :reroll)} {
+        every :draw {
+            val c = (hover.pub.hovered && colors.hover) || colors.idle
+
+            pico.zet.layer(:reroll)
+
+            pico.zet.effect @{ color=c.bg }
+            pico.output.clear()
+
+            pico.zet.pencil @{ color=c.fg, font=font }
+            pico.output.draw.text("reroll: ", @{
+                "%", x=0.46, y=0.5,
+                h=(1-PAD) * hover.pub.scale,
+                anchor="C"
+            })
+
+            pico.zet.pencil @{
+                color=((hover.pub.hovered && c.fg) || colors.gold),
+                font=font
+            }
+
+            pico.output.draw.text(tostring(RunData[:Rerolls]), @{
+                "%", x=0.87, y=0.5,
+                h=(1-PAD) * hover.pub.scale * 0.9,
+                anchor="C"
+            })
+
+            pico.zet.scene @{
+                target = @{ '%', anchor=rect.anchor,
+                    x=rect.x, y=rect.y,
+                    w=rect.w * hover.pub.scale,
+                    h=rect.h * hover.pub.scale,
+                }
+            }
+
+            pico.zet.layer(:world)
+        }
+    }
+
+    return(:reroll)
+}
+
 func Battle() {
     print("Battle Started!")
     
@@ -14,10 +69,32 @@ func Battle() {
     }
 }
 
-func BuyScreen() { 
-    print("Buy Screen Started!")
-    
-    await Button(:go_battle, 0.88, 0.9, 0.1, 'C', "Go!")
+func BuyScreen() {
+    pin bs = tasks(1)
+    spawn [bs] Button(:go_battle, 0.88, 0.9, 0.1, 'C', "Go!")
+
+    par {
+        return(await(bs))
+    } with {
+        loop {
+            ;; buy screen interactions
+            pico.push()
+            defer { pico.pop() }
+
+            pin bs = tasks(1)
+            spawn [bs] RerollButton(0.28, 0.06, 0.07)
+
+            val action = await(bs)
+            match action {
+                :reroll => { 
+                    if RunData.Rerolls > 0 => \{
+                        print("Reroll!")
+                        set RunData.Rerolls = RunData.Rerolls - 1;
+                    };
+                }
+            }
+        }
+    }
 }
 
 func Arena() {
