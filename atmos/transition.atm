@@ -1,8 +1,6 @@
 val SPEED = 5
 val OUT_DELAY = 1
 
-pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
-
 ;; so the circle covers the entire screen at peak
 func CoverRadius(x, y) {
     val d1 = math.sqrt((x*x) + (y*y))
@@ -15,21 +13,19 @@ func CoverRadius(x, y) {
 
 ;; combined transition methods for general usage
 func Transition(Next, x, y) {
-	val cover = CoverRadius(x, y)
+    val cover = CoverRadius(x, y)
 
-    pico.push() ;; required to clear up :screenshot
+    pico.push()
+    defer { pico.pop() }
 
-    pico.layer.screenshot(nil, :screenshot, :window)    
+    pico.layer.screenshot(nil, :screenshot, :window)
+
     await TransitionIn(:screenshot, x, y, cover)
 
-    pico.pop()
-    
     par_and {
-        ;; TODO alt usage to allow funcs to call Transition() within them
-        ;; this is a temporary solution
-        pico.push()
+        ;; Arena now manages transitions sequentially
+        ;; nested transition support no longer required
         Next()
-        pico.pop()
     } with {
         await TransitionOut(x, y, cover)
     }
@@ -67,13 +63,14 @@ func TransitionIn(screenshot, x, y, cover) {
             ;; circle at peak size
             pico.zet.pencil @{ color=colors.hover.bg, font=font }
             pico.output.draw.oval(@{
-                "%", x=y, y=y,
+                "%", x=x, y=y,
                 w=(cover * 2), h=(cover * 2 * ASPECT_RATIO),
                 anchor="C"
             })
-            
+
             ;; show loading text while waiting
             pico.zet.pencil @{ color=colors.idle.bg, font=font }
+
             pico.output.draw.text("Loading...", @{
                 "%", x=x, y=y,
                 h=0.05, anchor="C"
@@ -85,13 +82,15 @@ func TransitionIn(screenshot, x, y, cover) {
 func TransitionOut(x, y, cover) {
     var r = cover
     
+    pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
+    
     pico.push()
     defer {
         ;; clearing the transition_out layer on exit
         pico.zet.layer(:transition_out)
         pico.output.clear()
         pico.zet.layer(:world)
-        
+
         pico.pop()
     }
 
@@ -108,7 +107,7 @@ func TransitionOut(x, y, cover) {
                 w=(r*2), h=((r*2) * ASPECT_RATIO),
                 anchor="C"
             })
-            
+
             pico.zet.layer(:world)
         }
     } with {
@@ -119,4 +118,3 @@ func TransitionOut(x, y, cover) {
         }
     }
 }
-
