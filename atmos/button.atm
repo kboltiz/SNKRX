@@ -2,68 +2,88 @@ val Spring = require "spring"
 
 val PAD = 0.01  ;; padding for buttons
 
-func Button(id, x, y, h, anc, text) {
-    ;; creating button layer
-    val rect = @{"%", x=x, y=y, h=h, anchor=anc}
-    pico.get.text(rect, text)
-    pico.layer.empty(:world, id, false, rect)
+func Hoverable(id, rect) {
 
-    var color = colors.idle
+    ;; creating button layer
+    pico.layer.empty(:world, id, false, rect)
 
     ;; now updates until next hover or till spring 
     ;; reaches target value or next :start
-    pin spring = spawn Spring(1.3);
+    pin spring = spawn Spring(1.3)
+
+    set pub = @{
+        hovered = false,
+        scale = spring.pub.scale
+    }
+
+    ;; keep pub.scale synced
+    spawn {
+        every :clock {
+            set pub.scale = spring.pub.scale
+        }
+    }
+
+    ;; checking for hover on button creation
+    val e = pico.get.mouse(@{ "%", x=0, y=0 })
+    if pico.vs.pos.rect(e, rect) {
+        set pub.hovered = true
+
+        pico.output.sound(sounds.pop)
+        emit [spring] (:start)
+        
+        await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
+    }
+    
+    loop {
+        ;; Idle State
+        set pub.hovered = false
+        await(:mouse.motion, \{pico.vs.pos.rect(it, id)})
+
+        ;; Hover State
+        ;; TODO: randomize pitch of sound on every hover
+        pico.output.sound(sounds.hover)
+
+        set pub.hovered = true
+        emit [spring] (:start)
+
+        await(:mouse.motion, \{!pico.vs.pos.rect(it, id)})
+    }
+}
+
+func Button(id, x, y, h, anc, text) {
+    val rect = @{"%", x=x, y=y, h=h, anchor=anc}
+    pico.get.text(rect, text)
+
+    pin hover = spawn Hoverable(id, rect)
 
     ;; click detection
     ;; returns id when clicked
     watching :mouse.button.dn, \{(pico.vs.pos.rect(it, id))} {
-        par {
-            ;; draw loop
-            every :draw {
-                val scale = spring.pub.scale
-                pico.zet.layer(id)
-                pico.zet.effect @{ color=color.bg }
-                pico.output.clear()
+        ;; draw loop
+        every :draw {
+            val c = (hover.pub.hovered && colors.hover) || colors.idle
 
-                ;; drawing text inside
-                pico.zet.pencil @{ color=color.fg, font=font }
-                pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*scale, anchor="C" })
+            ;; button layer is created by Hoverable
+            pico.zet.layer(id)
 
-                pico.zet.scene @{
-                    target = @{ '%', anchor=rect.anchor,
-                        x=rect.x, y=rect.y,
-                        w = rect.w * scale,
-                        h = rect.h * scale,
-                    }
+            pico.zet.effect @{ color=c.bg }
+            pico.output.clear()
+
+            ;; drawing text inside
+            pico.zet.pencil @{ color=c.fg, font=font }
+            pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*hover.pub.scale, anchor="C" })
+
+            pico.zet.scene @{
+                target = @{ '%', anchor=rect.anchor,
+                    x=rect.x, y=rect.y,
+                    w = rect.w * hover.pub.scale,
+                    h = rect.h * hover.pub.scale,
                 }
-                pico.zet.layer(:world)
             }
-        } with {
-            ;; checking for hover on button creation
-            val e = pico.get.mouse(@{ "%", x=0, y=0 })
-            if pico.vs.pos.rect(e, rect) {
-                set color = colors.hover
-                emit [spring] (:start)
-                pico.output.sound(sounds.pop)
-                
-                await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
-            }
-            
-            loop {
-                ;; Idle State
-                set color = colors.idle
-                await(:mouse.motion, \{pico.vs.pos.rect(it, id)})
 
-                ;; Hover State
-                ;; TODO: randomize pitch of sound on every hover
-                pico.output.sound(sounds.hover);
-
-                set color = colors.hover
-                emit [spring] (:start)
-
-                await(:mouse.motion, \{!pico.vs.pos.rect(it, id)})
-            }
+            pico.zet.layer(:world)
         }
     }
+
     return(id)
 }
