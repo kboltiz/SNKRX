@@ -3,6 +3,38 @@ var RunData = @{
     Rerolls = 3,
 }
 
+func ShopCard(id, x, y) {
+    val PAD = 0.03
+    val rect = @{"%", x=x, y=y, h=0.18 * ASPECT_RATIO, w=0.16, anchor="C"}
+
+    pin hover = spawn Hoverable(id, rect)
+    
+    val hoverBg = pico.color.alpha(colors.hover.bg, 15)
+
+    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
+        every :draw {
+            val c = (hover.pub.hovered && hoverBg) || colors.empty
+
+            pico.zet.layer(id)
+
+            pico.zet.effect @{ color=c }
+            pico.output.clear()
+
+            pico.zet.scene @{
+                target = @{ '%', anchor=rect.anchor,
+                    x=rect.x, y=rect.y,
+                    w=rect.w * hover.pub.scale,
+                    h=rect.h * hover.pub.scale,
+                }
+            }
+
+            pico.zet.layer(:world)
+        }
+    }
+
+    return(id)
+}
+
 func RerollButton(x, y, h) {
     val PAD = 0.03
     val rect = @{"%", x=x, y=y, h=h, anchor="C"}
@@ -81,8 +113,12 @@ func BuyScreen() {
             pico.push()
             defer { pico.pop() }
 
-            pin bs = tasks(1)
+            pin bs = tasks(4)
             spawn [bs] RerollButton(0.28, 0.06, 0.07)
+            
+            spawn [bs] ShopCard(:shop_card_1, 0.16, 0.3)
+            spawn [bs] ShopCard(:shop_card_2, 0.32, 0.3)
+            spawn [bs] ShopCard(:shop_card_3, 0.48, 0.3)
 
             val action = await(bs)
             match action {
