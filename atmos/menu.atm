@@ -1,6 +1,8 @@
 require "atmos.env.pico"
 set pico = require "pico"
 
+require "shared"
+
 require "button"
 require "transition"
 require "settings"
@@ -16,25 +18,6 @@ set ASPECT_RATIO = W/H
 
 pico.zet.window @{ title="SNKRX Menu" }
 pico.zet.dim @{ '!', w=W, h=H }
-
-;; will be moved a "shared.atm"
-set sounds = @{
-    pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
-    hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
-}
-set font = "../assets/fonts/PixulBrush.ttf"
-set colors = @{
-    idle = @{
-        bg = @{ "%", r=0.18, g=0.18, b=0.18 },
-        fg = @{ "%", r=0.43, g=0.43, b=0.43 },
-    },
-    hover = @{
-        bg = @{ "%", r=0.85, g=0.85, b=0.85 },
-        fg = @{ "%", r=0.72, g=0.72, b=0.72 },
-    },
-    gold = @{"%", r=0.98, g=0.81, b=0},
-    empty = @{'%', r=0, g=0, b=0, a=0}
-}
 
 ;; shared values
 val x = 0.01
