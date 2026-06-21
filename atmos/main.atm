@@ -3,17 +3,13 @@ set pico = require "pico"
 
 require "menu"
 
-func GameLoop() {
-    loop {
-    	pico.push()
-        val id = MainMenu()
-        pico.pop() ;; cleans up menu buttons on transitions
-        
-        match id {
-            :arena => await Arena()
-            :quit  => return()
-        }
+loop {
+    pico.push()
+    val id = MainMenu()
+    pico.pop() ;; cleans up menu buttons on transitions
+
+    match id {
+        :arena => await Arena()
+        :quit  => return()
     }
 }
-
-await GameLoop()
