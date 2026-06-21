@@ -106,15 +106,14 @@ val func Options() {
 }
 
 val func Menu () {
-    ;; menu button tasks
-    pin bs = tasks(2)
-
-    ;; no need for ids yet (pin v = ...)
-    spawn [bs] Button(:arena, x, 0.5, h, 'W', "arena run")
-    spawn [bs] Button(:quit,  x, 0.7, h, 'W', "quit")
-
-    par {
-        return(await(bs))
+    par_or {
+        toggle :Show {
+            par_or {
+                await Button(:arena, x, 0.5, h, 'W', "arena run")
+            } with {
+                await Button(:quit,  x, 0.7, h, 'W', "quit")
+            }
+        }
     } with {
         loop {
             ;; options now exists on "top" of mainmenu
@@ -127,8 +126,10 @@ val func Menu () {
             pico.layer.screenshot(nil, :options_screenshot, :window)
 
             ;; Freeze menu buttons
-            toggle bs(false)
-            defer { toggle bs(true) }
+            emit(:Show, false)
+            defer {
+                emit(:Show, true)
+            }
             
             await Options()
         }

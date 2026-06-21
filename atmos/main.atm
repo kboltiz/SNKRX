@@ -11,6 +11,6 @@ loop {
 
     match id {
         :arena => await Arena()
-        :quit  => return()
+        :quit  => break()
     }
 }
