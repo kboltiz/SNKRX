@@ -2,8 +2,6 @@ require "button"
 require "transition"
 require "settings"
 
-require "arena"
-
 ;; "global constants" in uppercase
 ;; use simpler local names
 
@@ -35,18 +33,18 @@ set colors = @{
 val x = 0.01
 val h = 0.08
 
-func ToggleButton(id, x, y, property) {
+val func ToggleButton(id, x, y, property) {
     val current = settings[property];
     await Button(id, x, y, h, "C", property ++ ": " ++ ((current && "yes") || "no"))
     set settings[property] = !current
 }
 
-func ActionButton(id, x, y, property, action) {
+val func ActionButton(id, x, y, property, action) {
     await Button(id, x, y, h, "C", property)
     action();
 }
 
-func NumRangeButton(id, x, y, property) {
+val func NumRangeButton(id, x, y, property) {
     val pair = settings[property]
     val current = pair[1]
     val max = pair[2]
@@ -54,7 +52,7 @@ func NumRangeButton(id, x, y, property) {
     set settings[property] = @{(current + 1) % (max + 1), max}
 }
 
-func Options() {
+val func Options() {
     print("Options Opened")
 
     ;; options overlay layer
@@ -107,7 +105,7 @@ func Options() {
     }
 }
 
-func MainMenu() {
+val func Menu () {
     ;; menu button tasks
     pin bs = tasks(2)
 
@@ -136,3 +134,5 @@ func MainMenu() {
         }
     }
 }
+
+Menu

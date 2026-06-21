@@ -1,11 +1,12 @@
 require "atmos.env.pico"
 set pico = require "pico"
 
-require "menu"
+val Menu = require "menu"
+require "arena"
 
 loop {
     pico.push()
-    val id = MainMenu()
+    val id = Menu()
     pico.pop() ;; cleans up menu buttons on transitions
 
     match id {
