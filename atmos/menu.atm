@@ -39,10 +39,13 @@ val func ToggleButton(id, x, y, property) {
     set settings[property] = !current
 }
 
+;;;
+;; TODO: action() is an "anti pattern"
 val func ActionButton(id, x, y, property, action) {
     await Button(id, x, y, h, "C", property)
     action();
 }
+;;;
 
 val func NumRangeButton(id, x, y, property) {
     val pair = settings[property]
@@ -63,21 +66,22 @@ val func Options() {
     par_or {
         ;; this is where all option settings go
         await Button(:options_close, 0.5, 0.2, h, 'C', "main menu")
+        false   ;; dont quit
     } with {
         loop {
             pico.push()
             defer { pico.pop() }
         
-            pin bs = tasks(3)
-
             ;; 3 main types of values
-            spawn [bs] ToggleButton(:screen_shake, 0.5, 0.4, "screen shake")
-            spawn [bs] NumRangeButton(:music_volume, 0.5, 0.5, "music volume")
-            spawn [bs] ActionButton(:opts_quit, 0.5, 0.6, "quit", \{ pico.quit() })
-            
+            par_or {
+                await ToggleButton(:screen_shake, 0.5, 0.4, "screen shake")
+            } with {
+                await NumRangeButton(:music_volume, 0.5, 0.5, "music volume")
+            } with {
+                await Button(:opts_quit, 0.5, 0.6, h, :C, "quit")
+                break(true) ;; quit
+            }
             ;; TODO text-dependent center alignment of option buttons
-            
-            await(bs);
         }
     } with {
         every :draw {
@@ -131,7 +135,10 @@ val func Menu () {
                 emit(:Show, true)
             }
             
-            await Options()
+            val quit = await Options()
+            if quit {
+                break :quit
+            }
         }
     }
 }
