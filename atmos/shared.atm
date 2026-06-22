@@ -19,8 +19,8 @@ set colors = @{
 
     ;; Character Colors (Base and Dark variants)
     blue = @{
-        base = @{ "%", r=0.23, g=0.51, b=0.96 },
-        text = @{ "%", r=0.03, g=0.11, b=0.26 }
+        base = @{"%", r=0.28, g=0.47, b=0.73},
+        text = @{"%", r=0.20, g=0.35, b=0.55}
     },
     yellow = @{
         base = @{ "%", r=0.98, g=0.81, b=0.00 },
@@ -33,3 +33,10 @@ set character_colors = @{
     swordsman = "yellow",
     wizard = "blue",
 }
+
+set character_classes = @{
+    swordsman = @{"warrior"},
+    wizard = @{"mage", "nuker"}
+}
+
+set class_icon_aspect_ratio = 3/2;
