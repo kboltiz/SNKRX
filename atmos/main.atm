@@ -4,6 +4,16 @@ set pico = require "pico"
 val Menu = require "menu"
 require "arena"
 
+;; "global constants" in uppercase
+;; use simpler local names
+
+set W = 640
+set H = 360
+set ASPECT_RATIO = W/H
+
+pico.zet.window @{ title="SNKRX Menu" }
+pico.zet.dim @{ '!', w=W, h=H }
+
 loop {
     pico.push()
     val id = Menu()

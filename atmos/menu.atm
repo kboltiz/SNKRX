@@ -4,16 +4,6 @@ require "button"
 require "transition"
 require "settings"
 
-;; "global constants" in uppercase
-;; use simpler local names
-
-set W = 640
-set H = 360
-set ASPECT_RATIO = W/H
-
-pico.zet.window @{ title="SNKRX Menu" }
-pico.zet.dim @{ '!', w=W, h=H }
-
 ;; shared values
 val x = 0.01
 val h = 0.08
