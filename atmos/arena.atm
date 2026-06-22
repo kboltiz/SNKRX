@@ -9,13 +9,13 @@ func ShopCard(id, x, y, character) {
 
     pin hover = spawn Hoverable(id, rect)
     
-    val hoverBg = pico.color.alpha(colors.hover.bg, 15)
+    val hoverBg = pico.color.alpha(COLORS.hover.bg, 15)
 
     spawn {
         watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
             par {
                 every :draw {
-                    val c = (hover.pub.hovered && hoverBg) || colors.empty
+                    val c = (hover.pub.hovered && hoverBg) || COLORS.empty
 
                     pico.zet.layer(id)
 
@@ -46,8 +46,8 @@ func ShopCard(id, x, y, character) {
     await(false)
 }
 func CharacterIcon(id, rect, character) {
-    val charColorGroup = character_colors[character]
-    val charColors = colors[charColorGroup]
+    val charColorGroup = CHARACTER_COLORS[character]
+    val charColors = COLORS[charColorGroup]
     val cardAspectRatio = rect.w / rect.h
 
     every :draw {
@@ -69,7 +69,7 @@ func CharacterIcon(id, rect, character) {
         ;; icon number centered inside square
         pico.zet.pencil @{
             color=charColors.text,
-            font=font
+            font=FONT
         }
 
         pico.output.draw.text("1", @{
@@ -83,7 +83,7 @@ func CharacterIcon(id, rect, character) {
         ;; character name
         pico.zet.pencil @{
             color=charColors.base,
-            font=font
+            font=FONT
         }
 
         pico.output.draw.text(character, @{
@@ -99,21 +99,21 @@ func CharacterIcon(id, rect, character) {
 }
 
 func ClassBanners(id, rect, character) {
-    val charClasses = character_classes[character]
+    val charClasses = CHARACTER_CLASSES[character]
     val charClassesCount = #charClasses
     val cardAspectRatio = rect.w / rect.h
 
     every :draw {
         pico.zet.layer(id)
 
-        ;; TODO: color the class icon to colors.hover.fg
+        ;; TODO: color the class icon to COLORS.hover.fg
         loop i, class in charClasses {
             ;; center + (divided_x * spacing)
             val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
 
             pico.zet.pencil @{
-                color=colors.idle.bg,
-                font=font
+                color=COLORS.idle.bg,
+                font=FONT
             }
 
             pico.output.draw.rect(@{
@@ -124,8 +124,8 @@ func ClassBanners(id, rect, character) {
             })
 
             pico.zet.pencil @{
-                color=colors.idle.fg,
-                font=font
+                color=COLORS.idle.fg,
+                font=FONT
             }
 
             pico.output.draw.image(
@@ -134,7 +134,7 @@ func ClassBanners(id, rect, character) {
                     "%",
                     x=x, y=0.56,
                     w=0.17,
-                    h=0.17 * class_icon_aspect_ratio * cardAspectRatio * ASPECT_RATIO,
+                    h=0.17 * CLASS_ICON_ASPECT_RATIO * cardAspectRatio * ASPECT_RATIO,
                     anchor="C"
                 }
             )
@@ -154,14 +154,14 @@ func RerollButton(x, y, h) {
 
     watching :mouse.button.dn, \{pico.vs.pos.rect(it, :reroll)} {
         every :draw {
-            val c = (hover.pub.hovered && colors.hover) || colors.idle
+            val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
 
             pico.zet.layer(:reroll)
 
             pico.zet.effect @{ color=c.bg }
             pico.output.clear()
 
-            pico.zet.pencil @{ color=c.fg, font=font }
+            pico.zet.pencil @{ color=c.fg, font=FONT }
             pico.output.draw.text("reroll: ", @{
                 "%", x=0.46, y=0.5,
                 h=(1-PAD) * hover.pub.scale,
@@ -169,8 +169,8 @@ func RerollButton(x, y, h) {
             })
 
             pico.zet.pencil @{
-                color=((hover.pub.hovered && c.fg) || colors.gold),
-                font=font
+                color=((hover.pub.hovered && c.fg) || COLORS.gold),
+                font=FONT
             }
 
             pico.output.draw.text(tostring(RunData[:Rerolls]), @{
@@ -200,7 +200,7 @@ func Battle() {
     watching @5 {
         every :draw{
             ;; battle arena
-            pico.zet.pencil @{ color=colors.idle.bg, font=font }
+            pico.zet.pencil @{ color=COLORS.idle.bg, font=FONT }
             pico.output.draw.rect(@{
                 "%", x=0.5, y=0.5,
                 w=(0.8), h=(0.4 * ASPECT_RATIO),

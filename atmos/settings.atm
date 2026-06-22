@@ -1,4 +1,4 @@
-set settings = @{
+set SETTINGS = @{
     ["music volume"] = @{3, 10},
     ["sfx volume"] = @{3, 10},
     ["screen shake"] = true,

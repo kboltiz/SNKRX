@@ -28,7 +28,7 @@ func Hoverable(id, rect) {
     if pico.vs.pos.rect(e, rect) {
         set pub.hovered = true
 
-        pico.output.sound(sounds.pop)
+        pico.output.sound(SOUNDS.pop)
         emit [spring] (:start)
         
         await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
@@ -41,7 +41,7 @@ func Hoverable(id, rect) {
 
         ;; Hover State
         ;; TODO: randomize pitch of sound on every hover
-        pico.output.sound(sounds.hover)
+        pico.output.sound(SOUNDS.hover)
 
         set pub.hovered = true
         emit [spring] (:start)
@@ -60,7 +60,7 @@ func Button(id, rect, text) {
     watching :mouse.button.dn, \{(pico.vs.pos.rect(it, id))} {
         ;; draw loop
         every :draw {
-            val c = (hover.pub.hovered && colors.hover) || colors.idle
+            val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
 
             ;; button layer is created by Hoverable
             pico.zet.layer(id)
@@ -69,7 +69,7 @@ func Button(id, rect, text) {
             pico.output.clear()
 
             ;; drawing text inside
-            pico.zet.pencil @{ color=c.fg, font=font }
+            pico.zet.pencil @{ color=c.fg, font=FONT }
             pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*hover.pub.scale, anchor="C" })
 
             pico.zet.scene @{
