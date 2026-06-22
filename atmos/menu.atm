@@ -33,25 +33,25 @@ set colors = @{
 val x = 0.01
 val h = 0.08
 
-val func ToggleButton(id, x, y, property) {
+val func ToggleButton(id, rect, property) {
     val current = settings[property];
-    await Button(id, x, y, h, "C", property ++ ": " ++ ((current && "yes") || "no"))
+    await Button(id, rect, property ++ ": " ++ ((current && "yes") || "no"))
     set settings[property] = !current
 }
 
 ;;;
 ;; TODO: action() is an "anti pattern"
-val func ActionButton(id, x, y, property, action) {
-    await Button(id, x, y, h, "C", property)
+val func ActionButton(id, rect, property, action) {
+    await Button(id, rect, property)
     action();
 }
 ;;;
 
-val func NumRangeButton(id, x, y, property) {
+val func NumRangeButton(id, rect, property) {
     val pair = settings[property]
     val current = pair[1]
     val max = pair[2]
-    await Button(id, x, y, h, "C", property ++ ": " ++ current)
+    await Button(id, rect, property ++ ": " ++ current)
     set settings[property] = @{(current + 1) % (max + 1), max}
 }
 
@@ -65,7 +65,9 @@ val func Options() {
     
     par_or {
         ;; this is where all option settings go
-        await Button(:options_close, 0.5, 0.2, h, 'C', "main menu")
+        await Button(:options_close, rect, "main menu") where {
+            rect = @{"%", x=0.5, y=0.2, h=h}
+        }
         false   ;; dont quit
     } with {
         loop {
@@ -74,11 +76,17 @@ val func Options() {
         
             ;; 3 main types of values
             par_or {
-                await ToggleButton(:screen_shake, 0.5, 0.4, "screen shake")
+                await ToggleButton(:screen_shake, rect, "screen shake") where {
+                    rect = @{"%", x=0.5, y=0.4, h=h}
+                }
             } with {
-                await NumRangeButton(:music_volume, 0.5, 0.5, "music volume")
+                await NumRangeButton(:music_volume, rect, "music volume") where {
+                    rect = @{"%", x=0.5, y=0.5, h=h}
+                }
             } with {
-                await Button(:opts_quit, 0.5, 0.6, h, :C, "quit")
+                await Button(:opts_quit, rect, "quit") where {
+                    rect = @{"%", x=0.5, y=0.6, h=h}
+                }
                 break(true) ;; quit
             }
             ;; TODO text-dependent center alignment of option buttons
@@ -113,9 +121,13 @@ val func Menu () {
     par_or {
         toggle :Show {
             par_or {
-                await Button(:arena, x, 0.5, h, 'W', "arena run")
+                await Button(:arena, rect, "arena run") where {
+                    rect = @{"%", x=x, y=0.5, h=h, anchor='W'}
+                }
             } with {
-                await Button(:quit,  x, 0.7, h, 'W', "quit")
+                await Button(:quit, rect, "quit") where {
+                    rect = @{"%", x=x, y=0.7, h=h, anchor='W'}
+                }
             }
         }
     } with {
@@ -124,7 +136,9 @@ val func Menu () {
             pico.push()
             defer { pico.pop() }
             
-            await Button(:options, x, 0.6, h, 'W', "options")
+            await Button(:options, rect, "options") where {
+                rect = @{"%", x=x, y=0.6, h=h, anchor='W'}
+            }
 
             ;; Take screenshot when opening options
             pico.layer.screenshot(nil, :options_screenshot, :window)
