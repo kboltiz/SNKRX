@@ -148,8 +148,10 @@ func Battle() {
 
 func BuyScreen() {
     pin bs = tasks(1)
-    spawn [bs] Button(:go_battle, 0.88, 0.9, 0.1, 'C', "Go!")
-
+    spawn [bs] Button(:go_battle, rect, "Go!") where {
+        rect = @{"%", x=0.88, y=0.9, h=0.1}
+    }
+    
     par {
         return(await(bs))
     } with {

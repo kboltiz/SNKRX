@@ -50,8 +50,7 @@ func Hoverable(id, rect) {
     }
 }
 
-func Button(id, x, y, h, anc, text) {
-    val rect = @{"%", x=x, y=y, h=h, anchor=anc}
+func Button(id, rect, text) {
     pico.get.text(rect, text)
 
     pin hover = spawn Hoverable(id, rect)
