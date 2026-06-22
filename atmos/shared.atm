@@ -1,0 +1,35 @@
+;; will be moved a "shared.atm"
+set sounds = @{
+    pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
+    hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
+}
+set font = "../assets/fonts/PixulBrush.ttf"
+
+set colors = @{
+    idle = @{
+        bg = @{ "%", r=0.18, g=0.18, b=0.18 },
+        fg = @{ "%", r=0.43, g=0.43, b=0.43 },
+    },
+    hover = @{
+        bg = @{ "%", r=0.85, g=0.85, b=0.85 },
+        fg = @{ "%", r=0.72, g=0.72, b=0.72 },
+    },
+    gold = @{"%", r=0.98, g=0.81, b=0},
+    empty = @{'%', r=0, g=0, b=0, a=0},
+
+    ;; Character Colors (Base and Dark variants)
+    blue = @{
+        base = @{ "%", r=0.23, g=0.51, b=0.96 },
+        text = @{ "%", r=0.03, g=0.11, b=0.26 }
+    },
+    yellow = @{
+        base = @{ "%", r=0.98, g=0.81, b=0.00 },
+        text = @{ "%", r=0.72, g=0.60, b=0.0 }
+    },
+}
+
+;; Character to color
+set character_colors = @{
+    swordsman = "yellow",
+    wizard = "blue",
+}
