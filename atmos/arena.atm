@@ -3,160 +3,19 @@ var RunData = @{
     Rerolls = 3,
 }
 
-func ShopCard(id, x, y, character) {
+val PAD = 0.03
+
+val func RerollButton(id, rect) {
     val PAD = 0.03
-    val rect = @{"%", x=x, y=y, h=0.2 * ASPECT_RATIO, w=0.16, anchor="C"}
-
-    pin hover = spawn Hoverable(id, rect)
-    
-    val hoverBg = pico.color.alpha(colors.hover.bg, 15)
-
-    spawn {
-        watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
-            par {
-                every :draw {
-                    val c = (hover.pub.hovered && hoverBg) || colors.empty
-
-                    pico.zet.layer(id)
-
-                    pico.zet.effect @{ color=c }
-                    pico.output.clear()
-
-                    pico.zet.scene @{
-                        target = @{ '%', anchor=rect.anchor,
-                            x=rect.x, y=rect.y,
-                            w=rect.w * hover.pub.scale,
-                            h=rect.h * hover.pub.scale,
-                        }
-                    }
-
-                    pico.zet.layer(:world)
-                }
-            } with {
-                spawn CharacterIcon(id, rect, character)
-                spawn ClassBanners(id, rect, character)
-
-                await(false)
-            }
-        }
-
-        return(id)
-    }
-
-    await(false)
-}
-func CharacterIcon(id, rect, character) {
-    val charColorGroup = character_colors[character]
-    val charColors = colors[charColorGroup]
-    val cardAspectRatio = rect.w / rect.h
-
-    every :draw {
-        pico.zet.layer(id)
-
-        pico.zet.pencil @{
-            color=charColors.base
-        }
-
-        pico.output.draw.rect(@{
-            "%",
-            x=0.5,
-            y=0.08,
-            w=0.20,
-            h=0.20 * cardAspectRatio * ASPECT_RATIO,
-            anchor="N"
-        })
-
-        ;; icon number centered inside square
-        pico.zet.pencil @{
-            color=charColors.text,
-            font=font
-        }
-
-        pico.output.draw.text("1", @{
-            "%",
-            x=0.5,
-            y=0.18,
-            h=0.18,
-            anchor="C"
-        })
-
-        ;; character name
-        pico.zet.pencil @{
-            color=charColors.base,
-            font=font
-        }
-
-        pico.output.draw.text(character, @{
-            "%",
-            x=0.5,
-            y=0.33,
-            h=0.13,
-            anchor="C"
-        })
-
-        pico.zet.layer(:world)
-    }
-}
-
-func ClassBanners(id, rect, character) {
-    val charClasses = character_classes[character]
-    val charClassesCount = #charClasses
-    val cardAspectRatio = rect.w / rect.h
-
-    every :draw {
-        pico.zet.layer(id)
-
-        ;; TODO: color the class icon to colors.hover.fg
-        loop i, class in charClasses {
-            ;; center + (divided_x * spacing)
-            val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
-
-            pico.zet.pencil @{
-                color=colors.idle.bg,
-                font=font
-            }
-
-            pico.output.draw.rect(@{
-                "%",
-                x=x, y=0.56,
-                w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
-                anchor="C"
-            })
-
-            pico.zet.pencil @{
-                color=colors.idle.fg,
-                font=font
-            }
-
-            pico.output.draw.image(
-                "../assets/images/" ++ class ++ ".png",
-                @{
-                    "%",
-                    x=x, y=0.56,
-                    w=0.17,
-                    h=0.17 * class_icon_aspect_ratio * cardAspectRatio * ASPECT_RATIO,
-                    anchor="C"
-                }
-            )
-        }
-
-        pico.zet.layer(:world)
-    }
-}
-
-func RerollButton(x, y, h) {
-    val PAD = 0.03
-    val rect = @{"%", x=x, y=y, h=h, anchor="C"}
-
     pico.get.text(rect, "reroll:  " ++ RunData[:Rerolls])
 
-    pin hover = spawn Hoverable(:reroll, rect)
+    pin hover = spawn Hoverable(id, rect)
 
-    watching :mouse.button.dn, \{pico.vs.pos.rect(it, :reroll)} {
+    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
         every :draw {
             val c = (hover.pub.hovered && colors.hover) || colors.idle
 
-            pico.zet.layer(:reroll)
+            pico.zet.layer(id)
 
             pico.zet.effect @{ color=c.bg }
             pico.output.clear()
@@ -172,7 +31,6 @@ func RerollButton(x, y, h) {
                 color=((hover.pub.hovered && c.fg) || colors.gold),
                 font=font
             }
-
             pico.output.draw.text(tostring(RunData[:Rerolls]), @{
                 "%", x=0.87, y=0.5,
                 h=(1-PAD) * hover.pub.scale * 0.9,
@@ -191,7 +49,144 @@ func RerollButton(x, y, h) {
         }
     }
 
-    return(:reroll)
+    return(id)
+}
+
+val func CharacterIcon(id, rect, character) {
+    val charColorGroup = character_colors[character]
+    val charColors = colors[charColorGroup]
+    val cardAspectRatio = rect.w / rect.h
+
+    every :draw {
+        pico.zet.layer(id)
+
+        pico.zet.pencil @{ color=charColors.base }
+        pico.output.draw.rect(@{
+            "%", x=0.5, y=0.08,
+            w=0.20, h=0.20 * cardAspectRatio * ASPECT_RATIO,
+            anchor="N"
+        })
+
+        ;; icon number centered inside square
+        pico.zet.pencil @{ color=charColors.text, font=font }
+        pico.output.draw.text("1", @{
+            "%", x=0.5, y=0.18, h=0.18, anchor="C"
+        })
+
+        ;; character name
+        pico.zet.pencil @{ color=charColors.base, font=font }
+        pico.output.draw.text(character, @{
+            "%", x=0.5, y=0.33, h=0.13, anchor="C"
+        })
+
+        pico.zet.layer(:world)
+    }
+}
+
+val func ClassBanners(id, rect, character) {
+    val charClasses = character_classes[character]
+    val charClassesCount = #charClasses
+    val cardAspectRatio = rect.w / rect.h
+
+    every :draw {
+        pico.zet.layer(id)
+
+        ;; TODO: color the class icon to colors.hover.fg
+        loop i, class in charClasses {
+            ;; center + (divided_x * spacing)
+            val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
+
+            pico.zet.pencil @{ color=colors.idle.bg, font=font }
+            pico.output.draw.rect(@{
+                "%", x=x, y=0.56,
+                w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
+                anchor="C"
+            })
+
+            pico.zet.pencil @{ color=colors.idle.fg, font=font }
+            pico.output.draw.image(
+                "../assets/images/" ++ class ++ ".png",
+                @{
+                    "%", x=x, y=0.56,
+                    w=0.17,
+                    h=0.17 * class_icon_aspect_ratio * cardAspectRatio * ASPECT_RATIO,
+                    anchor="C"
+                }
+            )
+        }
+
+        pico.zet.layer(:world)
+    }
+}
+
+val func ShopCard(id, x, y, character) {
+    val rect = @{"%", x=x, y=y, h=0.2 * ASPECT_RATIO, w=0.16, anchor="C"}
+
+    pin hover = spawn Hoverable(id, rect)
+
+    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
+        par {
+            every :draw {
+                val c = (hover.pub.hovered && pico.color.alpha(colors.hover.bg, 15)) || colors.empty
+
+                pico.zet.layer(id)
+
+                pico.zet.effect @{ color=c }
+                pico.output.clear()
+
+                pico.zet.scene @{
+                    target = @{ '%', anchor=rect.anchor,
+                        x=rect.x, y=rect.y,
+                        w=rect.w * hover.pub.scale,
+                        h=rect.h * hover.pub.scale,
+                    }
+                }
+
+                pico.zet.layer(:world)
+            }
+        } with {
+            spawn CharacterIcon(id, rect, character)
+            spawn ClassBanners(id, rect, character)
+
+            await(false)
+        }
+    }
+
+    return(id)
+}
+
+val func BuyScreen() {
+    par_or {
+        await Button(:go_battle, rect, "Go!") where {
+            rect = @{"%", x=0.88, y=0.9, h=0.1}
+        }
+    } with {
+        loop {
+            ;; buy screen interactions
+            pico.push()
+            defer { pico.pop() }
+ 
+            pin bs = tasks(4)
+            spawn [bs] RerollButton(:reroll, rect) where {
+                rect = @{"%", x=0.28, y=0.06, h=0.07, anchor="C"}
+            }
+
+            spawn [bs] ShopCard(:shop_card_1, 0.16, 0.3, "swordsman")
+            spawn [bs] ShopCard(:shop_card_2, 0.32, 0.3, "wizard")
+            spawn [bs] ShopCard(:shop_card_3, 0.48, 0.3, "swordsman")
+
+            val action = await(bs)
+            
+            match action {
+                :reroll => {
+                    if RunData.Rerolls > 0 => \{
+                        print("Reroll!")
+                        set RunData.Rerolls = RunData.Rerolls - 1;
+                    };
+                };
+            }
+        }
+    }
 }
 
 func Battle() {
@@ -210,43 +205,11 @@ func Battle() {
     }
 }
 
-func BuyScreen() {
-    pin bs = tasks(1)
-    spawn [bs] Button(:go_battle, rect, "Go!") where {
-        rect = @{"%", x=0.88, y=0.9, h=0.1}
-    }
-    
-    par {
-        return(await(bs))
-    } with {
-        loop {
-            ;; buy screen interactions
-            pico.push()
-            defer { pico.pop() }
-
-            pin bs = tasks(4)
-            spawn [bs] RerollButton(0.28, 0.06, 0.07)
-            
-            spawn [bs] ShopCard(:shop_card_1, 0.16, 0.3, "swordsman")
-            spawn [bs] ShopCard(:shop_card_2, 0.32, 0.3, "wizard")
-            spawn [bs] ShopCard(:shop_card_3, 0.48, 0.3, "swordsman")
-
-            val action = await(bs)
-            match action {
-                :reroll => { 
-                    if RunData.Rerolls > 0 => \{
-                        print("Reroll!")
-                        set RunData.Rerolls = RunData.Rerolls - 1;
-                    };
-                }
-            }
-        }
-    }
-}
-
 func Arena() {
     loop {
         await Transition(BuyScreen, 0.5, 0.5)
         await Transition(Battle, 0.9, 0.9)
     }
 }
+
+Arena
