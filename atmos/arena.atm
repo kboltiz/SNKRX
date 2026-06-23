@@ -123,12 +123,19 @@ val func ShopCard(id, x, y, character) {
     val rect = @{"%", x=x, y=y, h=0.2 * ASPECT_RATIO, w=0.16, anchor="C"}
 
     pin hover = spawn Hoverable(id, rect)
+    
+    defer {
+        pico.zet.layer(id)
+        pico.zet.effect @{ color=colors.empty }
+        pico.output.clear()
+        pico.zet.layer(:world)
+    }
 
     watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
         par {
             every :draw {
                 val c = (hover.pub.hovered && pico.color.alpha(colors.hover.bg, 15)) || colors.empty
-
+                
                 pico.zet.layer(id)
 
                 pico.zet.effect @{ color=c }
@@ -155,6 +162,15 @@ val func ShopCard(id, x, y, character) {
     return(id)
 }
 
+val func RollShopCards() {
+    ;; TODO: port tier_weights / weighted_pick from the Lua roll logic
+    return(@{
+        "swordsman",
+        "wizard",
+        "swordsman",
+    })
+}
+
 val func BuyScreen() {
     par_or {
         await Button(:go_battle, rect, "Go!") where {
@@ -165,25 +181,23 @@ val func BuyScreen() {
             ;; buy screen interactions
             pico.push()
             defer { pico.pop() }
- 
-            pin bs = tasks(4)
-            spawn [bs] RerollButton(:reroll, rect) where {
-                rect = @{"%", x=0.28, y=0.06, h=0.07, anchor="C"}
-            }
 
-            spawn [bs] ShopCard(:shop_card_1, 0.16, 0.3, "swordsman")
-            spawn [bs] ShopCard(:shop_card_2, 0.32, 0.3, "wizard")
-            spawn [bs] ShopCard(:shop_card_3, 0.48, 0.3, "swordsman")
+            val cards = RollShopCards()
 
-            val action = await(bs)
-            
-            match action {
-                :reroll => {
-                    if RunData.Rerolls > 0 => \{
-                        print("Reroll!")
-                        set RunData.Rerolls = RunData.Rerolls - 1;
-                    };
+            par_or {
+                await RerollButton(:reroll, rect) where {
+                    rect = @{"%", x=0.28, y=0.06, h=0.07, anchor="C"}
+                }
+                if RunData.Rerolls > 0 => \{
+                    print("Reroll!")
+                    set RunData.Rerolls = RunData.Rerolls - 1;
                 };
+            } with {
+                pin cs = tasks(#cards)
+                loop i, character in cards {
+                    spawn [cs] ShopCard(:shop_card_ ++ i, i * 0.16, 0.3, character)
+                }
+                await(false)   ;; keep this arm alive forever; cards die independently
             }
         }
     }
