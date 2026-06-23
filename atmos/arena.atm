@@ -52,32 +52,32 @@ val func RerollButton(id, rect) {
     return(id)
 }
 
-val func CharacterIcon(id, rect, character) {
+val func CharacterIcon(id, rect, character, number, showName) {
     val charColorGroup = character_colors[character]
     val charColors = colors[charColorGroup]
-    val cardAspectRatio = rect.w / rect.h
 
     every :draw {
         pico.zet.layer(id)
 
         pico.zet.pencil @{ color=charColors.base }
-        pico.output.draw.rect(@{
-            "%", x=0.5, y=0.08,
-            w=0.20, h=0.20 * cardAspectRatio * ASPECT_RATIO,
-            anchor="N"
-        })
+        pico.output.draw.rect(rect)
 
         ;; icon number centered inside square
         pico.zet.pencil @{ color=charColors.text, font=font }
-        pico.output.draw.text("1", @{
-            "%", x=0.5, y=0.18, h=0.18, anchor="C"
+        pico.output.draw.text(tostring(number), @{
+            "%", x=rect.x, y=rect.y,
+            h=rect.h * 0.9,
+            anchor="C"
         })
 
-        ;; character name
-        pico.zet.pencil @{ color=charColors.base, font=font }
-        pico.output.draw.text(character, @{
-            "%", x=0.5, y=0.33, h=0.13, anchor="C"
-        })
+        if showName {
+            pico.zet.pencil @{ color=charColors.base, font=font }
+            pico.output.draw.text(character, @{
+                "%", x=rect.x, y=(rect.y + rect.h),
+                h=rect.h * 0.9,
+                anchor="C"
+            })
+        }
 
         pico.zet.layer(:world)
     }
@@ -130,6 +130,8 @@ val func ShopCard(id, x, y, character) {
         pico.output.clear()
         pico.zet.layer(:world)
     }
+    
+    val cardAspectRatio = rect.w / rect.h
 
     watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
         par {
@@ -152,7 +154,10 @@ val func ShopCard(id, x, y, character) {
                 pico.zet.layer(:world)
             }
         } with {
-            spawn CharacterIcon(id, rect, character)
+        	;; changed constructor to reuse in partyColumn
+            spawn CharacterIcon(id, rect, character, 1, true) where {
+                rect = @{"%", x=0.5, y=0.2, h=(0.2 * cardAspectRatio * ASPECT_RATIO), w=0.2, anchor="C"}
+            }
             spawn ClassBanners(id, rect, character)
 
             await(false)
@@ -181,7 +186,7 @@ val func BuyScreen() {
             ;; buy screen interactions
             pico.push()
             defer { pico.pop() }
-
+            
             val cards = RollShopCards()
 
             par_or {
