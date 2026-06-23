@@ -92,43 +92,38 @@ val func Options() {
     }
 }
 
-val func Menu () {
-    par_or {
-        toggle :Show {
-            par_or {
-                await Button(:arena, rect, "arena run") where {
-                    rect = @{"%", x=x, y=0.5, h=h, anchor='W'}
-                }
-            } with {
-                await Button(:quit, rect, "quit") where {
-                    rect = @{"%", x=x, y=0.7, h=h, anchor='W'}
-                }
+func Menu() {
+    loop {
+    	pico.push()
+    	defer { pico.pop() }
+    
+        val ret = par_or {
+            await Button(:arena, rect, "arena run") where {
+                rect = @{"%", x=x, y=0.5, h=h, anchor='W'}
             }
-        }
-    } with {
-        loop {
-            ;; options now exists on "top" of mainmenu
-            pico.push()
-            defer { pico.pop() }
-            
+        } with {
+            await Button(:quit, rect, "quit") where {
+                rect = @{"%", x=x, y=0.7, h=h, anchor='W'}
+            }
+        } with {
             await Button(:options, rect, "options") where {
                 rect = @{"%", x=x, y=0.6, h=h, anchor='W'}
             }
 
             ;; Take screenshot when opening options
             pico.layer.screenshot(nil, :options_screenshot, :window)
-
-            ;; Freeze menu buttons
-            emit(:Show, false)
-            defer {
-                emit(:Show, true)
-            }
             
-            val quit = await Options()
-            if quit {
-                break :quit
-            }
+            :options
         }
+
+        if ret != :options {
+            break(ret)
+        }
+
+        val should_quit = await Options()
+        if should_quit {
+        	break(:quit)
+    	}
     }
 }
 
