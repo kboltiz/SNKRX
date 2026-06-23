@@ -25,7 +25,7 @@ func Transition(Next, x, y) {
     par_and {
         ;; Arena now manages transitions sequentially
         ;; nested transition support no longer required
-        Next()
+        await Next()
     } with {
         await TransitionOut(x, y, cover)
     }
@@ -51,12 +51,17 @@ func TransitionIn(screenshot, x, y, cover) {
             })
         }
     } with {
-        every i, ms in :clock {
+        loop {
+    		val i,ms = await :clock
             val dt = (ms / 1000)
             set r = (r + (cover * SPEED * dt))
-            if r >= cover { break() }
+            
+            if r >= cover {
+            	break() 
+            }
         }
     }
+    
     ;; idle stage at peak
     watching @OUT_DELAY {
         every :draw {
@@ -111,10 +116,11 @@ func TransitionOut(x, y, cover) {
             pico.zet.layer(:world)
         }
     } with {
-        every i, ms in :clock {
+        loop {
+        	val i,ms = await :clock
             val dt = (ms / 1000)
             set r = (r - (cover * SPEED * dt))
-            until (r <= 0)
+            if (r <= 0) {break()}
         }
     }
 }
