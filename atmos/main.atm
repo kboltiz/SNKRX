@@ -1,15 +1,11 @@
 require "atmos.env.pico"
 set pico = require "pico"
 
+require "shared"
+require "settings"
+
 val Menu = require "menu"
-require "arena"
-
-;; "global constants" in uppercase
-;; use simpler local names
-
-set W = 640
-set H = 360
-set ASPECT_RATIO = W/H
+val Arena = require "arena"
 
 pico.zet.window @{ title="SNKRX Menu" }
 pico.zet.dim @{ '!', w=W, h=H }

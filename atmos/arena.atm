@@ -13,14 +13,14 @@ val func RerollButton(id, rect) {
 
     watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
         every :draw {
-            val c = (hover.pub.hovered && colors.hover) || colors.idle
+            val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
 
             pico.zet.layer(id)
 
             pico.zet.effect @{ color=c.bg }
             pico.output.clear()
 
-            pico.zet.pencil @{ color=c.fg, font=font }
+            pico.zet.pencil @{ color=c.fg, font=FONT }
             pico.output.draw.text("reroll: ", @{
                 "%", x=0.46, y=0.5,
                 h=(1-PAD) * hover.pub.scale,
@@ -28,8 +28,8 @@ val func RerollButton(id, rect) {
             })
 
             pico.zet.pencil @{
-                color=((hover.pub.hovered && c.fg) || colors.gold),
-                font=font
+                color=((hover.pub.hovered && c.fg) || COLORS.gold),
+                font=FONT
             }
             pico.output.draw.text(tostring(RunData[:Rerolls]), @{
                 "%", x=0.87, y=0.5,
@@ -53,8 +53,8 @@ val func RerollButton(id, rect) {
 }
 
 val func CharacterIcon(id, rect, character, number, showName) {
-    val charColorGroup = character_colors[character]
-    val charColors = colors[charColorGroup]
+    val charColorGroup = CHARACTER_COLORS[character]
+    val charColors = COLORS[charColorGroup]
 
     every :draw {
         pico.zet.layer(id)
@@ -63,7 +63,7 @@ val func CharacterIcon(id, rect, character, number, showName) {
         pico.output.draw.rect(rect)
 
         ;; icon number centered inside square
-        pico.zet.pencil @{ color=charColors.text, font=font }
+        pico.zet.pencil @{ color=charColors.text, font=FONT }
         pico.output.draw.text(tostring(number), @{
             "%", x=rect.x, y=rect.y,
             h=rect.h * 0.9,
@@ -71,7 +71,7 @@ val func CharacterIcon(id, rect, character, number, showName) {
         })
 
         if showName {
-            pico.zet.pencil @{ color=charColors.base, font=font }
+            pico.zet.pencil @{ color=charColors.base, font=FONT }
             pico.output.draw.text(character, @{
                 "%", x=rect.x, y=(rect.y + rect.h),
                 h=rect.h * 0.9,
@@ -84,32 +84,32 @@ val func CharacterIcon(id, rect, character, number, showName) {
 }
 
 val func ClassBanners(id, rect, character) {
-    val charClasses = character_classes[character]
+    val charClasses = CHARACTER_CLASSES[character]
     val charClassesCount = #charClasses
     val cardAspectRatio = rect.w / rect.h
 
     every :draw {
         pico.zet.layer(id)
 
-        ;; TODO: color the class icon to colors.hover.fg
+        ;; TODO: color the class icon to COLORS.hover.fg
         loop i, class in charClasses {
             ;; center + (divided_x * spacing)
             val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
 
-            pico.zet.pencil @{ color=colors.idle.bg, font=font }
+            pico.zet.pencil @{ color=COLORS.idle.bg, font=FONT }
             pico.output.draw.rect(@{
                 "%", x=x, y=0.56,
                 w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
                 anchor="C"
             })
 
-            pico.zet.pencil @{ color=colors.idle.fg, font=font }
+            pico.zet.pencil @{ color=COLORS.idle.fg, font=FONT }
             pico.output.draw.image(
                 "../assets/images/" ++ class ++ ".png",
                 @{
                     "%", x=x, y=0.56,
                     w=0.17,
-                    h=0.17 * class_icon_aspect_ratio * cardAspectRatio * ASPECT_RATIO,
+                    h=0.17 * CLASS_ICON_ASPECT_RATIO * cardAspectRatio * ASPECT_RATIO,
                     anchor="C"
                 }
             )
@@ -126,7 +126,7 @@ val func ShopCard(id, x, y, character) {
     
     defer {
         pico.zet.layer(id)
-        pico.zet.effect @{ color=colors.empty }
+        pico.zet.effect @{ color=COLORS.empty }
         pico.output.clear()
         pico.zet.layer(:world)
     }
@@ -136,7 +136,7 @@ val func ShopCard(id, x, y, character) {
     watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
         par {
             every :draw {
-                val c = (hover.pub.hovered && pico.color.alpha(colors.hover.bg, 15)) || colors.empty
+                val c = (hover.pub.hovered && pico.color.alpha(COLORS.hover.bg, 15)) || COLORS.empty
                 
                 pico.zet.layer(id)
 
@@ -154,7 +154,7 @@ val func ShopCard(id, x, y, character) {
                 pico.zet.layer(:world)
             }
         } with {
-        	;; changed constructor to reuse in partyColumn
+            ;; changed constructor to reuse in partyColumn
             spawn CharacterIcon(id, rect, character, 1, true) where {
                 rect = @{"%", x=0.5, y=0.2, h=(0.2 * cardAspectRatio * ASPECT_RATIO), w=0.2, anchor="C"}
             }
@@ -214,7 +214,7 @@ func Battle() {
     watching @5 {
         every :draw{
             ;; battle arena
-            pico.zet.pencil @{ color=colors.idle.bg, font=font }
+            pico.zet.pencil @{ color=COLORS.idle.bg, font=FONT }
             pico.output.draw.rect(@{
                 "%", x=0.5, y=0.5,
                 w=(0.8), h=(0.4 * ASPECT_RATIO),

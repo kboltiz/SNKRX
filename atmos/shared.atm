@@ -1,11 +1,14 @@
-;; will be moved a "shared.atm"
-set sounds = @{
+set W = 640
+set H = 360
+set ASPECT_RATIO = W/H
+
+set SOUNDS = @{
     pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
     hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
 }
-set font = "../assets/fonts/PixulBrush.ttf"
+set FONT = "../assets/fonts/PixulBrush.ttf"
 
-set colors = @{
+set COLORS = @{
     idle = @{
         bg = @{ "%", r=0.18, g=0.18, b=0.18 },
         fg = @{ "%", r=0.43, g=0.43, b=0.43 },
@@ -29,14 +32,14 @@ set colors = @{
 }
 
 ;; Character to color
-set character_colors = @{
+set CHARACTER_COLORS = @{
     swordsman = "yellow",
     wizard = "blue",
 }
 
-set character_classes = @{
+set CHARACTER_CLASSES = @{
     swordsman = @{"warrior"},
     wizard = @{"mage", "nuker"}
 }
 
-set class_icon_aspect_ratio = 3/2;
+set CLASS_ICON_ASPECT_RATIO = 3/2;
