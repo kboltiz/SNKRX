@@ -83,6 +83,109 @@ func Button(id, rect, text) {
             pico.zet.layer(:world)
         }
     }
+    return(id)
+}
 
+func ParseRichText(text) {
+    var runs = @{}
+    var currentColor = COLORS.idle.fg
+    var pos = 1
+
+    loop {
+        ;; find the next [tagname] starting at pos; tagStart/tagEnd are nil
+        val tagStart, tagEnd, tagName = string.find(text, "%[(%w+)%]", pos)
+        val segment = string.sub(text, pos, (tagStart && (tagStart - 1)) || #text)
+        if #segment > 0 {
+            set runs[#runs + 1] = @{ text=segment, color=currentColor }
+        }
+
+        until(!tagStart)   ;; no more tags found -> stop after this segment
+
+        set currentColor = TEXT_TAGS[tagName] || currentColor
+        set pos = tagEnd + 1
+    }
+    return(runs)
+}
+
+func MeasureRuns(runs, h) {
+    var cumulativeText = ""
+    var lastWidth = 0
+    val positions = @{}
+
+    loop i, run in runs {
+        set cumulativeText = cumulativeText ++ run.text
+        val m = @{ "%", x=0, y=0, h=h, anchor="W" }
+        pico.get.text(m, cumulativeText)
+        
+        set positions[i] = @{ start=lastWidth, width=m.w - lastWidth }
+        set lastWidth = m.w
+    }
+    return(positions, lastWidth)   ;; lastWidth ends up equal to the total width
+}
+
+func RichText(id, rect, runs, positions, totalWidth, textH) {
+    every :draw {
+        pico.zet.layer(id)
+
+        ;; where the whole text block starts, so it's centered in the layer
+        val blockStart = 0.5 - ((totalWidth / 2) / rect.w)
+        ;; convert the absolute text height into a layer-local fraction
+        val localH = textH / rect.h
+
+        loop i, run in runs {
+            val pos = positions[i]
+            ;; anchor="W" so runs sit side by side instead
+            ;; of stacking on top of each other
+            val drawRect = @{ "%",
+                x = blockStart + (pos.start / rect.w),
+                y = 0.5,
+                h = localH,
+                anchor = "W"
+            }
+
+            pico.zet.pencil @{ color=run.color, font=FONT }
+            pico.output.draw.text(run.text, drawRect)
+        }
+        pico.zet.layer(:world)
+    }
+}
+
+;; General Rich Text Button
+func RichTextButton(id, rect, text) {
+    val runs = ParseRichText(text)
+    val positions, totalWidth = MeasureRuns(runs, rect.h * (1 - PAD))
+
+    ;; grow the box back out by the same ratio the text was shrunk by
+    val fullRect = @{ "%",
+        x=rect.x, y=rect.y,
+        w=totalWidth / (1 - PAD),
+        h=rect.h,
+        anchor="C"
+    }
+
+    pin hover = spawn Hoverable(id, fullRect)
+
+    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
+        par {
+            every :draw {
+                val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
+                pico.zet.layer(id)
+                
+                pico.zet.effect @{ color=c.bg }
+                pico.output.clear()
+                
+                pico.zet.scene @{
+                    target = @{ '%', anchor=fullRect.anchor,
+                        x=fullRect.x, y=fullRect.y,
+                        w=fullRect.w * hover.pub.scale,
+                        h=fullRect.h * hover.pub.scale,
+                    }
+                }
+                pico.zet.layer(:world)
+            }
+        } with {
+            await RichText(id, fullRect, runs, positions, totalWidth, fullRect.h * (1-PAD))
+        }
+    }
     return(id)
 }

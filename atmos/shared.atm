@@ -43,3 +43,11 @@ set CHARACTER_CLASSES = @{
 }
 
 set CLASS_ICON_ASPECT_RATIO = 3/2;
+
+set TEXT_TAGS = @{
+    idle = COLORS.idle.fg,
+    hover = COLORS.hover.fg,
+    gold = COLORS.gold,
+    yellow = COLORS.yellow.base,
+    blue = COLORS.blue.base,
+}

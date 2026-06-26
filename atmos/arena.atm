@@ -6,50 +6,9 @@ var RunData = @{
 val PAD = 0.03
 
 val func RerollButton(id, rect) {
-    val PAD = 0.03
-    pico.get.text(rect, "reroll:  " ++ RunData[:Rerolls])
-
-    pin hover = spawn Hoverable(id, rect)
-
-    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
-        every :draw {
-            val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
-
-            pico.zet.layer(id)
-
-            pico.zet.effect @{ color=c.bg }
-            pico.output.clear()
-
-            pico.zet.pencil @{ color=c.fg, font=FONT }
-            pico.output.draw.text("reroll: ", @{
-                "%", x=0.46, y=0.5,
-                h=(1-PAD) * hover.pub.scale,
-                anchor="C"
-            })
-
-            pico.zet.pencil @{
-                color=((hover.pub.hovered && c.fg) || COLORS.gold),
-                font=FONT
-            }
-            pico.output.draw.text(tostring(RunData[:Rerolls]), @{
-                "%", x=0.87, y=0.5,
-                h=(1-PAD) * hover.pub.scale * 0.9,
-                anchor="C"
-            })
-
-            pico.zet.scene @{
-                target = @{ '%', anchor=rect.anchor,
-                    x=rect.x, y=rect.y,
-                    w=rect.w * hover.pub.scale,
-                    h=rect.h * hover.pub.scale,
-                }
-            }
-
-            pico.zet.layer(:world)
-        }
-    }
-
-    return(id)
+    ;; TODO Change text color on hover
+    ;; might have to inline some of richtextbutton here
+    await RichTextButton(id, rect, "[idle]Rerolls: [gold]" ++ RunData.Rerolls)
 }
 
 val func CharacterIcon(id, rect, character, number, showName) {
