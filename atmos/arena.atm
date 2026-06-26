@@ -12,8 +12,8 @@ val func RerollButton(id, rect) {
 }
 
 val func CharacterIcon(id, rect, character, number, showName) {
-    val charColorGroup = CHARACTER_COLORS[character]
-    val charColors = COLORS[charColorGroup]
+    val charColorGroup = CHARACTER_COLORS@character
+    val charColors = COLORS@charColorGroup
 
     every :draw {
         pico.zet.layer(id)
@@ -43,7 +43,7 @@ val func CharacterIcon(id, rect, character, number, showName) {
 }
 
 val func ClassBanners(id, rect, character) {
-    val charClasses = CHARACTER_CLASSES[character]
+    val charClasses = CHARACTER_CLASSES@character
     val charClassesCount = #charClasses
     val cardAspectRatio = rect.w / rect.h
 
@@ -159,7 +159,7 @@ val func BuyScreen() {
             } with {
                 pin cs = tasks(#cards)
                 loop i, character in cards {
-                    spawn [cs] ShopCard(:shop_card_ ++ i, i * 0.16, 0.3, character)
+                    spawn @cs ShopCard(:shop_card_ ++ i, i * 0.16, 0.3, character)
                 }
                 await(false)   ;; keep this arm alive forever; cards die independently
             }

@@ -29,7 +29,7 @@ func Hoverable(id, rect) {
         set pub.hovered = true
 
         pico.output.sound(SOUNDS.pop)
-        emit [spring] (:start)
+        emit @spring (:start)
         
         await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
     }
@@ -44,7 +44,7 @@ func Hoverable(id, rect) {
         pico.output.sound(SOUNDS.hover)
 
         set pub.hovered = true
-        emit [spring] (:start)
+        emit @spring (:start)
 
         await(:mouse.motion, \{!pico.vs.pos.rect(it, id)})
     }
@@ -96,12 +96,12 @@ func ParseRichText(text) {
         val tagStart, tagEnd, tagName = string.find(text, "%[(%w+)%]", pos)
         val segment = string.sub(text, pos, (tagStart && (tagStart - 1)) || #text)
         if #segment > 0 {
-            set runs[#runs + 1] = @{ text=segment, color=currentColor }
+            set runs@+ = @{ text=segment, color=currentColor }
         }
 
         until(!tagStart)   ;; no more tags found -> stop after this segment
 
-        set currentColor = TEXT_TAGS[tagName] || currentColor
+        set currentColor = TEXT_TAGS@tagName || currentColor
         set pos = tagEnd + 1
     }
     return(runs)
@@ -117,7 +117,7 @@ func MeasureRuns(runs, h) {
         val m = @{ "%", x=0, y=0, h=h, anchor="W" }
         pico.get.text(m, cumulativeText)
         
-        set positions[i] = @{ start=lastWidth, width=m.w - lastWidth }
+        set positions@i = @{ start=lastWidth, width=m.w - lastWidth }
         set lastWidth = m.w
     }
     return(positions, lastWidth)   ;; lastWidth ends up equal to the total width
@@ -133,7 +133,7 @@ func RichText(id, rect, runs, positions, totalWidth, textH) {
         val localH = textH / rect.h
 
         loop i, run in runs {
-            val pos = positions[i]
+            val pos = positions@i
             ;; anchor="W" so runs sit side by side instead
             ;; of stacking on top of each other
             val drawRect = @{ "%",
