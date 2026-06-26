@@ -52,8 +52,8 @@ task TransitionIn(screenshot, x, y, cover) {
         }
     } with {
         loop {
-            val i,ms = await :clock
-            val dt = (ms / 1000)
+            val us = await :clock
+            val dt = (us / 1s)
             set r = (r + (cover * SPEED * dt))
             
             if r >= cover {
@@ -117,8 +117,8 @@ task TransitionOut(x, y, cover) {
         }
     } with {
         loop {
-            val i,ms = await :clock
-            val dt = (ms / 1000)
+            val us = await :clock
+            val dt = (us / 1s)
             set r = (r - (cover * SPEED * dt))
             if (r <= 0) {break()}
         }
