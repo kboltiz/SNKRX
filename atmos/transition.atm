@@ -63,7 +63,7 @@ task TransitionIn(screenshot, x, y, cover) {
     }
     
     ;; idle stage at peak
-    watching @OUT_DELAY {
+    watching (OUT_DELAY*1ms) {
         every :draw {
             ;; circle at peak size
             pico.zet.pencil [ color=COLORS.hover.bg, font=FONT ]

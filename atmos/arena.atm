@@ -170,7 +170,7 @@ val task BuyScreen() {
 task Battle() {
     print("Battle Started!")
     
-    watching @5 {
+    watching 5s {
         every :draw{
             ;; battle arena
             pico.zet.pencil [ color=COLORS.idle.bg, font=FONT ]
