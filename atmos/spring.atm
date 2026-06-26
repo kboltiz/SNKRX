@@ -2,7 +2,7 @@ func (hoverPullSize) {
     val k = 400
     val d = 15
 
-    set pub = @{ scale=1.0 }
+    set pub = [ scale=1.0 ]
 
     await :start
     

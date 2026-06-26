@@ -2,52 +2,52 @@ set W = 640
 set H = 360
 set ASPECT_RATIO = W/H
 
-set SOUNDS = @{
+set SOUNDS = [
     pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
     hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
-}
+]
 set FONT = "../assets/fonts/PixulBrush.ttf"
 
-set COLORS = @{
-    idle = @{
-        bg = @{ "%", r=0.18, g=0.18, b=0.18 },
-        fg = @{ "%", r=0.43, g=0.43, b=0.43 },
-    },
-    hover = @{
-        bg = @{ "%", r=0.85, g=0.85, b=0.85 },
-        fg = @{ "%", r=0.72, g=0.72, b=0.72 },
-    },
-    gold = @{"%", r=0.98, g=0.81, b=0},
-    empty = @{'%', r=0, g=0, b=0, a=0},
+set COLORS = [
+    idle = [
+        bg = [ "%", r=0.18, g=0.18, b=0.18 ],
+        fg = [ "%", r=0.43, g=0.43, b=0.43 ],
+    ],
+    hover = [
+        bg = [ "%", r=0.85, g=0.85, b=0.85 ],
+        fg = [ "%", r=0.72, g=0.72, b=0.72 ],
+    ],
+    gold = ["%", r=0.98, g=0.81, b=0],
+    empty = ['%', r=0, g=0, b=0, a=0],
 
     ;; Character Colors (Base and Dark variants)
-    blue = @{
-        base = @{"%", r=0.28, g=0.47, b=0.73},
-        text = @{"%", r=0.20, g=0.35, b=0.55}
-    },
-    yellow = @{
-        base = @{ "%", r=0.98, g=0.81, b=0.00 },
-        text = @{ "%", r=0.72, g=0.60, b=0.0 }
-    },
-}
+    blue = [
+        base = ["%", r=0.28, g=0.47, b=0.73],
+        text = ["%", r=0.20, g=0.35, b=0.55]
+    ],
+    yellow = [
+        base = [ "%", r=0.98, g=0.81, b=0.00 ],
+        text = [ "%", r=0.72, g=0.60, b=0.0 ]
+    ],
+]
 
 ;; Character to color
-set CHARACTER_COLORS = @{
+set CHARACTER_COLORS = [
     swordsman = "yellow",
     wizard = "blue",
-}
+]
 
-set CHARACTER_CLASSES = @{
-    swordsman = @{"warrior"},
-    wizard = @{"mage", "nuker"}
-}
+set CHARACTER_CLASSES = [
+    swordsman = ["warrior"],
+    wizard = ["mage", "nuker"]
+]
 
 set CLASS_ICON_ASPECT_RATIO = 3/2;
 
-set TEXT_TAGS = @{
+set TEXT_TAGS = [
     idle = COLORS.idle.fg,
     hover = COLORS.hover.fg,
     gold = COLORS.gold,
     yellow = COLORS.yellow.base,
     blue = COLORS.blue.base,
-}
+]

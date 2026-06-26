@@ -1,7 +1,7 @@
-var RunData = @{
+var RunData = [
     Gold = 0,
     Rerolls = 3,
-}
+]
 
 val PAD = 0.03
 
@@ -18,24 +18,24 @@ val func CharacterIcon(id, rect, character, number, showName) {
     every :draw {
         pico.zet.layer(id)
 
-        pico.zet.pencil @{ color=charColors.base }
+        pico.zet.pencil [ color=charColors.base ]
         pico.output.draw.rect(rect)
 
         ;; icon number centered inside square
-        pico.zet.pencil @{ color=charColors.text, font=FONT }
-        pico.output.draw.text(tostring(number), @{
+        pico.zet.pencil [ color=charColors.text, font=FONT ]
+        pico.output.draw.text(tostring(number), [
             "%", x=rect.x, y=rect.y,
             h=rect.h * 0.9,
             anchor="C"
-        })
+        ])
 
         if showName {
-            pico.zet.pencil @{ color=charColors.base, font=FONT }
-            pico.output.draw.text(character, @{
+            pico.zet.pencil [ color=charColors.base, font=FONT ]
+            pico.output.draw.text(character, [
                 "%", x=rect.x, y=(rect.y + rect.h),
                 h=rect.h * 0.9,
                 anchor="C"
-            })
+            ])
         }
 
         pico.zet.layer(:world)
@@ -55,22 +55,22 @@ val func ClassBanners(id, rect, character) {
             ;; center + (divided_x * spacing)
             val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
 
-            pico.zet.pencil @{ color=COLORS.idle.bg, font=FONT }
-            pico.output.draw.rect(@{
+            pico.zet.pencil [ color=COLORS.idle.bg, font=FONT ]
+            pico.output.draw.rect([
                 "%", x=x, y=0.56,
                 w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
                 anchor="C"
-            })
+            ])
 
-            pico.zet.pencil @{ color=COLORS.idle.fg, font=FONT }
+            pico.zet.pencil [ color=COLORS.idle.fg, font=FONT ]
             pico.output.draw.image(
                 "../assets/images/" ++ class ++ ".png",
-                @{
+                [
                     "%", x=x, y=0.56,
                     w=0.17,
                     h=0.17 * CLASS_ICON_ASPECT_RATIO * cardAspectRatio * ASPECT_RATIO,
                     anchor="C"
-                }
+                ]
             )
         }
 
@@ -79,13 +79,13 @@ val func ClassBanners(id, rect, character) {
 }
 
 val func ShopCard(id, x, y, character) {
-    val rect = @{"%", x=x, y=y, h=0.2 * ASPECT_RATIO, w=0.16, anchor="C"}
+    val rect = ["%", x=x, y=y, h=0.2 * ASPECT_RATIO, w=0.16, anchor="C"]
 
     pin hover = spawn Hoverable(id, rect)
     
     defer {
         pico.zet.layer(id)
-        pico.zet.effect @{ color=COLORS.empty }
+        pico.zet.effect [ color=COLORS.empty ]
         pico.output.clear()
         pico.zet.layer(:world)
     }
@@ -99,23 +99,23 @@ val func ShopCard(id, x, y, character) {
                 
                 pico.zet.layer(id)
 
-                pico.zet.effect @{ color=c }
+                pico.zet.effect [ color=c ]
                 pico.output.clear()
 
-                pico.zet.scene @{
-                    target = @{ '%', anchor=rect.anchor,
+                pico.zet.scene [
+                    target = [ '%', anchor=rect.anchor,
                         x=rect.x, y=rect.y,
                         w=rect.w * hover.pub.scale,
                         h=rect.h * hover.pub.scale,
-                    }
-                }
+                    ]
+                ]
 
                 pico.zet.layer(:world)
             }
         } with {
             ;; changed constructor to reuse in partyColumn
             spawn CharacterIcon(id, rect, character, 1, true) where {
-                rect = @{"%", x=0.5, y=0.2, h=(0.2 * cardAspectRatio * ASPECT_RATIO), w=0.2, anchor="C"}
+                rect = ["%", x=0.5, y=0.2, h=(0.2 * cardAspectRatio * ASPECT_RATIO), w=0.2, anchor="C"]
             }
             spawn ClassBanners(id, rect, character)
 
@@ -128,17 +128,17 @@ val func ShopCard(id, x, y, character) {
 
 val func RollShopCards() {
     ;; TODO: port tier_weights / weighted_pick from the Lua roll logic
-    return(@{
+    return([
         "swordsman",
         "wizard",
         "swordsman",
-    })
+    ])
 }
 
 val func BuyScreen() {
     par_or {
         await Button(:go_battle, rect, "Go!") where {
-            rect = @{"%", x=0.88, y=0.9, h=0.1}
+            rect = ["%", x=0.88, y=0.9, h=0.1]
         }
     } with {
         loop {
@@ -150,7 +150,7 @@ val func BuyScreen() {
 
             par_or {
                 await RerollButton(:reroll, rect) where {
-                    rect = @{"%", x=0.28, y=0.06, h=0.07, anchor="C"}
+                    rect = ["%", x=0.28, y=0.06, h=0.07, anchor="C"]
                 }
                 if RunData.Rerolls > 0 => \{
                     print("Reroll!")
@@ -173,12 +173,12 @@ func Battle() {
     watching @5 {
         every :draw{
             ;; battle arena
-            pico.zet.pencil @{ color=COLORS.idle.bg, font=FONT }
-            pico.output.draw.rect(@{
+            pico.zet.pencil [ color=COLORS.idle.bg, font=FONT ]
+            pico.output.draw.rect([
                 "%", x=0.5, y=0.5,
                 w=(0.8), h=(0.4 * ASPECT_RATIO),
                 anchor="C"
-            })
+            ])
         }
     }
 }

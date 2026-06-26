@@ -24,21 +24,21 @@ val func NumRangeButton(id, rect, property) {
     val current = pair@1
     val max = pair@2
     await Button(id, rect, property ++ ": " ++ current)
-    set SETTINGS@property = @{(current + 1) % (max + 1), max}
+    set SETTINGS@property = [(current + 1) % (max + 1), max]
 }
 
 val func Options() {
     print("Options Opened")
 
     ;; options overlay layer
-    pico.layer.empty(:world, :options_overlay, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
+    pico.layer.empty(:world, :options_overlay, false, [ "%", x=0.5, y=0.5, w=1, h=1 ])
     ;; overlay translucent bg
     val overlayBackgroundColor = pico.color.alpha(COLORS.idle.bg, 25)
     
     par_or {
         ;; this is where all option SETTINGS go
         await Button(:options_close, rect, "main menu") where {
-            rect = @{"%", x=0.5, y=0.2, h=h}
+            rect = ["%", x=0.5, y=0.2, h=h]
         }
         false   ;; dont quit
     } with {
@@ -49,15 +49,15 @@ val func Options() {
             ;; 3 main types of values
             par_or {
                 await ToggleButton(:screen_shake, rect, "screen shake") where {
-                    rect = @{"%", x=0.5, y=0.4, h=h}
+                    rect = ["%", x=0.5, y=0.4, h=h]
                 }
             } with {
                 await NumRangeButton(:music_volume, rect, "music volume") where {
-                    rect = @{"%", x=0.5, y=0.5, h=h}
+                    rect = ["%", x=0.5, y=0.5, h=h]
                 }
             } with {
                 await Button(:opts_quit, rect, "quit") where {
-                    rect = @{"%", x=0.5, y=0.6, h=h}
+                    rect = ["%", x=0.5, y=0.6, h=h]
                 }
                 break(true) ;; quit
             }
@@ -66,23 +66,23 @@ val func Options() {
     } with {
         every :draw {
             pico.zet.layer(:options_overlay)
-            pico.zet.effect @{ color=@{ "%", r=0, g=0, b=0, a=0 } }
+            pico.zet.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
             pico.output.clear()
             
             ;; screenshot bg drawing
-            pico.output.draw.image(:options_screenshot, @{
+            pico.output.draw.image(:options_screenshot, [
                 "%", x=0.5, y=0.5,
                 w=1, h=1,
                 anchor="C"
-            })
+            ])
             
             ;; translucent black overlay
-            pico.zet.pencil @{ color=overlayBackgroundColor }
-            pico.output.draw.rect(@{
+            pico.zet.pencil [ color=overlayBackgroundColor ]
+            pico.output.draw.rect([
                 "%", x=0.5, y=0.5,
                 w=1, h=1,
                 anchor="C"
-            })
+            ])
             
             pico.zet.layer(:world)
         }
@@ -96,15 +96,15 @@ func Menu() {
     
         val ret = par_or {
             await Button(:arena, rect, "arena run") where {
-                rect = @{"%", x=x, y=0.5, h=h, anchor='W'}
+                rect = ["%", x=x, y=0.5, h=h, anchor='W']
             }
         } with {
             await Button(:quit, rect, "quit") where {
-                rect = @{"%", x=x, y=0.7, h=h, anchor='W'}
+                rect = ["%", x=x, y=0.7, h=h, anchor='W']
             }
         } with {
             await Button(:options, rect, "options") where {
-                rect = @{"%", x=x, y=0.6, h=h, anchor='W'}
+                rect = ["%", x=x, y=0.6, h=h, anchor='W']
             }
 
             ;; Take screenshot when opening options

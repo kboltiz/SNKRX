@@ -7,8 +7,8 @@ require "settings"
 val Menu = require "menu"
 val Arena = require "arena"
 
-pico.zet.window @{ title="SNKRX Menu" }
-pico.zet.dim @{ '!', w=W, h=H }
+pico.zet.window [ title="SNKRX Menu" ]
+pico.zet.dim [ '!', w=W, h=H ]
 
 loop {
     pico.push()
