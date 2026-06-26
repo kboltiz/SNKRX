@@ -92,7 +92,7 @@ val task ShopCard(id, x, y, character) {
     
     val cardAspectRatio = rect.w / rect.h
 
-    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
+    watching :mouse.button.dn until pico.vs.pos.rect(it, id) {
         par {
             loop on :draw {
                 val c = (hover.pub.hovered && pico.color.alpha(COLORS.hover.bg, 15)) || COLORS.empty

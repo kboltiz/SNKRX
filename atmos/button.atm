@@ -31,13 +31,13 @@ task Hoverable(id, rect) {
         pico.output.sound(SOUNDS.pop)
         emit @spring (:start)
         
-        await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
+        await(:mouse.motion until !pico.vs.pos.rect(it, rect))
     }
     
     loop {
         ;; Idle State
         set pub.hovered = false
-        await(:mouse.motion, \{pico.vs.pos.rect(it, id)})
+        await(:mouse.motion until pico.vs.pos.rect(it, id))
 
         ;; Hover State
         ;; TODO: randomize pitch of sound on every hover
@@ -46,7 +46,7 @@ task Hoverable(id, rect) {
         set pub.hovered = true
         emit @spring (:start)
 
-        await(:mouse.motion, \{!pico.vs.pos.rect(it, id)})
+        await(:mouse.motion until !pico.vs.pos.rect(it, id))
     }
 }
 
@@ -57,7 +57,7 @@ task Button(id, rect, text) {
 
     ;; click detection
     ;; returns id when clicked
-    watching :mouse.button.dn, \{(pico.vs.pos.rect(it, id))} {
+    watching :mouse.button.dn until (pico.vs.pos.rect(it, id)) {
         ;; draw loop
         loop on :draw {
             val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
@@ -165,7 +165,7 @@ task RichTextButton(id, rect, text) {
 
     pin hover = spawn Hoverable(id, fullRect)
 
-    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
+    watching :mouse.button.dn until pico.vs.pos.rect(it, id) {
         par {
             loop on :draw {
                 val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
