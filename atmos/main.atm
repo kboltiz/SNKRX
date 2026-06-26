@@ -12,7 +12,7 @@ pico.zet.dim [ '!', w=W, h=H ]
 
 loop {
     pico.push()
-    val id = Menu()
+    val id = await Menu()
     pico.pop() ;; cleans up menu buttons on transitions
 
     match id {

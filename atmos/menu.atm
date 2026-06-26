@@ -5,7 +5,7 @@ require "transition"
 val x = 0.01
 val h = 0.08
 
-val func ToggleButton(id, rect, property) {
+val task ToggleButton(id, rect, property) {
     val current = SETTINGS@property;
     await Button(id, rect, property ++ ": " ++ ((current && "yes") || "no"))
     set SETTINGS@property = !current
@@ -19,7 +19,7 @@ val func ActionButton(id, rect, property, action) {
 }
 ;;;
 
-val func NumRangeButton(id, rect, property) {
+val task NumRangeButton(id, rect, property) {
     val pair = SETTINGS@property
     val current = pair@1
     val max = pair@2
@@ -27,7 +27,7 @@ val func NumRangeButton(id, rect, property) {
     set SETTINGS@property = [(current + 1) % (max + 1), max]
 }
 
-val func Options() {
+val task Options() {
     print("Options Opened")
 
     ;; options overlay layer
@@ -89,7 +89,7 @@ val func Options() {
     }
 }
 
-func Menu() {
+task Menu() {
     loop {
     	pico.push()
     	defer { pico.pop() }

@@ -1,4 +1,4 @@
-func (hoverPullSize) {
+task (hoverPullSize) {
     val k = 400
     val d = 15
 

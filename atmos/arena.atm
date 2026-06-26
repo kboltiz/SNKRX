@@ -5,13 +5,13 @@ var RunData = [
 
 val PAD = 0.03
 
-val func RerollButton(id, rect) {
+val task RerollButton(id, rect) {
     ;; TODO Change text color on hover
     ;; might have to inline some of richtextbutton here
     await RichTextButton(id, rect, "[idle]Rerolls: [gold]" ++ RunData.Rerolls)
 }
 
-val func CharacterIcon(id, rect, character, number, showName) {
+val task CharacterIcon(id, rect, character, number, showName) {
     val charColorGroup = CHARACTER_COLORS@character
     val charColors = COLORS@charColorGroup
 
@@ -42,7 +42,7 @@ val func CharacterIcon(id, rect, character, number, showName) {
     }
 }
 
-val func ClassBanners(id, rect, character) {
+val task ClassBanners(id, rect, character) {
     val charClasses = CHARACTER_CLASSES@character
     val charClassesCount = #charClasses
     val cardAspectRatio = rect.w / rect.h
@@ -78,7 +78,7 @@ val func ClassBanners(id, rect, character) {
     }
 }
 
-val func ShopCard(id, x, y, character) {
+val task ShopCard(id, x, y, character) {
     val rect = ["%", x=x, y=y, h=0.2 * ASPECT_RATIO, w=0.16, anchor="C"]
 
     pin hover = spawn Hoverable(id, rect)
@@ -135,7 +135,7 @@ val func RollShopCards() {
     ])
 }
 
-val func BuyScreen() {
+val task BuyScreen() {
     par_or {
         await Button(:go_battle, rect, "Go!") where {
             rect = ["%", x=0.88, y=0.9, h=0.1]
@@ -167,7 +167,7 @@ val func BuyScreen() {
     }
 }
 
-func Battle() {
+task Battle() {
     print("Battle Started!")
     
     watching @5 {
@@ -183,7 +183,7 @@ func Battle() {
     }
 }
 
-func Arena() {
+task Arena() {
     loop {
         await Transition(BuyScreen, 0.5, 0.5)
         await Transition(Battle, 0.9, 0.9)

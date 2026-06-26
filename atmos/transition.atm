@@ -12,7 +12,7 @@ func CoverRadius(x, y) {
 }
 
 ;; combined transition methods for general usage
-func Transition(Next, x, y) {
+task Transition(Next, x, y) {
     val cover = CoverRadius(x, y)
 
     pico.push()
@@ -31,7 +31,7 @@ func Transition(Next, x, y) {
     }
 }
 
-func TransitionIn(screenshot, x, y, cover) {
+task TransitionIn(screenshot, x, y, cover) {
     var r = 0.0
 
     ;; grow
@@ -84,7 +84,7 @@ func TransitionIn(screenshot, x, y, cover) {
     }
 }
 
-func TransitionOut(x, y, cover) {
+task TransitionOut(x, y, cover) {
     var r = cover
     
     pico.layer.empty(:world, :transition_out, false, [ "%", x=0.5, y=0.5, w=1, h=1 ])

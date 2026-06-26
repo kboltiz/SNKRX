@@ -2,7 +2,7 @@ val Spring = require "spring"
 
 val PAD = 0.01  ;; padding for buttons
 
-func Hoverable(id, rect) {
+task Hoverable(id, rect) {
 
     ;; creating button layer
     pico.layer.empty(:world, id, false, rect)
@@ -50,7 +50,7 @@ func Hoverable(id, rect) {
     }
 }
 
-func Button(id, rect, text) {
+task Button(id, rect, text) {
     pico.get.text(rect, text)
 
     pin hover = spawn Hoverable(id, rect)
@@ -123,7 +123,7 @@ func MeasureRuns(runs, h) {
     return(positions, lastWidth)   ;; lastWidth ends up equal to the total width
 }
 
-func RichText(id, rect, runs, positions, totalWidth, textH) {
+task RichText(id, rect, runs, positions, totalWidth, textH) {
     every :draw {
         pico.zet.layer(id)
 
@@ -151,7 +151,7 @@ func RichText(id, rect, runs, positions, totalWidth, textH) {
 }
 
 ;; General Rich Text Button
-func RichTextButton(id, rect, text) {
+task RichTextButton(id, rect, text) {
     val runs = ParseRichText(text)
     val positions, totalWidth = MeasureRuns(runs, rect.h * (1 - PAD))
 
