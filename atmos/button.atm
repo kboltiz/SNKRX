@@ -63,16 +63,16 @@ task Button(id, rect, text) {
             val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
 
             ;; button layer is created by Hoverable
-            pico.zet.layer(id)
+            pico.set.layer(id)
 
-            pico.zet.effect [ color=c.bg ]
+            pico.set.effect [ color=c.bg ]
             pico.output.clear()
 
             ;; drawing text inside
-            pico.zet.pencil [ color=c.fg, font=FONT ]
+            pico.set.pencil [ color=c.fg, font=FONT ]
             pico.output.draw.text(text, [ "%", x=0.5, y=0.5, h=(1-PAD)*hover.pub.scale, anchor="C" ])
 
-            pico.zet.scene [
+            pico.set.scene [
                 target = [ '%', anchor=rect.anchor,
                     x=rect.x, y=rect.y,
                     w = rect.w * hover.pub.scale,
@@ -80,7 +80,7 @@ task Button(id, rect, text) {
                 ]
             ]
 
-            pico.zet.layer(:world)
+            pico.set.layer(:world)
         }
     }
     return(id)
@@ -125,7 +125,7 @@ func MeasureRuns(runs, h) {
 
 task RichText(id, rect, runs, positions, totalWidth, textH) {
     loop on :draw {
-        pico.zet.layer(id)
+        pico.set.layer(id)
 
         ;; where the whole text block starts, so it's centered in the layer
         val blockStart = 0.5 - ((totalWidth / 2) / rect.w)
@@ -143,10 +143,10 @@ task RichText(id, rect, runs, positions, totalWidth, textH) {
                 anchor = "W"
             ]
 
-            pico.zet.pencil [ color=run.color, font=FONT ]
+            pico.set.pencil [ color=run.color, font=FONT ]
             pico.output.draw.text(run.text, drawRect)
         }
-        pico.zet.layer(:world)
+        pico.set.layer(:world)
     }
 }
 
@@ -169,19 +169,19 @@ task RichTextButton(id, rect, text) {
         par {
             loop on :draw {
                 val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
-                pico.zet.layer(id)
+                pico.set.layer(id)
                 
-                pico.zet.effect [ color=c.bg ]
+                pico.set.effect [ color=c.bg ]
                 pico.output.clear()
                 
-                pico.zet.scene [
+                pico.set.scene [
                     target = [ '%', anchor=fullRect.anchor,
                         x=fullRect.x, y=fullRect.y,
                         w=fullRect.w * hover.pub.scale,
                         h=fullRect.h * hover.pub.scale,
                     ]
                 ]
-                pico.zet.layer(:world)
+                pico.set.layer(:world)
             }
         } with {
             await RichText(id, fullRect, runs, positions, totalWidth, fullRect.h * (1-PAD))

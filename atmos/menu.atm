@@ -65,8 +65,8 @@ val task Options() {
         }
     } with {
         loop on :draw {
-            pico.zet.layer(:options_overlay)
-            pico.zet.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
+            pico.set.layer(:options_overlay)
+            pico.set.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
             pico.output.clear()
             
             ;; screenshot bg drawing
@@ -77,14 +77,14 @@ val task Options() {
             ])
             
             ;; translucent black overlay
-            pico.zet.pencil [ color=overlayBackgroundColor ]
+            pico.set.pencil [ color=overlayBackgroundColor ]
             pico.output.draw.rect([
                 "%", x=0.5, y=0.5,
                 w=1, h=1,
                 anchor="C"
             ])
             
-            pico.zet.layer(:world)
+            pico.set.layer(:world)
         }
     }
 }

@@ -43,7 +43,7 @@ task TransitionIn(screenshot, x, y, cover) {
                 w=1, h=1,
                 anchor="C"
             ])
-            pico.zet.pencil [ color=COLORS.hover.bg, font=FONT ]
+            pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
             pico.output.draw.oval([
                 "%", x=x, y=y,
                 w=(r*2), h=((r*2) * ASPECT_RATIO),
@@ -66,7 +66,7 @@ task TransitionIn(screenshot, x, y, cover) {
     watching (OUT_DELAY*1ms) {
         loop on :draw {
             ;; circle at peak size
-            pico.zet.pencil [ color=COLORS.hover.bg, font=FONT ]
+            pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
             pico.output.draw.oval([
                 "%", x=x, y=y,
                 w=(cover * 2), h=(cover * 2 * ASPECT_RATIO),
@@ -74,7 +74,7 @@ task TransitionIn(screenshot, x, y, cover) {
             ])
 
             ;; show loading text while waiting
-            pico.zet.pencil [ color=COLORS.idle.bg, font=FONT ]
+            pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
 
             pico.output.draw.text("Loading...", [
                 "%", x=x, y=y,
@@ -92,9 +92,9 @@ task TransitionOut(x, y, cover) {
     pico.push()
     defer {
         ;; clearing the transition_out layer on exit
-        pico.zet.layer(:transition_out)
+        pico.set.layer(:transition_out)
         pico.output.clear()
-        pico.zet.layer(:world)
+        pico.set.layer(:world)
 
         pico.pop()
     }
@@ -102,18 +102,18 @@ task TransitionOut(x, y, cover) {
     ;; shrink
     par:any {
         loop on :draw {
-            pico.zet.layer(:transition_out)
+            pico.set.layer(:transition_out)
             ;; setting the overlay's clear color to alpha = 0
-            pico.zet.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
+            pico.set.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
             pico.output.clear()
-            pico.zet.pencil [ color=COLORS.hover.bg, font=FONT ]
+            pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
             pico.output.draw.oval([
                 "%", x=x, y=y,
                 w=(r*2), h=((r*2) * ASPECT_RATIO),
                 anchor="C"
             ])
 
-            pico.zet.layer(:world)
+            pico.set.layer(:world)
         }
     } with {
         loop {
