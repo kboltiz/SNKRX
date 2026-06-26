@@ -22,7 +22,7 @@ task Transition(Next, x, y) {
 
     await TransitionIn(:screenshot, x, y, cover)
 
-    par_and {
+    par:all {
         ;; Arena now manages transitions sequentially
         ;; nested transition support no longer required
         await Next()
@@ -35,7 +35,7 @@ task TransitionIn(screenshot, x, y, cover) {
     var r = 0.0
 
     ;; grow
-    par_or {
+    par:any {
         every :draw {
             ;; draw screenshot behind circle
             pico.output.draw.image(screenshot, [
@@ -100,7 +100,7 @@ task TransitionOut(x, y, cover) {
     }
 
     ;; shrink
-    par_or {
+    par:any {
         every :draw {
             pico.zet.layer(:transition_out)
             ;; setting the overlay's clear color to alpha = 0

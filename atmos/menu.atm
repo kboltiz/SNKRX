@@ -35,7 +35,7 @@ val task Options() {
     ;; overlay translucent bg
     val overlayBackgroundColor = pico.color.alpha(COLORS.idle.bg, 25)
     
-    par_or {
+    par:any {
         ;; this is where all option SETTINGS go
         await Button(:options_close, rect, "main menu") where {
             rect = ["%", x=0.5, y=0.2, h=h]
@@ -47,7 +47,7 @@ val task Options() {
             defer { pico.pop() }
         
             ;; 3 main types of values
-            par_or {
+            par:any {
                 await ToggleButton(:screen_shake, rect, "screen shake") where {
                     rect = ["%", x=0.5, y=0.4, h=h]
                 }
@@ -94,7 +94,7 @@ task Menu() {
     	pico.push()
     	defer { pico.pop() }
     
-        val ret = par_or {
+        val ret = par:any {
             await Button(:arena, rect, "arena run") where {
                 rect = ["%", x=x, y=0.5, h=h, anchor='W']
             }
