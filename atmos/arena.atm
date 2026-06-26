@@ -15,7 +15,7 @@ val task CharacterIcon(id, rect, character, number, showName) {
     val charColorGroup = CHARACTER_COLORS@character
     val charColors = COLORS@charColorGroup
 
-    every :draw {
+    loop on :draw {
         pico.zet.layer(id)
 
         pico.zet.pencil [ color=charColors.base ]
@@ -47,7 +47,7 @@ val task ClassBanners(id, rect, character) {
     val charClassesCount = #charClasses
     val cardAspectRatio = rect.w / rect.h
 
-    every :draw {
+    loop on :draw {
         pico.zet.layer(id)
 
         ;; TODO: color the class icon to COLORS.hover.fg
@@ -94,7 +94,7 @@ val task ShopCard(id, x, y, character) {
 
     watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
         par {
-            every :draw {
+            loop on :draw {
                 val c = (hover.pub.hovered && pico.color.alpha(COLORS.hover.bg, 15)) || COLORS.empty
                 
                 pico.zet.layer(id)
@@ -171,7 +171,7 @@ task Battle() {
     print("Battle Started!")
     
     watching 5s {
-        every :draw{
+        loop on :draw{
             ;; battle arena
             pico.zet.pencil [ color=COLORS.idle.bg, font=FONT ]
             pico.output.draw.rect([

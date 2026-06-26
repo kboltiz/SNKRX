@@ -18,7 +18,7 @@ task Hoverable(id, rect) {
 
     ;; keep pub.scale synced
     spawn {
-        every :clock {
+        loop on :clock {
             set pub.scale = spring.pub.scale
         }
     }
@@ -59,7 +59,7 @@ task Button(id, rect, text) {
     ;; returns id when clicked
     watching :mouse.button.dn, \{(pico.vs.pos.rect(it, id))} {
         ;; draw loop
-        every :draw {
+        loop on :draw {
             val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
 
             ;; button layer is created by Hoverable
@@ -124,7 +124,7 @@ func MeasureRuns(runs, h) {
 }
 
 task RichText(id, rect, runs, positions, totalWidth, textH) {
-    every :draw {
+    loop on :draw {
         pico.zet.layer(id)
 
         ;; where the whole text block starts, so it's centered in the layer
@@ -167,7 +167,7 @@ task RichTextButton(id, rect, text) {
 
     watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
         par {
-            every :draw {
+            loop on :draw {
                 val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
                 pico.zet.layer(id)
                 

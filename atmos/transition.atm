@@ -36,7 +36,7 @@ task TransitionIn(screenshot, x, y, cover) {
 
     ;; grow
     par:any {
-        every :draw {
+        loop on :draw {
             ;; draw screenshot behind circle
             pico.output.draw.image(screenshot, [
                 "%", x=0.5, y=0.5,
@@ -64,7 +64,7 @@ task TransitionIn(screenshot, x, y, cover) {
     
     ;; idle stage at peak
     watching (OUT_DELAY*1ms) {
-        every :draw {
+        loop on :draw {
             ;; circle at peak size
             pico.zet.pencil [ color=COLORS.hover.bg, font=FONT ]
             pico.output.draw.oval([
@@ -101,7 +101,7 @@ task TransitionOut(x, y, cover) {
 
     ;; shrink
     par:any {
-        every :draw {
+        loop on :draw {
             pico.zet.layer(:transition_out)
             ;; setting the overlay's clear color to alpha = 0
             pico.zet.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]

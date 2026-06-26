@@ -64,7 +64,7 @@ val task Options() {
             ;; TODO text-dependent center alignment of option buttons
         }
     } with {
-        every :draw {
+        loop on :draw {
             pico.zet.layer(:options_overlay)
             pico.zet.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
             pico.output.clear()
