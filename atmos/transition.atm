@@ -12,7 +12,7 @@ func CoverRadius(x, y) {
 }
 
 ;; combined transition methods for general usage
-func Transition(Next, x, y) {
+task Transition(Next, x, y) {
     val cover = CoverRadius(x, y)
 
     pico.push()
@@ -22,7 +22,7 @@ func Transition(Next, x, y) {
 
     await TransitionIn(:screenshot, x, y, cover)
 
-    par_and {
+    par:all {
         ;; Arena now manages transitions sequentially
         ;; nested transition support no longer required
         await Next()
@@ -31,29 +31,29 @@ func Transition(Next, x, y) {
     }
 }
 
-func TransitionIn(screenshot, x, y, cover) {
+task TransitionIn(screenshot, x, y, cover) {
     var r = 0.0
 
     ;; grow
-    par_or {
-        every :draw {
+    par:any {
+        loop on :draw {
             ;; draw screenshot behind circle
-            pico.output.draw.image(screenshot, @{
+            pico.output.draw.image(screenshot, [
                 "%", x=0.5, y=0.5,
                 w=1, h=1,
                 anchor="C"
-            })
-            pico.zet.pencil @{ color=COLORS.hover.bg, font=FONT }
-            pico.output.draw.oval(@{
+            ])
+            pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
+            pico.output.draw.oval([
                 "%", x=x, y=y,
                 w=(r*2), h=((r*2) * ASPECT_RATIO),
                 anchor="C"
-            })
+            ])
         }
     } with {
         loop {
-            val i,ms = await :clock
-            val dt = (ms / 1000)
+            val us = await :clock
+            val dt = (us / 1s)
             set r = (r + (cover * SPEED * dt))
             
             if r >= cover {
@@ -63,62 +63,62 @@ func TransitionIn(screenshot, x, y, cover) {
     }
     
     ;; idle stage at peak
-    watching @OUT_DELAY {
-        every :draw {
+    watching (OUT_DELAY*1ms) {
+        loop on :draw {
             ;; circle at peak size
-            pico.zet.pencil @{ color=COLORS.hover.bg, font=FONT }
-            pico.output.draw.oval(@{
+            pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
+            pico.output.draw.oval([
                 "%", x=x, y=y,
                 w=(cover * 2), h=(cover * 2 * ASPECT_RATIO),
                 anchor="C"
-            })
+            ])
 
             ;; show loading text while waiting
-            pico.zet.pencil @{ color=COLORS.idle.bg, font=FONT }
+            pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
 
-            pico.output.draw.text("Loading...", @{
+            pico.output.draw.text("Loading...", [
                 "%", x=x, y=y,
                 h=0.05, anchor="C"
-            })
+            ])
         }
     }
 }
 
-func TransitionOut(x, y, cover) {
+task TransitionOut(x, y, cover) {
     var r = cover
     
-    pico.layer.empty(:world, :transition_out, false, @{ "%", x=0.5, y=0.5, w=1, h=1 })
+    pico.layer.empty(:world, :transition_out, false, [ "%", x=0.5, y=0.5, w=1, h=1 ])
     
     pico.push()
     defer {
         ;; clearing the transition_out layer on exit
-        pico.zet.layer(:transition_out)
+        pico.set.layer(:transition_out)
         pico.output.clear()
-        pico.zet.layer(:world)
+        pico.set.layer(:world)
 
         pico.pop()
     }
 
     ;; shrink
-    par_or {
-        every :draw {
-            pico.zet.layer(:transition_out)
+    par:any {
+        loop on :draw {
+            pico.set.layer(:transition_out)
             ;; setting the overlay's clear color to alpha = 0
-            pico.zet.effect @{ color=@{ "%", r=0, g=0, b=0, a=0 } }
+            pico.set.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
             pico.output.clear()
-            pico.zet.pencil @{ color=COLORS.hover.bg, font=FONT }
-            pico.output.draw.oval(@{
+            pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
+            pico.output.draw.oval([
                 "%", x=x, y=y,
                 w=(r*2), h=((r*2) * ASPECT_RATIO),
                 anchor="C"
-            })
+            ])
 
-            pico.zet.layer(:world)
+            pico.set.layer(:world)
         }
     } with {
         loop {
-            val i,ms = await :clock
-            val dt = (ms / 1000)
+            val us = await :clock
+            val dt = (us / 1s)
             set r = (r - (cover * SPEED * dt))
             if (r <= 0) {break()}
         }

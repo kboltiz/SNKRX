@@ -2,7 +2,7 @@ val Spring = require "spring"
 
 val PAD = 0.01  ;; padding for buttons
 
-func Hoverable(id, rect) {
+task Hoverable(id, rect) {
 
     ;; creating button layer
     pico.layer.empty(:world, id, false, rect)
@@ -11,83 +11,83 @@ func Hoverable(id, rect) {
     ;; reaches target value or next :start
     pin spring = spawn Spring(1.3)
 
-    set pub = @{
+    set pub = [
         hovered = false,
         scale = spring.pub.scale
-    }
+    ]
 
     ;; keep pub.scale synced
     spawn {
-        every :clock {
+        loop on :clock {
             set pub.scale = spring.pub.scale
         }
     }
 
     ;; checking for hover on button creation
-    val e = pico.get.mouse(@{ "%", x=0, y=0 })
+    val e = pico.get.mouse([ "%", x=0, y=0 ])
     if pico.vs.pos.rect(e, rect) {
         set pub.hovered = true
 
         pico.output.sound(SOUNDS.pop)
-        emit [spring] (:start)
+        emit @spring (:start)
         
-        await(:mouse.motion, \{!pico.vs.pos.rect(it, rect)})
+        await(:mouse.motion until !pico.vs.pos.rect(it, rect))
     }
     
     loop {
         ;; Idle State
         set pub.hovered = false
-        await(:mouse.motion, \{pico.vs.pos.rect(it, id)})
+        await(:mouse.motion until pico.vs.pos.rect(it, id))
 
         ;; Hover State
         ;; TODO: randomize pitch of sound on every hover
         pico.output.sound(SOUNDS.hover)
 
         set pub.hovered = true
-        emit [spring] (:start)
+        emit @spring (:start)
 
-        await(:mouse.motion, \{!pico.vs.pos.rect(it, id)})
+        await(:mouse.motion until !pico.vs.pos.rect(it, id))
     }
 }
 
-func Button(id, rect, text) {
+task Button(id, rect, text) {
     pico.get.text(rect, text)
 
     pin hover = spawn Hoverable(id, rect)
 
     ;; click detection
     ;; returns id when clicked
-    watching :mouse.button.dn, \{(pico.vs.pos.rect(it, id))} {
+    watching :mouse.button.dn until (pico.vs.pos.rect(it, id)) {
         ;; draw loop
-        every :draw {
+        loop on :draw {
             val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
 
             ;; button layer is created by Hoverable
-            pico.zet.layer(id)
+            pico.set.layer(id)
 
-            pico.zet.effect @{ color=c.bg }
+            pico.set.effect [ color=c.bg ]
             pico.output.clear()
 
             ;; drawing text inside
-            pico.zet.pencil @{ color=c.fg, font=FONT }
-            pico.output.draw.text(text, @{ "%", x=0.5, y=0.5, h=(1-PAD)*hover.pub.scale, anchor="C" })
+            pico.set.pencil [ color=c.fg, font=FONT ]
+            pico.output.draw.text(text, [ "%", x=0.5, y=0.5, h=(1-PAD)*hover.pub.scale, anchor="C" ])
 
-            pico.zet.scene @{
-                target = @{ '%', anchor=rect.anchor,
+            pico.set.scene [
+                target = [ '%', anchor=rect.anchor,
                     x=rect.x, y=rect.y,
                     w = rect.w * hover.pub.scale,
                     h = rect.h * hover.pub.scale,
-                }
-            }
+                ]
+            ]
 
-            pico.zet.layer(:world)
+            pico.set.layer(:world)
         }
     }
     return(id)
 }
 
 func ParseRichText(text) {
-    var runs = @{}
+    var runs = []
     var currentColor = COLORS.idle.fg
     var pos = 1
 
@@ -96,12 +96,12 @@ func ParseRichText(text) {
         val tagStart, tagEnd, tagName = string.find(text, "%[(%w+)%]", pos)
         val segment = string.sub(text, pos, (tagStart && (tagStart - 1)) || #text)
         if #segment > 0 {
-            set runs[#runs + 1] = @{ text=segment, color=currentColor }
+            set runs@+ = [ text=segment, color=currentColor ]
         }
 
         until(!tagStart)   ;; no more tags found -> stop after this segment
 
-        set currentColor = TEXT_TAGS[tagName] || currentColor
+        set currentColor = TEXT_TAGS@tagName || currentColor
         set pos = tagEnd + 1
     }
     return(runs)
@@ -110,22 +110,22 @@ func ParseRichText(text) {
 func MeasureRuns(runs, h) {
     var cumulativeText = ""
     var lastWidth = 0
-    val positions = @{}
+    val positions = []
 
     loop i, run in runs {
         set cumulativeText = cumulativeText ++ run.text
-        val m = @{ "%", x=0, y=0, h=h, anchor="W" }
+        val m = [ "%", x=0, y=0, h=h, anchor="W" ]
         pico.get.text(m, cumulativeText)
         
-        set positions[i] = @{ start=lastWidth, width=m.w - lastWidth }
+        set positions@i = [ start=lastWidth, width=m.w - lastWidth ]
         set lastWidth = m.w
     }
     return(positions, lastWidth)   ;; lastWidth ends up equal to the total width
 }
 
-func RichText(id, rect, runs, positions, totalWidth, textH) {
-    every :draw {
-        pico.zet.layer(id)
+task RichText(id, rect, runs, positions, totalWidth, textH) {
+    loop on :draw {
+        pico.set.layer(id)
 
         ;; where the whole text block starts, so it's centered in the layer
         val blockStart = 0.5 - ((totalWidth / 2) / rect.w)
@@ -133,55 +133,55 @@ func RichText(id, rect, runs, positions, totalWidth, textH) {
         val localH = textH / rect.h
 
         loop i, run in runs {
-            val pos = positions[i]
+            val pos = positions@i
             ;; anchor="W" so runs sit side by side instead
             ;; of stacking on top of each other
-            val drawRect = @{ "%",
+            val drawRect = [ "%",
                 x = blockStart + (pos.start / rect.w),
                 y = 0.5,
                 h = localH,
                 anchor = "W"
-            }
+            ]
 
-            pico.zet.pencil @{ color=run.color, font=FONT }
+            pico.set.pencil [ color=run.color, font=FONT ]
             pico.output.draw.text(run.text, drawRect)
         }
-        pico.zet.layer(:world)
+        pico.set.layer(:world)
     }
 }
 
 ;; General Rich Text Button
-func RichTextButton(id, rect, text) {
+task RichTextButton(id, rect, text) {
     val runs = ParseRichText(text)
     val positions, totalWidth = MeasureRuns(runs, rect.h * (1 - PAD))
 
     ;; grow the box back out by the same ratio the text was shrunk by
-    val fullRect = @{ "%",
+    val fullRect = [ "%",
         x=rect.x, y=rect.y,
         w=totalWidth / (1 - PAD),
         h=rect.h,
         anchor="C"
-    }
+    ]
 
     pin hover = spawn Hoverable(id, fullRect)
 
-    watching :mouse.button.dn, \{pico.vs.pos.rect(it, id)} {
+    watching :mouse.button.dn until pico.vs.pos.rect(it, id) {
         par {
-            every :draw {
+            loop on :draw {
                 val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
-                pico.zet.layer(id)
+                pico.set.layer(id)
                 
-                pico.zet.effect @{ color=c.bg }
+                pico.set.effect [ color=c.bg ]
                 pico.output.clear()
                 
-                pico.zet.scene @{
-                    target = @{ '%', anchor=fullRect.anchor,
+                pico.set.scene [
+                    target = [ '%', anchor=fullRect.anchor,
                         x=fullRect.x, y=fullRect.y,
                         w=fullRect.w * hover.pub.scale,
                         h=fullRect.h * hover.pub.scale,
-                    }
-                }
-                pico.zet.layer(:world)
+                    ]
+                ]
+                pico.set.layer(:world)
             }
         } with {
             await RichText(id, fullRect, runs, positions, totalWidth, fullRect.h * (1-PAD))

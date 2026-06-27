@@ -7,12 +7,12 @@ require "settings"
 val Menu = require "menu"
 val Arena = require "arena"
 
-pico.zet.window @{ title="SNKRX Menu" }
-pico.zet.dim @{ '!', w=W, h=H }
+pico.set.window [ title="SNKRX Menu" ]
+pico.set.dim [ '!', w=W, h=H ]
 
 loop {
     pico.push()
-    val id = Menu()
+    val id = await Menu()
     pico.pop() ;; cleans up menu buttons on transitions
 
     match id {
