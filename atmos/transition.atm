@@ -63,7 +63,7 @@ task TransitionIn(screenshot, x, y, cover) {
     }
     
     ;; idle stage at peak
-    watching (OUT_DELAY*1ms) {
+    watching (OUT_DELAY*1s) {
         loop on :draw {
             ;; circle at peak size
             pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
