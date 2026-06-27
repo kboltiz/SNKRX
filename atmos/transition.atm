@@ -1,5 +1,5 @@
-val SPEED = 5
-val OUT_DELAY = 1
+val SPEED = 5/1s
+val OUT_DELAY = 1s
 
 ;; so the circle covers the entire screen at peak
 func CoverRadius(x, y) {
@@ -51,19 +51,14 @@ task TransitionIn(screenshot, x, y, cover) {
             ])
         }
     } with {
-        loop {
-            val us = await :clock
-            val dt = (us / 1s)
-            set r = (r + (cover * SPEED * dt))
-            
-            if r >= cover {
-                break() 
-            }
+        loop us on :clock {
+            set r = (r + (cover * SPEED * us))
+            until (r >= cover)
         }
     }
     
     ;; idle stage at peak
-    watching (OUT_DELAY*1s) {
+    watching OUT_DELAY {
         loop on :draw {
             ;; circle at peak size
             pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
@@ -116,11 +111,9 @@ task TransitionOut(x, y, cover) {
             pico.set.layer(:world)
         }
     } with {
-        loop {
-            val us = await :clock
-            val dt = (us / 1s)
-            set r = (r - (cover * SPEED * dt))
-            if (r <= 0) {break()}
+        loop us on :clock {
+            set r = (r - (cover * SPEED * us))
+            until (r <= 0)
         }
     }
 }
