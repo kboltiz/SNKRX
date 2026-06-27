@@ -6,9 +6,9 @@ val x = 0.01
 val h = 0.08
 
 val task ToggleButton(id, rect, property) {
-    val current = SETTINGS@property;
-    await Button(id, rect, property ++ ": " ++ ((current && "yes") || "no"))
-    set SETTINGS@property = !current
+    val cur = SETTINGS@property;
+    await Button(id, rect, property ++ ": " ++ (if cur => "yes" => "no"))
+    set SETTINGS@property = !cur
 }
 
 ;;;
@@ -20,11 +20,9 @@ val func ActionButton(id, rect, property, action) {
 ;;;
 
 val task NumRangeButton(id, rect, property) {
-    val pair = SETTINGS@property
-    val current = pair@1
-    val max = pair@2
-    await Button(id, rect, property ++ ": " ++ current)
-    set SETTINGS@property = [(current + 1) % (max + 1), max]
+    val cur,max = table.unpack(SETTINGS@property)
+    await Button(id, rect, property ++ ": " ++ cur)
+    set SETTINGS@property = [(cur + 1) % (max + 1), max]
 }
 
 val task Options() {
