@@ -113,14 +113,9 @@ task Menu() {
             :options
         }
 
-        if ret != :options {
-            break(ret)
-        }
-
+        until (ret != :options, ret)
         val should_quit = await Options()
-        if should_quit {
-        	break(:quit)
-    	}
+        until (should_quit, :quit)
     }
 }
 
