@@ -50,6 +50,20 @@ task Hoverable(id, rect) {
     }
 }
 
+task XButton (id, target, rect, text) {
+    pico.get.text(rect, text)
+    par {
+        loop on :draw {
+            pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
+            pico.output.draw.text(text, rect)
+        }
+    } with {
+        loop on :mouse.button.dn until (pico.vs.pos.rect(it, rect)) {
+            emit @target :Button [id=id]
+        }
+    }
+}
+
 task Button(id, rect, text) {
     pico.get.text(rect, text)
 

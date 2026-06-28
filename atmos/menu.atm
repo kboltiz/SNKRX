@@ -1,119 +1,90 @@
 require "button"
 require "transition"
 
-;; shared values
-val x = 0.01
 val h = 0.08
 
+;; Toggle / Range:
+;; They never terminate and handle their effects internally.
+;; We re-create their internal Buttons in a loop bc they change labels.
+
 val task ToggleButton(id, rect, property) {
-    val cur = SETTINGS@property;
-    await Button(id, rect, property ++ ": " ++ (if cur => "yes" => "no"))
-    set SETTINGS@property = !cur
+    loop {
+        val cur = SETTINGS@property;
+        spawn XButton(id, 1, rect, property ++ ": " ++ (if cur => "yes" => "no"))
+        await :Button [id=id]
+        set SETTINGS@property = !cur
+    }
 }
 
-;;;
-;; TODO: action() is an "anti pattern"
-val func ActionButton(id, rect, property, action) {
-    await Button(id, rect, property)
-    action();
-}
-;;;
-
-val task NumRangeButton(id, rect, property) {
-    val cur,max = table.unpack(SETTINGS@property)
-    await Button(id, rect, property ++ ": " ++ cur)
-    set SETTINGS@property = [(cur + 1) % (max + 1), max]
+val task RangeButton(id, rect, property) {
+    loop {
+        val cur,max = table.unpack(SETTINGS@property)
+        spawn XButton(id, 1, rect, property ++ ": " ++ cur)
+        await :Button [id=id]
+        set SETTINGS@property = [(cur + 1) % (max + 1), max]
+    }
 }
 
 val task Options() {
     print("Options Opened")
 
-    ;; options overlay layer
-    pico.layer.empty(:world, :options_overlay, false, [ "%", x=0.5, y=0.5, w=1, h=1 ])
-    ;; overlay translucent bg
-    val overlayBackgroundColor = pico.color.alpha(COLORS.idle.bg, 25)
-    
-    par:any {
-        ;; this is where all option SETTINGS go
-        await Button(:options_close, rect, "main menu") where {
-            rect = ["%", x=0.5, y=0.2, h=h]
-        }
-        false   ;; dont quit
-    } with {
-        loop {
-            pico.push()
-            defer { pico.pop() }
-        
-            ;; 3 main types of values
-            par:any {
-                await ToggleButton(:screen_shake, rect, "screen shake") where {
-                    rect = ["%", x=0.5, y=0.4, h=h]
-                }
-            } with {
-                await NumRangeButton(:music_volume, rect, "music volume") where {
-                    rect = ["%", x=0.5, y=0.5, h=h]
-                }
-            } with {
-                await Button(:opts_quit, rect, "quit") where {
-                    rect = ["%", x=0.5, y=0.6, h=h]
-                }
-                break(true) ;; quit
-            }
-            ;; TODO text-dependent center alignment of option buttons
-        }
-    } with {
+    ;; overlay translucent background
+    spawn {
+        val clr = pico.color.alpha(COLORS.idle.bg, 200) ;; TODO: check if value/effect are correct
         loop on :draw {
-            pico.set.layer(:options_overlay)
-            pico.set.effect [ color=[ "%", r=0, g=0, b=0, a=0 ] ]
-            pico.output.clear()
-            
-            ;; screenshot bg drawing
-            pico.output.draw.image(:options_screenshot, [
-                "%", x=0.5, y=0.5,
-                w=1, h=1,
-                anchor="C"
-            ])
-            
-            ;; translucent black overlay
-            pico.set.pencil [ color=overlayBackgroundColor ]
-            pico.output.draw.rect([
-                "%", x=0.5, y=0.5,
-                w=1, h=1,
-                anchor="C"
-            ])
-            
-            pico.set.layer(:world)
+            pico.set.pencil [ color=clr ]
+            pico.output.draw.rect [
+                "%", x=0.5, y=0.5, w=1, h=1, anchor="C"
+            ]
+        }
+    }
+
+    ;; TODO text-dependent center alignment of option buttons
+    spawn XButton(:quitx, 1, rect, "quit") where {      ;; TODO: quitx
+        rect = ["%", x=0.5, y=0.6, h=h]
+    }
+    spawn ToggleButton(:shake, rect, "screen shake") where {
+        rect = ["%", x=0.5, y=0.4, h=h]
+    }
+    spawn RangeButton(:music, rect, "music volume") where {
+        rect = ["%", x=0.5, y=0.5, h=h]
+    }
+    spawn XButton(:close, 1, rect, "main menu") where {
+        rect = ["%", x=0.5, y=0.2, h=h]
+    }
+
+    ;; only :close / :quit escape
+    ;; other buttons have internal effects, we ignore them here
+    loop b on :Button {
+        match b.id {
+            :close => break(false)
+            :quitx => break(true)
         }
     }
 }
 
+val x = 0.01
+
 task Menu() {
-    loop {
-    	pico.push()
-    	defer { pico.pop() }
-    
-        val ret = par:any {
-            await Button(:arena, rect, "arena run") where {
-                rect = ["%", x=x, y=0.5, h=h, anchor='W']
-            }
-        } with {
-            await Button(:quit, rect, "quit") where {
-                rect = ["%", x=x, y=0.7, h=h, anchor='W']
-            }
-        } with {
-            await Button(:options, rect, "options") where {
-                rect = ["%", x=x, y=0.6, h=h, anchor='W']
-            }
+    ;; butons remain alive
+    pin bs = tasks(3)
+    spawn @bs XButton(:arena, 2, rect, "arena run") where {
+        rect = ["%", x=x, y=0.5, h=h, anchor='W']
+    }
+    spawn @bs XButton(:quit, 2, rect, "quit") where {
+        rect = ["%", x=x, y=0.7, h=h, anchor='W']
+    }
+    spawn @bs XButton(:options, 2, rect, "options") where {
+        rect = ["%", x=x, y=0.6, h=h, anchor='W']
+    }
 
-            ;; Take screenshot when opening options
-            pico.layer.screenshot(nil, :options_screenshot, :window)
-            
-            :options
-        }
-
-        until (ret != :options, ret)
-        val should_quit = await Options()
-        until (should_quit, :quit)
+    ;; we react to each click
+    loop b on :Button {
+        until (b.id != :options, b.id)  ;; escape except on option
+        toggle bs(false) with :draw
+        val quit = await Options()      ;; overlay Option with paused `bs`
+        until (quit, :quit)             ;; Option may quit directly
+        toggle bs(true)
     }
 }
 
