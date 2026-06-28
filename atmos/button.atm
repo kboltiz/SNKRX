@@ -85,7 +85,12 @@ task XButton (id, target, rect, text) {
         }
     } with {
         loop on :draw {
-            pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
+            val clr = (if over => COLORS.hover => COLORS.idle)
+
+            pico.set.pencil [ color=clr.bg ]
+            pico.output.draw.rect(rect)
+
+            pico.set.pencil [ color=clr.fg, font=FONT ]
             pico.output.draw.text(text, rect)
         }
     }
