@@ -59,7 +59,7 @@ task Hoverable(id, rect) {
 task XButton (id, target, rect, text) {
     pico.get.text(rect, text)
 
-    var over = pico.vs.pos.rect(m, rect)
+    var over = pico.vs.rect.pos(rect, pico.get.mouse('%'))
 
     par {
         ;; :Button.over.[on|off]
@@ -71,7 +71,7 @@ task XButton (id, target, rect, text) {
             val o = pico.vs.pos.rect(e, rect)
             if o != over {
                 set over = o
-                emit @(target) [tag=tags@over, obj=pub]
+                emit @(target) [tag=tags@over, id=id]
             }
         }
     } with {
