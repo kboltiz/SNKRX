@@ -5,12 +5,6 @@ var RunData = [
 
 val PAD = 0.03
 
-val task RerollButton(id, rect) {
-    ;; TODO Change text color on hover
-    ;; might have to inline some of richtextbutton here
-    await RichTextButton(id, rect, "[idle]Rerolls: [gold]" ++ RunData.Rerolls)
-}
-
 val task CharacterIcon(id, rect, character, number, showName) {
     val charColorGroup = CHARACTER_COLORS@character
     val charColors = COLORS@charColorGroup
@@ -135,33 +129,63 @@ val func RollShopCards() {
     ])
 }
 
-val task BuyScreen() {
-    par:any {
-        await Button(:go_battle, rect, "Go!") where {
-            rect = ["%", x=0.88, y=0.9, h=0.1]
-        }
-    } with {
+val task BuyScreen() {    
+    pin ui = tasks()
+
+    spawn @ui XButton(:go_battle, 3, rect, "Go!") where {
+        rect = ["%", x=0.88, y=0.9, h=0.1]
+    }
+    
+    ;;spawn @ui RerollButton(:reroll, 3, rect) where {
+    ;;    rect = ["%", x=0.28, y=0.06, h=0.07, anchor="C"]
+    ;;}
+    
+    spawn {
         loop {
-            ;; buy screen interactions
+            watching(:roll_cards) {
+                print("Render "++RunData.Rerolls)
+                
+                ;; clears out on every click
+                spawn RichTextButton(
+                    :reroll,
+                    3,
+                    ["%", x=0.28, y=0.06, h=0.07, anchor="C"],
+                    "[idle]Rerolls: [gold]" ++ RunData.Rerolls
+                )
+
+                await :Button.click.dn [id=id]
+            }
+        }
+    }
+
+    spawn {
+        loop {
             pico.push()
             defer { pico.pop() }
             
+            ;; separate pin for shop cards
+            pin ct = tasks()
+            
             val cards = RollShopCards()
 
-            par:any {
-                await RerollButton(:reroll, rect) where {
-                    rect = ["%", x=0.28, y=0.06, h=0.07, anchor="C"]
+            loop i, character in cards {
+                spawn @ct ShopCard(:shop_card_ ++ i, i * 0.16, 0.3, character)
+            }
+            
+            await (:roll_cards)
+        }
+    }
+
+    loop b on :Button.click.dn {
+        match b.id {
+            :go_battle =>
+                break()
+
+            :reroll => {
+                if RunData.Rerolls > 0 {
+                    set RunData.Rerolls = (RunData.Rerolls - 1)
+                    emit(:roll_cards)
                 }
-                if RunData.Rerolls > 0 => \{
-                    print("Reroll!")
-                    set RunData.Rerolls = RunData.Rerolls - 1;
-                };
-            } with {
-                pin cs = tasks(#cards)
-                loop i, character in cards {
-                    spawn @cs ShopCard(:shop_card_ ++ i, i * 0.16, 0.3, character)
-                }
-                await(false)   ;; keep this arm alive forever; cards die independently
             }
         }
     }

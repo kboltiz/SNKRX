@@ -211,42 +211,90 @@ task RichText(id, rect, runs, positions, totalWidth, textH) {
     }
 }
 
-;; General Rich Text Button
-task RichTextButton(id, rect, text) {
+task RichTextButton(id, target, rect, text) {
     val runs = ParseRichText(text)
-    val positions, totalWidth = MeasureRuns(runs, rect.h * (1 - PAD))
+    val positions, totalWidth = MeasureRuns(runs, (rect.h * (1 - PAD)))
 
-    ;; grow the box back out by the same ratio the text was shrunk by
-    val fullRect = [ "%",
-        x=rect.x, y=rect.y,
-        w=totalWidth / (1 - PAD),
-        h=rect.h,
-        anchor="C"
+    val fullRect = [
+        "%",
+        x = rect.x,
+        y = rect.y,
+        w = (totalWidth / (1 - PAD)),
+        h = rect.h,
+        anchor = "C"
     ]
 
-    pin hover = spawn Hoverable(id, fullRect)
+    var over = pico.vs.rect.pos(fullRect, pico.get.mouse("%"))
 
-    watching :mouse.button.dn until pico.vs.pos.rect(it, id) {
-        par {
-            loop on :draw {
-                val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
-                pico.set.layer(id)
-                
-                pico.set.effect [ color=c.bg ]
-                pico.output.clear()
-                
-                pico.set.scene [
-                    target = [ '%', anchor=fullRect.anchor,
-                        x=fullRect.x, y=fullRect.y,
-                        w=fullRect.w * hover.pub.scale,
-                        h=fullRect.h * hover.pub.scale,
-                    ]
-                ]
-                pico.set.layer(:world)
+    pin spring = spawn Spring(1.3)
+
+    par {
+        ;; Hover events
+        val tags = [
+            @(true)  = :Button.over.on,
+            @(false) = :Button.over.off,
+        ]
+
+        loop e on :mouse.motion {
+            val o = pico.vs.pos.rect(e, fullRect)
+            if (o != over) {
+                set over = o
+                emit @(target) [tag = (tags@over), id = id]
             }
-        } with {
-            await RichText(id, fullRect, runs, positions, totalWidth, fullRect.h * (1-PAD))
+        }
+    } with {
+        ;; Click events
+        val tags = [
+            @(:mouse.button.dn) = :Button.click.dn,
+            @(:mouse.button.up) = :Button.click.up,
+        ]
+
+        loop e on :mouse.button until (over && it.left) {
+            emit @(target) [tag = (tags@(e.tag)), id = id]
+        }
+    } with {
+        ;; Hover spring
+        loop {
+            if over {
+                emit @spring :start
+                pico.output.sound(SOUNDS.hover)
+            }
+            await :Button.over.on [id = id]
+        }
+    } with {
+        ;; Drawing
+        loop on :draw {
+            val clr = (if over => COLORS.hover => COLORS.idle)
+
+            val drawRect = fullRect ++ [
+                w = (fullRect.w * spring.pub.scale),
+                h = (fullRect.h * spring.pub.scale),
+            ]
+
+            pico.set.pencil [color = clr.bg]
+            pico.output.draw.rect(drawRect)
+
+            val blockStart = (drawRect.x - (drawRect.w / 2))
+
+            loop i, run in runs {
+                val pos = positions@i
+
+                pico.set.pencil [
+                    color = (if over => clr.fg => run.color),
+                    font = FONT
+                ]
+
+                pico.output.draw.text(
+                    run.text,
+                    [
+                        "%",
+                        x = (blockStart + pos.start + (pos.width / 2)),
+                        y = drawRect.y,
+                        h = (drawRect.h * (1 - PAD)),
+                        anchor = "C"
+                    ]
+                )
+            }
         }
     }
-    return(id)
 }
