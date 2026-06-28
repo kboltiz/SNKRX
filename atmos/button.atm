@@ -50,16 +50,43 @@ task Hoverable(id, rect) {
     }
 }
 
+;; Button:
+;;  body: draw text
+;;  events:
+;;      :Button.over.[on|off]
+;;      :Button.click.[dn|up]
+
 task XButton (id, target, rect, text) {
     pico.get.text(rect, text)
+
+    var over = pico.vs.pos.rect(m, rect)
+
     par {
+        ;; :Button.over.[on|off]
+        val tags = [
+            @(true)  = :Button.over.on,
+            @(false) = :Button.over.off,
+        ]
+        loop e on :mouse.motion {
+            val o = pico.vs.pos.rect(e, rect)
+            if o != over {
+                set over = o
+                emit @(target) [tag=tags@over, obj=pub]
+            }
+        }
+    } with {
+        ;; :Button.click.[dn|up]
+        val tags = [
+            @(:mouse.button.dn) = :Button.click.dn,
+            @(:mouse.button.up) = :Button.click.up,
+        ]
+        loop e on :mouse.button until over && it.left {
+            emit @(target) [tag=tags@(e.tag), id=id]
+        }
+    } with {
         loop on :draw {
             pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
             pico.output.draw.text(text, rect)
-        }
-    } with {
-        loop on :mouse.button.dn until (pico.vs.pos.rect(it, rect)) {
-            emit @target :Button [id=id]
         }
     }
 }

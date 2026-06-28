@@ -11,7 +11,7 @@ val task ToggleButton(id, rect, property) {
     loop {
         val cur = SETTINGS@property;
         spawn XButton(id, 1, rect, property ++ ": " ++ (if cur => "yes" => "no"))
-        await :Button [id=id]
+        await :Button.click.dn [id=id]
         set SETTINGS@property = !cur
     }
 }
@@ -20,7 +20,7 @@ val task RangeButton(id, rect, property) {
     loop {
         val cur,max = table.unpack(SETTINGS@property)
         spawn XButton(id, 1, rect, property ++ ": " ++ cur)
-        await :Button [id=id]
+        await :Button.click.dn [id=id]
         set SETTINGS@property = [(cur + 1) % (max + 1), max]
     }
 }
@@ -55,7 +55,7 @@ val task Options() {
 
     ;; only :close / :quit escape
     ;; other buttons have internal effects, we ignore them here
-    loop b on :Button {
+    loop b on :Button.click.dn {
         match b.id {
             :close => break(false)
             :quit  => break(true)
@@ -71,15 +71,15 @@ task Menu() {
     spawn @bs XButton(:arena, 2, rect, "arena run") where {
         rect = ["%", x=x, y=0.5, h=h, anchor='W']
     }
-    spawn @bs XButton(:quit, 2, rect, "quit") where {
-        rect = ["%", x=x, y=0.7, h=h, anchor='W']
-    }
     spawn @bs XButton(:options, 2, rect, "options") where {
         rect = ["%", x=x, y=0.6, h=h, anchor='W']
     }
+    spawn @bs XButton(:quit, 2, rect, "quit") where {
+        rect = ["%", x=x, y=0.7, h=h, anchor='W']
+    }
 
     ;; we react to each click
-    loop b on :Button {
+    loop b on :Button.click.dn {
         until (b.id != :options, b.id)  ;; escape except on option
         toggle bs(false) with :draw
         val quit = await Options()      ;; overlay Option with paused `bs`
