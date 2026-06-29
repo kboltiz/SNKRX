@@ -10,7 +10,7 @@ val h = 0.08
 val task ToggleButton(id, rect, property) {
     loop {
         val cur = SETTINGS@property;
-        spawn XButton(id, 1, rect, property ++ ": " ++ (if cur => "yes" => "no"))
+        spawn Button(id, 1, rect, property ++ ": " ++ (if cur => "yes" => "no"))
         await :Button.click.dn [id=id]
         set SETTINGS@property = !cur
     }
@@ -19,7 +19,7 @@ val task ToggleButton(id, rect, property) {
 val task RangeButton(id, rect, property) {
     loop {
         val cur,max = table.unpack(SETTINGS@property)
-        spawn XButton(id, 1, rect, property ++ ": " ++ cur)
+        spawn Button(id, 1, rect, property ++ ": " ++ cur)
         await :Button.click.dn [id=id]
         set SETTINGS@property = [(cur + 1) % (max + 1), max]
     }
@@ -40,7 +40,7 @@ val task Options() {
     }
 
     ;; TODO text-dependent center alignment of option buttons
-    spawn XButton(:quit, 1, rect, "quit") where {
+    spawn Button(:quit, 1, rect, "quit") where {
         rect = ["%", x=0.5, y=0.6, h=h]
     }
     spawn ToggleButton(:shake, rect, "screen shake") where {
@@ -49,7 +49,7 @@ val task Options() {
     spawn RangeButton(:music, rect, "music volume") where {
         rect = ["%", x=0.5, y=0.5, h=h]
     }
-    spawn XButton(:close, 1, rect, "main menu") where {
+    spawn Button(:close, 1, rect, "main menu") where {
         rect = ["%", x=0.5, y=0.2, h=h]
     }
 
@@ -68,13 +68,13 @@ val x = 0.01
 task Menu() {
     ;; butons remain alive
     pin bs = tasks(3)
-    spawn @bs XButton(:arena, 2, rect, "arena run") where {
+    spawn @bs Button(:arena, 2, rect, "arena run") where {
         rect = ["%", x=x, y=0.5, h=h, anchor='W']
     }
-    spawn @bs XButton(:options, 2, rect, "options") where {
+    spawn @bs Button(:options, 2, rect, "options") where {
         rect = ["%", x=x, y=0.6, h=h, anchor='W']
     }
-    spawn @bs XButton(:quit, 2, rect, "quit") where {
+    spawn @bs Button(:quit, 2, rect, "quit") where {
         rect = ["%", x=x, y=0.7, h=h, anchor='W']
     }
 

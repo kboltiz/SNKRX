@@ -132,7 +132,7 @@ val func RollShopCards() {
 val task BuyScreen() {    
     pin ui = tasks()
 
-    spawn @ui XButton(:go_battle, 3, rect, "Go!") where {
+    spawn @ui Button(:go_battle, 3, rect, "Go!") where {
         rect = ["%", x=0.88, y=0.9, h=0.1]
     }
     

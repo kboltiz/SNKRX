@@ -56,7 +56,7 @@ task Hoverable(id, rect) {
 ;;      :Button.over.[on|off]
 ;;      :Button.click.[dn|up]
 
-task XButton (id, target, rect, text) {
+task Button (id, target, rect, text) {
     pico.get.text(rect, text)
 
     var over = pico.vs.rect.pos(rect, pico.get.mouse('%'))
@@ -109,42 +109,6 @@ task XButton (id, target, rect, text) {
             pico.output.draw.text(text, r)
         }
     }
-}
-
-task Button(id, rect, text) {
-    pico.get.text(rect, text)
-
-    pin hover = spawn Hoverable(id, rect)
-
-    ;; click detection
-    ;; returns id when clicked
-    watching :mouse.button.dn until (pico.vs.pos.rect(it, id)) {
-        ;; draw loop
-        loop on :draw {
-            val c = (hover.pub.hovered && COLORS.hover) || COLORS.idle
-
-            ;; button layer is created by Hoverable
-            pico.set.layer(id)
-
-            pico.set.effect [ color=c.bg ]
-            pico.output.clear()
-
-            ;; drawing text inside
-            pico.set.pencil [ color=c.fg, font=FONT ]
-            pico.output.draw.text(text, [ "%", x=0.5, y=0.5, h=(1-PAD)*hover.pub.scale, anchor="C" ])
-
-            pico.set.scene [
-                target = [ '%', anchor=rect.anchor,
-                    x=rect.x, y=rect.y,
-                    w = rect.w * hover.pub.scale,
-                    h = rect.h * hover.pub.scale,
-                ]
-            ]
-
-            pico.set.layer(:world)
-        }
-    }
-    return(id)
 }
 
 func ParseRichText(text) {
