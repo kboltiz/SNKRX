@@ -40,7 +40,7 @@ val task Options() {
     }
 
     ;; TODO text-dependent center alignment of option buttons
-    spawn Button(:quit, 1, rect, "quit") where {
+    spawn Button(:opts_quit, 1, rect, "quit") where {
         rect = ["%", x=0.5, y=0.6, h=h]
     }
     spawn ToggleButton(:shake, rect, "screen shake") where {
@@ -58,7 +58,7 @@ val task Options() {
     loop b on :Button.click.dn {
         match b.id {
             :close => break(false)
-            :quit  => break(true)
+            :opts_quit  => break(true)
         }
     }
 }

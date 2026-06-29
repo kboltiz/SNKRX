@@ -2,7 +2,7 @@ val Spring = require "spring"
 
 val PAD = 0.01  ;; padding for buttons
 
-task XHoverable(id, rect) {
+task XHoverable(rect) {
     var over = pico.vs.rect.pos(rect, pico.get.mouse("%"))
     pin spring = spawn Spring(1.3)
 
@@ -89,7 +89,7 @@ task Button (id, target, rect, text) {
 
     var over = false
 
-    pin hov = spawn Hoverable(id, rect)
+    pin hov = spawn XHoverable(rect)
 
     par {
         loop on :clock {
