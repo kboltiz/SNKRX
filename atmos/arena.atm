@@ -295,7 +295,7 @@ val task BuyScreen() {
                     "[idle]Rerolls: [gold]" ++ RunData.Rerolls
                 )
 
-                await :Button.click.dn [id=id]
+                await :o.click.dn [id=id]
             }
         }
     }
@@ -318,7 +318,7 @@ val task BuyScreen() {
         }
     }
 
-    loop b on :Button.click.dn {
+    loop b on :o.click.dn {
         match b.id {
             :go_battle =>
                 break()

@@ -1,0 +1,55 @@
+;; Object: invisible hit-region over `rect`. Exposes its rect + live
+;; pointer/button state via `pub`, and emits transitions carrying
+;; [id=id, obj=pub] to `target` (a level count) or, if omitted, the
+;; parent. Consumers filter by `id` (e.g. `await :o.* [id=me]`).
+;;
+;;   pub.id                    - the caller id, echoed on every event
+;;   pub.rect                  - the geometry (read-only)
+;;   pub.over                  - bool, pointer is over the rect
+;;   pub.left/right/middle     - mirrored mouse buttons (valid while over)
+;;
+;; Events:  :o.over.on / :o.over.off   on enter / leave
+;;          :o.click.dn / :o.click.up  on press / release while over
+task Object (id, rect, target) {
+    val tgt = target || :parent
+
+    ;; pub = the object: its rect + state, derived from the pointer
+    val m = pico.get.mouse('%')
+    set pub = [
+        id     = id,
+        rect   = rect,
+        over   = over,
+        left   = over && m.left,
+        right  = over && m.right,
+        middle = over && m.middle,
+    ] where {
+        over = pico.vs.pos.rect(m, rect)
+    }
+
+    par {
+        ;; motion: track `over`, emit on/off on change
+        val tags = [
+            @(true)  = :o.over.on,
+            @(false) = :o.over.off,
+        ]
+        loop e on :mouse.motion {
+            val over = pico.vs.pos.rect(e, rect)
+            if over != pub.over {
+                set pub.over = over
+                emit @(tgt) [tag=tags@over, id=id, obj=pub]
+            }
+        }
+    } with {
+        ;; button: mirror buttons + emit dn/up while over
+        val tags = [
+            @(:mouse.button.dn) = :o.click.dn,
+            @(:mouse.button.up) = :o.click.up,
+        ]
+        loop e on :mouse.button until pub.over {
+            set pub.left   = e.left
+            set pub.right  = e.right
+            set pub.middle = e.middle
+            emit @(tgt) [tag=tags@(e.tag), id=id, obj=pub]
+        }
+    }
+}

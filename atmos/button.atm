@@ -1,55 +1,39 @@
+require "object"
 set Spring = require "spring"
 
 val PAD = 0.01  ;; padding for buttons
 
 ;; Button:
 ;;  body: draw bg/text, focus/spring on over
+;;  hit-region + events delegated to a spawned Object (one level
+;;  deeper, hence target+1); consumers filter :o.* by id.
 ;;  events:
-;;      :Button.over.[on|off]
-;;      :Button.click.[dn|up]
+;;      :o.over.[on|off]
+;;      :o.click.[dn|up]
 
 task Button (id, target, rect, text) {
     pico.get.text(rect, text)
 
-    var over = pico.vs.rect.pos(rect, pico.get.mouse('%'))
-
+    pin obj = spawn Object(id, rect, target+1)
     pin spring = spawn Spring(1.3)
 
     par {
-        ;; :Button.over.[on|off]
-        val tags = [
-            @(true)  = :Button.over.on,
-            @(false) = :Button.over.off,
-        ]
-        loop e on :mouse.motion {
-            val o = pico.vs.pos.rect(e, rect)
-            if o != over {
-                set over = o
-                emit @(target) [tag=tags@over, id=id]
-            }
-        }
-    } with {
-        ;; :Button.click.[dn|up]
-        val tags = [
-            @(:mouse.button.dn) = :Button.click.dn,
-            @(:mouse.button.up) = :Button.click.up,
-        ]
-        loop e on :mouse.button until over && it.left {
-            pico.output.sound(SOUNDS.pop)
-            emit @(target) [tag=tags@(e.tag), id=id]
-        }
-    } with {
         ;; Spring
         loop {
-            if over {   ;; may already start over
+            if obj.pub.over {   ;; may already start over
                 emit @spring :start
                 pico.output.sound(SOUNDS.hover)
             }
-            await :Button.over.on [id=id]
+            await :o.over.on [id=id]
+        }
+    } with {
+        ;; pop on click; consumers react to :o.click.dn [id=id]
+        loop on :o.click.dn [id=id] {
+            pico.output.sound(SOUNDS.pop)
         }
     } with {
         loop on :draw {
-            val clr = (if over => COLORS.hover => COLORS.idle)
+            val clr = (if obj.pub.over => COLORS.hover => COLORS.idle)
             val r = rect ++ [
                 w = rect.w * spring.pub.scale,
                 h = rect.h * spring.pub.scale,
@@ -139,42 +123,27 @@ task RichTextButton(id, target, rect, text) {
         anchor = "C"
     ]
 
-    var over = pico.vs.rect.pos(fullRect, pico.get.mouse("%"))
+    pin obj = spawn Object(id, fullRect, target+1)
     pin spring = spawn Spring(1.3)
 
     par {
-        ;; Hover events
-        val tags = [ @(true)=:Button.over.on, @(false)=:Button.over.off ]
-        loop e on :mouse.motion {
-            val o = pico.vs.pos.rect(e, fullRect)
-            if o != over {
-                set over = o
-                emit @(target) [tag=tags@over, id=id]
-            }
-        }
-    } with {
-        ;; Click events
-        val tags = [ 
-            @(:mouse.button.dn) = :Button.click.dn, 
-            @(:mouse.button.up) = :Button.click.up 
-        ]
-        loop e on :mouse.button until over && it.left {
-            pico.output.sound(SOUNDS.pop)
-            emit @(target) [tag=tags@(e.tag), id=id]
-        }
-    } with {
         ;; Hover spring
         loop {
-            if over {
+            if obj.pub.over {
                 emit @spring :start
                 pico.output.sound(SOUNDS.hover)
             }
-            await :Button.over.on [id=id]
+            await :o.over.on [id=id]
+        }
+    } with {
+        ;; pop on click; consumers react to :o.click.dn [id=id]
+        loop on :o.click.dn [id=id] {
+            pico.output.sound(SOUNDS.pop)
         }
     } with {
         ;; Drawing
         loop on :draw {
-            val clr = (if over => COLORS.hover => COLORS.idle)
+            val clr = (if obj.pub.over => COLORS.hover => COLORS.idle)
             val r = fullRect ++ [
                 w = fullRect.w * spring.pub.scale,
                 h = fullRect.h * spring.pub.scale,
@@ -187,7 +156,7 @@ task RichTextButton(id, target, rect, text) {
             loop i, run in runs {
                 val pos = positions@i
                 pico.set.pencil [
-                    color = (if over => clr.fg => run.color),
+                    color = (if obj.pub.over => clr.fg => run.color),
                     font = FONT
                 ]
                 pico.output.draw.text(run.text, [ "%",
