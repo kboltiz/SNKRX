@@ -2,6 +2,34 @@ val Spring = require "spring"
 
 val PAD = 0.01  ;; padding for buttons
 
+task XHoverable(id, rect) {
+    var over = pico.vs.rect.pos(rect, pico.get.mouse("%"))
+    pin spring = spawn Spring(1.3)
+
+    set pub = [ hovered=over, scale=spring.pub.scale ]
+
+    par {
+        loop on :clock {
+            set pub.scale = spring.pub.scale
+        }
+    } with {
+        loop e on :mouse.motion {
+            val o = pico.vs.pos.rect(e, rect)
+            if o != over {
+                set over = o
+                set pub.hovered = over
+                if over {
+                    emit @spring :start
+                    pico.output.sound(SOUNDS.hover)
+                }
+            }
+        }
+    } with {
+        if over { emit @spring :start }
+        await(false)
+    }
+}
+
 task Hoverable(id, rect) {
 
     ;; creating button layer
@@ -59,21 +87,16 @@ task Hoverable(id, rect) {
 task Button (id, target, rect, text) {
     pico.get.text(rect, text)
 
-    var over = pico.vs.rect.pos(rect, pico.get.mouse('%'))
+    var over = false
 
-    pin spring = spawn Spring(1.3)
+    pin hov = spawn Hoverable(id, rect)
 
     par {
-        ;; :Button.over.[on|off]
-        val tags = [
-            @(true)  = :Button.over.on,
-            @(false) = :Button.over.off,
-        ]
-        loop e on :mouse.motion {
-            val o = pico.vs.pos.rect(e, rect)
-            if o != over {
-                set over = o
-                emit @(target) [tag=tags@over, id=id]
+        loop on :clock {
+            ;; hovering handled by Hoverable
+            if hov.pub.hovered != over {
+                set over = hov.pub.hovered
+                emit @(target) [tag=(over && :Button.over.on) || :Button.over.off, id=id]
             }
         }
     } with {
@@ -87,20 +110,11 @@ task Button (id, target, rect, text) {
             emit @(target) [tag=tags@(e.tag), id=id]
         }
     } with {
-        ;; Spring
-        loop {
-            if over {   ;; may already start over
-                emit @spring :start
-                pico.output.sound(SOUNDS.hover)
-            }
-            await :Button.over.on [id=id]
-        }
-    } with {
         loop on :draw {
             val clr = (if over => COLORS.hover => COLORS.idle)
             val r = rect ++ [
-                w = rect.w * spring.pub.scale,
-                h = rect.h * spring.pub.scale,
+                w = rect.w * hov.pub.scale,
+                h = rect.h * hov.pub.scale,
             ]
 
             pico.set.pencil [ color=clr.bg ]
