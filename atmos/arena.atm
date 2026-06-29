@@ -116,6 +116,9 @@ val task ShopCard(id, x, y, character) {
             await(false)
         }
     }
+    
+	;; play sound on click
+	pico.output.sound(SOUNDS.pop)
 
     return(id)
 }
