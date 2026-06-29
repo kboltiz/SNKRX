@@ -1,43 +1,160 @@
 var RunData = [
+    Level = 1,
     Gold = 0,
     Rerolls = 3,
 ]
 
 val PAD = 0.03
 
-val task CharacterIcon(id, rect, character, number, showName) {
-    val charColorGroup = CHARACTER_COLORS@character
+val POPUP_PAD = 0.1
+val LINE_H = 0.04
+
+task Popup(lines) {
+    val parsed = []
+    var maxWidth = 0
+
+    loop i, line in lines {
+        val runs = ParseRichText(line)
+        val positions, width = MeasureRuns(runs, LINE_H)
+        set parsed@i = [ runs=runs, positions=positions, width=width ]
+        if width > maxWidth {
+            set maxWidth = width
+        }
+    }
+
+    val totalHeight = #lines * LINE_H
+
+    ;; calculate full rect to cover
+    val fullRect = [ "%",
+        x = 0.5, y = 0.5,
+        w = maxWidth / (1 - POPUP_PAD),
+        h = totalHeight / (1 - POPUP_PAD),
+        anchor = "C"
+    ]
+
+    pin spring = spawn Spring(1.1)
+    emit @spring :start
+
+    ;; TODO: popup layer may be required to draw it on top
+    loop on :draw {
+        val r = fullRect ++ [
+            w = fullRect.w * spring.pub.scale,
+            h = fullRect.h * spring.pub.scale,
+        ]
+
+        pico.set.pencil [ color=COLORS.idle.bg ]
+        pico.output.draw.rect(r)
+
+        val blockTop = r.y - ((totalHeight * spring.pub.scale) / 2)
+
+        loop i, entry in parsed {
+            val rowY = blockTop + (((i - 1) + 0.5) * LINE_H * spring.pub.scale)
+            val rowStart = r.x - ((entry.width * spring.pub.scale) / 2)
+
+            loop ri, run in entry.runs {
+                val pos = entry.positions@ri
+                pico.set.pencil [ color=run.color, font=FONT ]
+                pico.output.draw.text(run.text, [ "%",
+                    x = rowStart + ((pos.start + (pos.width / 2)) * spring.pub.scale),
+                    y = rowY,
+                    h = LINE_H * (1 - POPUP_PAD) * spring.pub.scale,
+                    anchor = "C"
+                ])
+            }
+        }
+    }
+
+    await(false)
+}
+
+val task CharacterIcon(id, rect, worldRect, character, number, showName) {
+    val charColorGroup = CHARACTERS@character@("color")
     val charColors = COLORS@charColorGroup
 
-    loop on :draw {
-        pico.set.layer(id)
+    ;; larger hover box for popup detection
+    val hoverRect = [ 
+        "%", x=worldRect.x, y=worldRect.y,
+        h=worldRect.h * 2, w=worldRect.w * 2,
+        anchor=worldRect.anchor
+    ]
 
-        pico.set.pencil [ color=charColors.base ]
-        pico.output.draw.rect(rect)
+    var over = pico.vs.rect.pos(
+        hoverRect, pico.get.mouse("%")
+    )
 
-        ;; icon number centered inside square
-        pico.set.pencil [ color=charColors.text, font=FONT ]
-        pico.output.draw.text(tostring(number), [
-            "%", x=rect.x, y=rect.y,
-            h=rect.h * 0.9,
-            anchor="C"
-        ])
+    par {
+        loop e on :mouse.motion {
+            val o = pico.vs.pos.rect(e, hoverRect)
+            if o != over {
+                set over = o
+            }
+        }
+    } with {
+        loop on :draw {
+            pico.set.layer(id)
 
-        if showName {
-            pico.set.pencil [ color=charColors.base, font=FONT ]
-            pico.output.draw.text(character, [
-                "%", x=rect.x, y=(rect.y + rect.h),
+            pico.set.pencil [ color=charColors.base ]
+            pico.output.draw.rect(rect)
+
+            pico.set.pencil [ color=charColors.text, font=FONT ]
+            pico.output.draw.text(tostring(number), [
+                "%", x=rect.x, y=rect.y,
                 h=rect.h * 0.9,
                 anchor="C"
             ])
+
+            if showName {
+                pico.set.pencil [ color=charColors.base, font=FONT ]
+                pico.output.draw.text(character, [
+                    "%", x=rect.x, y=(rect.y + rect.h),
+                    h=rect.h * 0.9,
+                    anchor="C"
+                ])
+            }
+
+            pico.set.layer(:world)
+        }
+    } with {
+        ;; TODO, cost calculation of unit
+        val cost = 0;
+        val isLevel3 = RunData.Level == 3
+            
+        val headerColor = if isLevel3 => "yellow" => "hover"
+        val labelColor = if isLevel3 => "idle" => "hover"
+
+        val effectText = if isLevel3 
+            => CHARACTERS@character@("effect_description") 
+            => "[hover]" ++ CHARACTERS@character@("effect_description")
+
+        val classList = CHARACTERS@character@("classes")
+        var formattedClasses = []
+        
+        loop i, c in classList {
+            val classColor = if CLASSES@(c)@("color") != nil => CLASSES@(c)@("color") => "idle"
+            set formattedClasses = formattedClasses ++ ["[" ++ classColor ++ "]" ++ c]
         }
 
-        pico.set.layer(:world)
+        val classesString = table.concat(formattedClasses, "[idle], ")
+        
+        loop {
+            await(:mouse.motion until over)
+            watching :mouse.motion until !over {
+                val popupText = [
+                    "[" ++ CHARACTERS@character@("color") ++ "]" ++ CHARACTERS@character@("name") ++ "[idle] - cost: [gold]" ++ cost,
+                    "[idle]Classes: " ++ classesString,
+                    CHARACTERS@character@("description"),
+                    "[" ++ headerColor ++ "]Lv.3 [" ++ labelColor ++ "]Effect - " ++ CHARACTERS@character@("effect_name"),
+                    effectText
+                ]
+
+                await Popup(popupText)
+            }
+        }
     }
 }
 
 val task ClassBanners(id, rect, character) {
-    val charClasses = CHARACTER_CLASSES@character
+    val charClasses = CHARACTERS@character@("classes")
     val charClassesCount = #charClasses
     val cardAspectRatio = rect.w / rect.h
 
@@ -122,9 +239,17 @@ val task ShopCard(id, x, y, character) {
             }
         } with {
             ;; changed constructor to reuse in partyColumn
-            spawn CharacterIcon(id, rect, character, 1, true) where {
-                rect = ["%", x=0.5, y=0.2, h=(0.2 * cardAspectRatio * ASPECT_RATIO), w=0.2, anchor="C"]
-            }
+            spawn CharacterIcon(
+                id,
+                ["%", x=0.5, y=0.2, h=(0.2 * cardAspectRatio * ASPECT_RATIO), w=0.2, anchor="C"],
+                rect ++ [
+                    x = rect.x,
+                    y = rect.y - (0.3 * rect.h),
+                    h = 0.2 * cardAspectRatio * ASPECT_RATIO * rect.h,
+                    w = 0.2 * rect.w,
+                ],
+                character, 1, true
+            )
             spawn ClassBanners(id, rect, character)
 
             await(false)

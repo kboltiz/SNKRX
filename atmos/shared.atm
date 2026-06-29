@@ -29,17 +29,35 @@ set COLORS = [
         base = [ "%", r=0.98, g=0.81, b=0.00 ],
         text = [ "%", r=0.72, g=0.60, b=0.0 ]
     ],
+    red = [
+        base = [ "%", r=0.91, g=0.11, b=0.22 ],
+        text = [ "%", r=0.91, g=0.11, b=0.22 ]
+    ],
 ]
 
-;; Character to color
-set CHARACTER_COLORS = [
-    swordsman = "yellow",
-    wizard = "blue",
+set CLASSES = [
+	warrior = [color = "yellow"],
+	mage = [color = "blue"],
+	nuker = [color = "red"]
 ]
 
-set CHARACTER_CLASSES = [
-    swordsman = ["warrior"],
-    wizard = ["mage", "nuker"]
+set CHARACTERS = [
+    swordsman = [
+        name = "Swordsman",
+        color = "yellow",
+        classes = ["warrior"],
+        description = "deals [yellow]10[idle] damage in an area, deals extra [yellow]1.65[idle] damage per unit hit",
+        effect_name = "Cleave",
+        effect_description = "the swordsman's damage is doubled"
+    ],
+    wizard = [
+        name = "Wizard",
+        color = "blue",
+        classes = ["mage", "nuker"],
+        description = "shoots a projectile that deals [yellow]15 AoE[idle] damage",
+        effect_name = "Magic Missile",
+        effect_description = "the projectile chains 2 times"
+    ]
 ]
 
 set CLASS_ICON_ASPECT_RATIO = 3/2;
@@ -50,4 +68,5 @@ set TEXT_TAGS = [
     gold = COLORS.gold,
     yellow = COLORS.yellow.base,
     blue = COLORS.blue.base,
+    red = COLORS.red.base
 ]
