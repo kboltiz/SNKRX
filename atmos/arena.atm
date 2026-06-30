@@ -78,18 +78,10 @@ val task CharacterIcon(id, rect, worldRect, character, number, showName) {
         anchor=worldRect.anchor
     ]
 
-    var over = pico.vs.rect.pos(
-        hoverRect, pico.get.mouse("%")
-    )
+    val iconId = id ++ "_icon"
+    pin obj = spawn Object(iconId, hoverRect, 1)
 
     par {
-        loop e on :mouse.motion {
-            val o = pico.vs.pos.rect(e, hoverRect)
-            if o != over {
-                set over = o
-            }
-        }
-    } with {
         loop on :draw {
             pico.set.layer(id)
 
@@ -137,8 +129,8 @@ val task CharacterIcon(id, rect, worldRect, character, number, showName) {
         val classesString = table.concat(formattedClasses, "[idle], ")
         
         loop {
-            await(:mouse.motion until over)
-            watching :mouse.motion until !over {
+            await :o.over.on [id=iconId]
+            watching :o.over.off [id=iconId] {
                 val popupText = [
                     "[" ++ CHARACTERS@character@("color") ++ "]" ++ CHARACTERS@character@("name") ++ "[idle] - cost: [gold]" ++ cost,
                     "[idle]Classes: " ++ classesString,
@@ -203,24 +195,21 @@ val task ShopCard(id, x, y, character) {
         pico.set.layer(:world)
     }
 
-    var over = pico.vs.rect.pos(rect, pico.get.mouse("%"))
+    pin obj = spawn Object(id, rect, 1)
     pin spring = spawn Spring(1.3)
 
-    watching :mouse.button.dn until (over && it.left) {
+    watching :o.click.dn [id=id] {
         par {
-            loop e on :mouse.motion {
-                val o = pico.vs.pos.rect(e, rect)
-                if o != over {
-                    set over = o
-                    if over {
-                        emit @spring :start
-                        pico.output.sound(SOUNDS.hover)
-                    }
+            loop {
+                if obj.pub.over {
+                    emit @spring :start
+                    pico.output.sound(SOUNDS.hover)
                 }
+                await :o.over.on [id=id]
             }
         } with {
             loop on :draw {
-                val c = (over && pico.color.alpha(COLORS.hover.bg, 15)) || COLORS.empty
+                val c = (obj.pub.over && pico.color.alpha(COLORS.hover.bg, 15)) || COLORS.empty
 
                 pico.set.layer(id)
 
