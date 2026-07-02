@@ -148,30 +148,56 @@ val task CharacterIcon(id, rect, worldRect, character, number, showName) {
 
 val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
     set pub = [ slot = index ]
+    val cellId = :party_column_ ++ index
+
+    val rect = ["%",
+        x=0.5, y=pub.slot * slotHeight,
+        w=0.03, h=0.03 * ASPECT_RATIO * (layerRect.w / layerRect.h),
+        anchor="C"
+    ]
+
+    val worldRect = [ "%",
+        x = (layerRect.x - (layerRect.w / 2)) + (rect.x * layerRect.w),
+        y = layerRect.y + (rect.y * layerRect.h),
+        w = rect.w * layerRect.w,
+        h = rect.h * layerRect.h,
+        anchor = "C"
+    ]
+
+    pin obj = spawn Object(cellId, worldRect, 1)
 
     par {
         loop {
-            val rect = ["%",
-                x=0.5, y=pub.slot * slotHeight,
-                w=0.03, h=0.03 * ASPECT_RATIO * (layerRect.w / layerRect.h),
-                anchor="C"
-            ]
-
-            val worldRect = [ "%",
-                x = (layerRect.x - (layerRect.w / 2)) + (rect.x * layerRect.w),
-                y = layerRect.y + (rect.y * layerRect.h),
-                w = rect.w * layerRect.w,
-                h = rect.h * layerRect.h,
-                anchor = "C"
-            ]
+            set rect.y = pub.slot * slotHeight
+            set worldRect.x = (layerRect.x - (layerRect.w / 2)) + (rect.x * layerRect.w)
+            set worldRect.y = layerRect.y + (rect.y * layerRect.h)
 
             spawn CharacterIcon(:party_column, rect, worldRect, character, 1, false)
 
             await(:slot_changed)
         }
     } with {
-        ;; TODO: drag input
-        
+        var m = ["%", x=0, y=0]
+    
+        loop on :o.click.dn [id=cellId] {                
+            await :mouse.button.up
+
+            val mouse = pico.get.mouse(m)
+            val localY = (mouse.y - layerRect.y) / layerRect.h
+            var targetSlot = math.floor((localY / slotHeight) + 0.5)
+            set targetSlot = math.min(targetSlot, #(RunData.Party))
+            set targetSlot = math.max(targetSlot, 1)
+            
+            print("Moved "++pub.slot++" To "++targetSlot)
+            
+            if targetSlot != pub.slot {
+                
+                emit @(:global) (:reorder [from=pub.slot, to=targetSlot])
+                
+                set pub.slot = targetSlot
+            }
+ 
+        }
     } with {
         loop {
             val r = await(:reorder)
