@@ -2,6 +2,7 @@ var RunData = [
     Level = 1,
     Gold = 0,
     Rerolls = 3,
+    Party = ["swordsman", "wizard", "swordsman", "wizard"]
 ]
 
 val PAD = 0.03
@@ -74,7 +75,7 @@ val task CharacterIcon(id, rect, worldRect, character, number, showName) {
     ;; larger hover box for popup detection
     val hoverRect = [ 
         "%", x=worldRect.x, y=worldRect.y,
-        h=worldRect.h * 2, w=worldRect.w * 2,
+        h=worldRect.h * 1.2, w=worldRect.w * 1.2,
         anchor=worldRect.anchor
     ]
 
@@ -140,6 +141,51 @@ val task CharacterIcon(id, rect, worldRect, character, number, showName) {
                 ]
 
                 await Popup(popupText)
+            }
+        }
+    }
+}
+
+val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
+    set pub = [ slot = index ]
+
+    par {
+        loop {
+            val rect = ["%",
+                x=0.5, y=pub.slot * slotHeight,
+                w=0.03, h=0.03 * ASPECT_RATIO * (layerRect.w / layerRect.h),
+                anchor="C"
+            ]
+
+            val worldRect = [ "%",
+                x = (layerRect.x - (layerRect.w / 2)) + (rect.x * layerRect.w),
+                y = layerRect.y + (rect.y * layerRect.h),
+                w = rect.w * layerRect.w,
+                h = rect.h * layerRect.h,
+                anchor = "C"
+            ]
+
+            spawn CharacterIcon(:party_column, rect, worldRect, character, 1, false)
+
+            await(:slot_changed)
+        }
+    } with {
+        ;; TODO: drag input
+        
+    } with {
+        loop {
+            val r = await(:reorder)
+
+            val newSlot = ifs {
+                r.from == pub.slot => r.to
+                (r.to <= pub.slot) && (pub.slot < r.from) => pub.slot + 1
+                (r.from < pub.slot) && (pub.slot <= r.to) => pub.slot - 1
+                else => pub.slot
+            }
+
+            if newSlot != pub.slot {
+                set pub = [ slot = newSlot ]
+                emit(:slot_changed)
             }
         }
     }
@@ -274,8 +320,6 @@ val task BuyScreen() {
     spawn {
         loop {
             watching(:roll_cards) {
-                print("Render "++RunData.Rerolls)
-                
                 ;; clears out on every click
                 spawn RichTextButton(
                     :reroll,
@@ -304,6 +348,25 @@ val task BuyScreen() {
             }
             
             await (:roll_cards)
+        }
+    }
+    
+    spawn {
+        loop {
+            pico.push()
+            defer { pico.pop() }
+            
+            pin pt = tasks()
+            
+            val columnLayerRect = ["%", x=0.95, y=0.1, w=1, h=0.8, anchor="N"]
+            val colAspectRatio = columnLayerRect.w/columnLayerRect.h
+            
+            pico.layer.empty(:world, :party_column, false, columnLayerRect)
+            
+            loop i, character in RunData.Party {
+                spawn @pt PartyColumnCell(i, columnLayerRect, character, 0.08, pt)
+            }
+            await(false)
         }
     }
 
