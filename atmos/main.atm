@@ -11,12 +11,9 @@ pico.set.window [ title="SNKRX Menu" ]
 pico.set.dim [ '!', w=W, h=H ]
 
 loop {
-    pico.push()
     val id = await Menu()
-    pico.pop() ;; cleans up menu buttons on transitions
-
     match id {
-        :arena => await Arena()
+        :arena => await Transition(Arena)
         :quit  => break()
     }
 }
