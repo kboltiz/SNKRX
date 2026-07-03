@@ -17,6 +17,7 @@ likely apply to other games:
 2. Continuation Passing:
     The completion of a long-lasting activity may carry a continuation, i.e.,
     some action to execute next.
+    How: awaits of long-lasting tasks in sequence.
 3. Dispatching Hierarchies:
     Entities typically form a dispatching hierarchy in which a container that
     receives a stimulus automatically forwards it to its managed children.
@@ -26,6 +27,10 @@ likely apply to other games:
 5. Signaling Mechanisms:
     Entities often need to communicate explicitly through signaling mechanisms,
     especially if there is no hierarchy relationship between them.
+    TODO: need to rephrase this pattern ("especially...", wrong)
+6. TODO : Pausing
+    This pattern is emerging in many projects I'm working on.
+    Need to document it.
 
 ;;;
 
@@ -35,7 +40,7 @@ val Arena = require "arena"
 pico.set.window [ title="SNKRX Menu" ]
 pico.set.dim [ '!', w=W, h=H ]
 
-;; PATTERN #2 : Continuation Passing
+;; PATTERN #2 : Continuation Passing : main game loop
 ;;  - completion of long-lasting Menu activates Arena
 ;;  - completion of Arena re-activates the Menu in a loop
 
