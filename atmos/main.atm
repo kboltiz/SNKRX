@@ -47,10 +47,11 @@ pico.set.dim [ '!', w=W, h=H ]
 ;;  - completion of long-lasting Menu activates Arena
 ;;  - completion of Arena re-activates the Menu in a loop
 
+var id = await Menu()
 loop {
-    val id = await Menu()
     match id {
         :menu.arena => await Transition("starting...", [x=0.5,y=0.5], Arena)
         :menu.quit  => break()
     }
+    set id = await Transition("..", [x=0.5,y=0.5], Menu)
 }
