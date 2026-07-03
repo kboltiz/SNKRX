@@ -48,6 +48,10 @@ task Button (id, target, rect, text) {
     }
 }
 
+;;;
+;; TODO : fsantanna : unreviewed
+;;;
+
 func ParseRichText(text) {
     var runs = []
     var currentColor = COLORS.idle.fg
