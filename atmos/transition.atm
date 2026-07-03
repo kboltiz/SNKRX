@@ -1,7 +1,16 @@
 val SPEED = 5/1s
 val OUT_DELAY = 1s
 
-task Transition (Next, ...) {
+;; so the circle covers the entire screen at peak
+func cover_radius (x, y) {
+    val d1 = math.sqrt((x*x) + (y*y))
+    val d2 = math.sqrt(((1-x)*(1-x)) + (y*y))
+    val d3 = math.sqrt((x*x) + ((1-y)*(1-y)))
+    val d4 = math.sqrt(((1-x)*(1-x)) + ((1-y)*(1-y)))
+    math.max(d1, d2, d3, d4) + 0.1
+}
+
+task Transition (pos, Next, ...) {
     val args = [ ... ]
     pico.push()
     defer {
@@ -47,13 +56,13 @@ task Transition (Next, ...) {
         watching :3 {
             par {
                 ;; draw oval with current pct
-                val sqrt = math.sqrt(2)
+                val cover = cover_radius(pos.x, pos.y)
                 loop on :draw {
                     pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
                     pico.output.draw.oval [
-                        "%", x=0.5, y=0.5,
-                        w = pct * sqrt,
-                        h = pct * sqrt * ASPECT_RATIO,
+                        "%", x=pos.x, y=pos.y,
+                        w = pct * cover * 2,
+                        h = pct * cover * 2 * ASPECT_RATIO,
                     ]
                 }
             } with {

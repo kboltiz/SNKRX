@@ -362,7 +362,7 @@ task Arena() {
     loop {
         val ok = await BuyScreen()
         while(ok)
-        await Transition(Battle)
+        await Transition([x=0.9,y=0.9], Battle)
     }
 }
 
