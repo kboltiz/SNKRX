@@ -1,8 +1,8 @@
-var RunData = [
-    Level = 1,
-    Gold = 0,
-    Rerolls = 3,
-    Party = ["swordsman", "wizard", "swordsman", "wizard"]
+val G = [
+    gold    = 0,
+    level   = 1,
+    party   = ["swordsman", "wizard", "swordsman", "wizard"],
+    rerolls = 3,
 ]
 
 val PAD = 0.03
@@ -185,7 +185,7 @@ val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
             val mouse = pico.get.mouse(m)
             val localY = (mouse.y - layerRect.y) / layerRect.h
             var targetSlot = math.floor((localY / slotHeight) + 0.5)
-            set targetSlot = math.min(targetSlot, #(RunData.Party))
+            set targetSlot = math.min(targetSlot, #(G.party))
             set targetSlot = math.max(targetSlot, 1)
             
             print("Moved "++pub.slot++" To "++targetSlot)
@@ -389,7 +389,7 @@ val task BuyScreen() {
             
             pico.layer.empty(:world, :party_column, false, columnLayerRect)
             
-            loop i, character in RunData.Party {
+            loop i, character in G.party {
                 spawn @pt PartyColumnCell(i, columnLayerRect, character, 0.08, pt)
             }
             await(false)
