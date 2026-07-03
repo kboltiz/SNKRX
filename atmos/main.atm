@@ -47,7 +47,7 @@ pico.set.dim [ '!', w=W, h=H ]
 loop {
     val id = await Menu()
     match id {
-        :arena => await Transition(Arena)
-        :quit  => break()
+        :menu.arena => await Transition(Arena)
+        :menu.quit  => break()
     }
 }
