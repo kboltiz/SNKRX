@@ -317,51 +317,34 @@ val func roll_cards () {
     ])
 }
 
-val task BuyScreen() {    
-    pin ui = tasks()
-
-    spawn @ui Button(:go_battle, 3, rect, "Go!") where {
+val task BuyScreen () {
+    spawn Button(:go, 2, rect, "Go!") where {
         rect = ["%", x=0.88, y=0.9, h=0.1]
     }
-    
+
     ;;spawn @ui RerollButton(:reroll, 3, rect) where {
     ;;    rect = ["%", x=0.28, y=0.06, h=0.07]
     ;;}
-    
-    spawn {
-        loop {
-            watching(:roll_cards) {
-                ;; clears out on every click
-                spawn RichTextButton(
-                    :reroll,
-                    3,
-                    ["%", x=0.28, y=0.06, h=0.07, anchor="C"],
-                    "[idle]Rerolls: [gold]" ++ RunData.Rerolls
-                )
-
-                await :o.click.dn [id=id]
-            }
-        }
-    }
 
     spawn {
         loop {
-            pico.push()
-            defer { pico.pop() }
-            
-            ;; separate pin for shop cards
-            pin ct = tasks()
-            
-            val cards = RollShopCards()
-
-            loop i, character in cards {
-                spawn @ct ShopCard(:shop_card_ ++ i, i * 0.16, 0.3, character)
+            spawn RichTextButton(:reroll, 1, rct, lbl) where {
+                rct = ["%", x=0.28, y=0.06, h=0.07]
+                lbl = "[idle]Rerolls: [gold]" ++ G.rerolls
             }
-            
-            await (:roll_cards)
+
+            pin cs = tasks()
+            loop i, character in roll_cards() {
+                spawn @cs Card(:card_ ++ i, i * 0.16, 0.3, character)
+            }
+
+            await :o.click.dn [id=:reroll] until (G.rerolls > 0)
+            set G.rerolls = (G.rerolls - 1)
         }
     }
-    
+
+    await :o.click.dn [id=:go]
+
     spawn {
         loop {
             pico.push()
@@ -378,20 +361,6 @@ val task BuyScreen() {
                 spawn @pt PartyColumnCell(i, columnLayerRect, character, 0.08, pt)
             }
             await(false)
-        }
-    }
-
-    loop b on :o.click.dn {
-        match b.id {
-            :go_battle =>
-                break()
-
-            :reroll => {
-                if RunData.Rerolls > 0 {
-                    set RunData.Rerolls = (RunData.Rerolls - 1)
-                    emit(:roll_cards)
-                }
-            }
         }
     }
 }
