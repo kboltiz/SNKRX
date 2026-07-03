@@ -203,38 +203,33 @@ val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
     }
 }
 
-val task ClassBanners(id, rect, character) {
-    val charClasses = CHARACTERS@character@("classes")
+val func class_banners (id, rect, character) {
+    val charClasses = CHARACTERS@character.classes
     val charClassesCount = #charClasses
     val cardAspectRatio = rect.w / rect.h
 
-    loop on :draw {
-        pico.set.layer(id)
+    pico.set.layer(id)
 
-        ;; TODO: color the class icon to COLORS.hover.fg
-        loop i, class in charClasses {
-            ;; center + (divided_x * spacing)
-            val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
+    ;; TODO: color the class icon to COLORS.hover.fg
+    loop i, class in charClasses {
+        ;; center + (divided_x * spacing)
+        val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
 
-            pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
-            pico.output.draw.rect([
-                "%", x=x, y=0.56,
-                w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
-            ])
+        pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
+        pico.output.draw.rect([
+            "%", x=x, y=0.56,
+            w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
+        ])
 
-            pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
-            pico.output.draw.image(
-                "../assets/images/" ++ class ++ ".png",
-                [
-                    "%", x=x, y=0.56,
-                    w=0.17,
-                    h=0.17 * CLASS_ICON_ASPECT_RATIO * cardAspectRatio * ASPECT_RATIO,
-                ]
-            )
-        }
-
-        pico.set.layer(:world)
+        pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
+        pico.output.draw.image("../assets/images/" ++ class ++ ".png") <- [
+            "%", x=x, y=0.56,
+            w=0.17,
+            h=0.17 * CLASS_ICON_ASPECT_RATIO * cardAspectRatio * ASPECT_RATIO,
+        ]
     }
+
+    pico.set.layer(:world)
 }
 
 val task Card (id, x, y, character) {
@@ -268,6 +263,7 @@ val task Card (id, x, y, character) {
             w = 0.2 * rct.w,
         ]
     }
+    class_banners(id, rct, character)
 
     spawn {
         loop {
