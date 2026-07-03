@@ -1,25 +1,18 @@
-;; Object: invisible hit-region over `rect`. Exposes its rect + live
-;; pointer/button state via `pub`, and emits transitions carrying
-;; [id=id, obj=pub] to `target` (a level count) or, if omitted, the
-;; parent. Consumers filter by `id` (e.g. `await :o.* [id=me]`).
-;;
-;;   pub.id                    - the caller id, echoed on every event
-;;   pub.rect                  - the geometry (read-only)
-;;   pub.over                  - bool, pointer is over the rect
-;;   pub.left/right/middle     - mirrored mouse buttons (valid while over)
-;;
-;; Events:  :o.over.on / :o.over.off   on enter / leave
-;;          :o.click.dn / :o.click.up  on press / release while over
+;; PATTERN #1 : Finite State Machines : over,left,right,middle
+;;  - awaits in loop bookkeep internal state
+;; PATTERN #5 : Signaling Mechanisms : Object -> target
+;;  - object signals :over,:click to target listeners
+
 task Object (id, rect, target) {
     val tgt = target || :parent
 
     ;; pub = the object: its rect + state, derived from the pointer
     val m = pico.get.mouse('%')
     set pub = [
-        id     = id,
-        rect   = rect,
-        over   = over,
-        left   = over && m.left,
+        id     = id,                ;; external id replicated in emits
+        rect   = rect,              ;; internal geometry
+        over   = over,              ;; if mouse over rect
+        left   = over && m.left,    ;; if mouse clicked over rect
         right  = over && m.right,
         middle = over && m.middle,
     ] where {

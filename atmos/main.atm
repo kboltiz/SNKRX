@@ -14,6 +14,7 @@ likely apply to other games:
 1. Finite State Machines:
     State machines describe the behavior of entities by mapping event
     occurrences to transitions between states that trigger appropriate actions.
+    How: mixed awaits in sequence or parallel.
 2. Continuation Passing:
     The completion of a long-lasting activity may carry a continuation, i.e.,
     some action to execute next.
@@ -21,14 +22,16 @@ likely apply to other games:
 3. Dispatching Hierarchies:
     Entities typically form a dispatching hierarchy in which a container that
     receives a stimulus automatically forwards it to its managed children.
+    How: nested spawns in tasks and blocks.
 4. Lifespan Hierarchies:
     Entities typically form a lifespan hierarchy in which a terminating
     container entity automatically destroys its managed children.
+    How: nested spawns in tasks and blocks.
 5. Signaling Mechanisms:
-    Entities often need to communicate explicitly through signaling mechanisms,
-    especially if there is no hierarchy relationship between them.
-    TODO: need to rephrase this pattern ("especially...", wrong)
-6. TODO : Pausing
+    Entities often need to signal  changes that affect each other.
+    How: paired emit/await of tagged events.
+6. Pausing:
+    TODO
     This pattern is emerging in many projects I'm working on.
     Need to document it.
 
