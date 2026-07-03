@@ -322,6 +322,7 @@ val task BuyScreen () {
         false
     }
 
+;;;
     spawn {
         loop {
             pico.push()
@@ -340,6 +341,7 @@ val task BuyScreen () {
             await(false)
         }
     }
+;;;
 }
 
 task Battle() {
