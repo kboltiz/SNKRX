@@ -10,7 +10,7 @@ func cover_radius (x, y) {
     math.max(d1, d2, d3, d4) + 0.1
 }
 
-task Transition (pos, Next, ...) {
+task Transition (msg, pos, Next, ...) {
     val args = [ ... ]
     pico.push()
     defer {
@@ -68,10 +68,7 @@ task Transition (pos, Next, ...) {
             } with {
                 loop on :draw {
                     pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
-                    pico.output.draw.text("Loading...", [
-                        "%", x=0.5, y=0.5,
-                        h=0.05, anchor="C"
-                    ])
+                    pico.output.draw.text(msg, ["%", x=0.5, y=0.5, h=0.05])
                 }
             }
         }
