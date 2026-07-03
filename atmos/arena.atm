@@ -30,7 +30,6 @@ task Popup(lines) {
         x = 0.5, y = 0.5,
         w = maxWidth / (1 - POPUP_PAD),
         h = totalHeight / (1 - POPUP_PAD),
-        anchor = "C"
     ]
 
     pin spring = spawn Spring(1.1)
@@ -59,7 +58,6 @@ task Popup(lines) {
                     x = rowStart + ((pos.start + (pos.width / 2)) * spring.pub.scale),
                     y = rowY,
                     h = LINE_H * (1 - POPUP_PAD) * spring.pub.scale,
-                    anchor = "C"
                 ])
             }
         }
@@ -153,7 +151,6 @@ val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
     val rect = ["%",
         x=0.5, y=pub.slot * slotHeight,
         w=0.03, h=0.03 * ASPECT_RATIO * (layerRect.w / layerRect.h),
-        anchor="C"
     ]
 
     val worldRect = [ "%",
@@ -161,7 +158,6 @@ val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
         y = layerRect.y + (rect.y * layerRect.h),
         w = rect.w * layerRect.w,
         h = rect.h * layerRect.h,
-        anchor = "C"
     ]
 
     pin obj = spawn Object(cellId, worldRect, 1)
@@ -234,7 +230,6 @@ val task ClassBanners(id, rect, character) {
             pico.output.draw.rect([
                 "%", x=x, y=0.56,
                 w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
-                anchor="C"
             ])
 
             pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
@@ -244,7 +239,6 @@ val task ClassBanners(id, rect, character) {
                     "%", x=x, y=0.56,
                     w=0.17,
                     h=0.17 * CLASS_ICON_ASPECT_RATIO * cardAspectRatio * ASPECT_RATIO,
-                    anchor="C"
                 ]
             )
         }
@@ -340,7 +334,7 @@ val task BuyScreen() {
     }
     
     ;;spawn @ui RerollButton(:reroll, 3, rect) where {
-    ;;    rect = ["%", x=0.28, y=0.06, h=0.07, anchor="C"]
+    ;;    rect = ["%", x=0.28, y=0.06, h=0.07]
     ;;}
     
     spawn {
@@ -421,7 +415,6 @@ task Battle() {
             pico.output.draw.rect([
                 "%", x=0.5, y=0.5,
                 w=(0.8), h=(0.4 * ASPECT_RATIO),
-                anchor="C"
             ])
         }
     }
