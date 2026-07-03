@@ -317,7 +317,7 @@ val task ShopCard(id, x, y, character) {
     return(id)
 }
 
-val func RollShopCards() {
+val func roll_cards () {
     ;; TODO: port tier_weights / weighted_pick from the Lua roll logic
     return([
         "swordsman",
