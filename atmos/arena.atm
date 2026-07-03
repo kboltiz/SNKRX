@@ -66,81 +66,72 @@ task Popup(lines) {
     await(false)
 }
 
-val task CharacterIcon(id, rect, worldRect, character, number, showName) {
-    val charColorGroup = CHARACTERS@character@("color")
+val task CharacterIcon (id, rect, world, character, number, showName) {
+    val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
 
     ;; larger hover box for popup detection
-    val hoverRect = [ 
-        "%", x=worldRect.x, y=worldRect.y,
-        h=worldRect.h * 1.2, w=worldRect.w * 1.2,
-        anchor=worldRect.anchor
+    val hover = [
+        "%", anchor=world.anchor,
+        x=world.x, y=world.y, h=world.h*1.2, w=world.w*1.2,
     ]
 
-    val iconId = id ++ "_icon"
-    pin obj = spawn Object(iconId, hoverRect, 1)
+    pin obj = spawn Object(nil, hover, 1)
 
-    par {
-        loop on :draw {
-            pico.set.layer(id)
+    do {
+        pico.set.layer(id)
 
-            pico.set.pencil [ color=charColors.base ]
-            pico.output.draw.rect(rect)
+        pico.set.pencil [ color=charColors.base ]
+        pico.output.draw.rect(rect)
 
-            pico.set.pencil [ color=charColors.text, font=FONT ]
-            pico.output.draw.text(tostring(number), [
-                "%", x=rect.x, y=rect.y,
-                h=rect.h * 0.9,
-                anchor="C"
-            ])
+        pico.set.pencil [ color=charColors.text, font=FONT ]
+        pico.output.draw.text(tostring(number)) <- [
+            "%", x=rect.x, y=rect.y, h=rect.h*0.9,
+        ]
 
-            if showName {
-                pico.set.pencil [ color=charColors.base, font=FONT ]
-                pico.output.draw.text(character, [
-                    "%", x=rect.x, y=(rect.y + rect.h),
-                    h=rect.h * 0.9,
-                    anchor="C"
-                ])
-            }
-
-            pico.set.layer(:world)
+        if showName {
+            pico.set.pencil [ color=charColors.base, font=FONT ]
+            pico.output.draw.text(character) <- [
+                "%", x=rect.x, y=(rect.y + rect.h), h=rect.h*0.9,
+            ]
         }
-    } with {
-        ;; TODO, cost calculation of unit
-        val cost = 0;
-        val isLevel3 = RunData.Level == 3
-            
-        val headerColor = if isLevel3 => "yellow" => "hover"
-        val labelColor = if isLevel3 => "idle" => "hover"
 
-        val effectText = if isLevel3 
-            => CHARACTERS@character@("effect_description") 
-            => "[hover]" ++ CHARACTERS@character@("effect_description")
+        pico.set.layer(:world)
+    }
 
-        val classList = CHARACTERS@character@("classes")
-        var formattedClasses = []
+    ;; TODO, cost calculation of unit
+    val cost = 0;
         
-        loop i, c in classList {
-            val classColor = if CLASSES@(c)@("color") != nil => CLASSES@(c)@("color") => "idle"
-            set formattedClasses = formattedClasses ++ ["[" ++ classColor ++ "]" ++ c]
-        }
+    val headerColor, labelColor, effectText =
+        if (G.level == 3)
+            => ("yellow", "idle",  CHARACTERS@character.effect_description)
+            => ("hover",  "hover", CHARACTERS@character.effect_description)
 
-        val classesString = table.concat(formattedClasses, "[idle], ")
-        
-        loop {
-            await :o.over.on [id=iconId]
-            watching :o.over.off [id=iconId] {
-                val popupText = [
-                    "[" ++ CHARACTERS@character@("color") ++ "]" ++ CHARACTERS@character@("name") ++ "[idle] - cost: [gold]" ++ cost,
-                    "[idle]Classes: " ++ classesString,
-                    CHARACTERS@character@("description"),
-                    "[" ++ headerColor ++ "]Lv.3 [" ++ labelColor ++ "]Effect - " ++ CHARACTERS@character@("effect_name"),
-                    effectText
-                ]
+    val classList = CHARACTERS@character.classes
+    var formattedClasses = []
 
-                await Popup(popupText)
-            }
-        }
+    loop i, c in classList {
+        val classColor = (
+            if (CLASSES@c.color == nil) => "idle" => CLASSES@c.color
+        )
+        set formattedClasses = formattedClasses ++ ["[" ++ classColor ++ "]" ++ c]
+    }
+
+    val popupText = [ s1, s2, s3, s4, s5 ] where {
+        s1 = "[" ++ CHARACTERS@character.color ++ "]" ++
+             CHARACTERS@character.name ++ "[idle] - cost: [gold]" ++ cost
+        s2 = "[idle]Classes: " ++ table.concat(formattedClasses, "[idle], ")
+        s3 = CHARACTERS@character.description
+        s4 = "[" ++ headerColor ++ "]" ++
+             "Lv.3 [" ++ labelColor ++ "]" ++
+             "Effect - " ++ CHARACTERS@character.effect_name
+        s5 = effectText
+    }
+
+    loop {
+        await :o.over.on [obj=obj.pub]
+        spawn Popup(popupText)
+        await :o.over.off [obj=obj.pub]
     }
 }
 
