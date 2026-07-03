@@ -6,7 +6,6 @@ val G = [
 ]
 
 val PAD = 0.03
-
 val POPUP_PAD = 0.1
 val LINE_H = 0.04
 
@@ -238,74 +237,51 @@ val task ClassBanners(id, rect, character) {
     }
 }
 
-val task ShopCard(id, x, y, character) {
-    val rect = ["%", x=x, y=y, h=0.2 * ASPECT_RATIO, w=0.16, anchor="C"]
-    val cardAspectRatio = rect.w / rect.h
+val task Card (id, x, y, character) {
+    val dim = [ "%", w=0.16, h=0.2*ASPECT_RATIO ]
+    val rat = dim.w / dim.h
+    val rct = [ "%", x=x, y=y, w=dim.w, h=dim.h ]
+    pin obj = spawn Object(id, rct, 1)
+    pin spr = spawn Spring(1.3)
 
-    ;; shop card layer
-    pico.layer.empty(:world, id, false, rect)
+    pico.layer.empty('~', nil, id, false, dim)
 
-    defer {
-        pico.set.layer(id)
-        pico.set.effect [ color=COLORS.empty ]
-        pico.output.clear()
-        pico.set.layer(:world)
-    }
-
-    pin obj = spawn Object(id, rect, 1)
-    pin spring = spawn Spring(1.3)
-
-    watching :o.click.dn [id=id] {
-        par {
-            loop {
-                if obj.pub.over {
-                    emit @spring :start
-                    pico.output.sound(SOUNDS.hover)
-                }
-                await :o.over.on [id=id]
+    spawn {
+        val bg = pico.color.alpha(COLORS.hover.bg, 15)
+        loop on :draw {
+            set rct.w = dim.w * spr.pub.scale
+            set rct.h = dim.h * spr.pub.scale
+            if obj.pub.over {
+                ;;pico.set.pencil [ color=bg ]
+                ;;pico.output.draw.rect(rct)
             }
-        } with {
-            loop on :draw {
-                val c = (obj.pub.over && pico.color.alpha(COLORS.hover.bg, 15)) || COLORS.empty
-
-                pico.set.layer(id)
-
-                pico.set.effect [ color=c ]
-                pico.output.clear()
-
-                pico.set.scene [
-                    target = [ '%', anchor=rect.anchor,
-                        x=rect.x, y=rect.y,
-                        w=rect.w * spring.pub.scale,
-                        h=rect.h * spring.pub.scale,
-                    ]
-                ]
-
-                pico.set.layer(:world)
-            }
-        } with {
-            ;; changed constructor to reuse in partyColumn
-            spawn CharacterIcon(
-                id,
-                ["%", x=0.5, y=0.2, h=(0.2 * cardAspectRatio * ASPECT_RATIO), w=0.2, anchor="C"],
-                rect ++ [
-                    x = rect.x,
-                    y = rect.y - (0.3 * rect.h),
-                    h = 0.2 * cardAspectRatio * ASPECT_RATIO * rect.h,
-                    w = 0.2 * rect.w,
-                ],
-                character, 1, true
-            )
-            spawn ClassBanners(id, rect, character)
-
-            await(false)
+            pico.output.draw.layer(id, rct)
         }
     }
 
-    ;; play sound on click
-    pico.output.sound(SOUNDS.pop)
+    spawn CharacterIcon(id, r, world, character, 1, true) where {
+        r = [ "%", x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
+        world = rct ++ [
+            x = rct.x,
+            y = rct.y - (0.3 * rct.h),
+            h = 0.2 * rat * ASPECT_RATIO * rct.h,
+            w = 0.2 * rct.w,
+        ]
+    }
 
-    return(id)
+    spawn {
+        loop {
+            if obj.pub.over {
+                emit @spr :start
+                pico.output.sound(SOUNDS.hover)
+            }
+            await :o.over.on [id=id]
+        }
+    }
+
+    await :o.click.dn [id=id]
+    pico.output.sound(SOUNDS.pop)
+    id
 }
 
 val func roll_cards () {
