@@ -4,11 +4,40 @@ set pico = require "pico"
 require "shared"
 require "settings"
 
+;;;
+
+We selected 9 representative game behaviors and describe their implementations
+in C++ and Céu.
+We also categorized these examples in 5 abstract C++ control-flow patterns that
+likely apply to other games:
+
+1. Finite State Machines:
+    State machines describe the behavior of entities by mapping event
+    occurrences to transitions between states that trigger appropriate actions.
+2. Continuation Passing:
+    The completion of a long-lasting activity may carry a continuation, i.e.,
+    some action to execute next.
+3. Dispatching Hierarchies:
+    Entities typically form a dispatching hierarchy in which a container that
+    receives a stimulus automatically forwards it to its managed children.
+4. Lifespan Hierarchies:
+    Entities typically form a lifespan hierarchy in which a terminating
+    container entity automatically destroys its managed children.
+5. Signaling Mechanisms:
+    Entities often need to communicate explicitly through signaling mechanisms,
+    especially if there is no hierarchy relationship between them.
+
+;;;
+
 val Menu = require "menu"
 val Arena = require "arena"
 
 pico.set.window [ title="SNKRX Menu" ]
 pico.set.dim [ '!', w=W, h=H ]
+
+;; PATTERN #2 : Continuation Passing
+;;  - completion of long-lasting Menu activates Arena
+;;  - completion of Arena re-activates the Menu in a loop
 
 loop {
     val id = await Menu()
