@@ -315,7 +315,13 @@ val task BuyScreen () {
         }
     }
 
-    await :o.click.dn [id=:go]
+    par:any {
+        await :o.click.dn [id=:go]
+        true
+    } with {
+        await :key.dn [key=:Escape]
+        false
+    }
 
     spawn {
         loop {
@@ -354,7 +360,8 @@ task Battle() {
 
 task Arena() {
     loop {
-        await BuyScreen()
+        val ok = await BuyScreen()
+        while(ok)
         await Transition(Battle)
     }
 }
