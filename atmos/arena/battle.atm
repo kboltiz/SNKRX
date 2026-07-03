@@ -1,0 +1,16 @@
+task Battle () {
+    print("Battle Started!")
+    
+    watching 5s {
+        loop on :draw{
+            ;; battle arena
+            pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
+            pico.output.draw.rect([
+                "%", x=0.5, y=0.5,
+                w=(0.8), h=(0.4 * ASPECT_RATIO),
+            ])
+        }
+    }
+}
+
+Battle
