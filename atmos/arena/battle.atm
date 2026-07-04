@@ -1,7 +1,7 @@
 val SPACING = 0.03
 val TRAIL_MAX = 256
-val HEAD_SPEED = 0.2
-val TURN_RATE = 3.5
+val HEAD_SPEED = 0.4
+val TURN_RATE = 4
 val UNIT_SIZE = 0.03
 
 func AngleDiff(a, b) {
@@ -41,12 +41,9 @@ val task SnakeUnit(index, character, trail, headRect) {
 
     par {
         if (index == 1) {
-            var lastTime = os.clock()
-
-            loop on :draw {
-                val now = os.clock()
-                val dt = math.min((now - lastTime), 0.05)
-                set lastTime = now
+            loop {
+                val us = await :clock
+                val dt = us/1s;
 
                 val m = pico.get.mouse('%')
                 val dxVisual = (m.x - pos.x)
@@ -67,7 +64,10 @@ val task SnakeUnit(index, character, trail, headRect) {
                 }
             }
         } else {
-            loop on :draw {
+            loop {
+                val us = await :clock
+                val dt = us/1s;
+                
                 val targetDistance = (SPACING * (index - 1))
                 val sample = SampleTrail(trail, targetDistance)
                 set pos.x = sample.x
@@ -92,6 +92,7 @@ val task Snake() {
 
     pin units = tasks()
     loop i, character in G.party {
+        print("Spawning "++character++ " " ++ i)
         spawn @units SnakeUnit(i, character, trail, headRect)
     }
 
