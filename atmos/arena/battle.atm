@@ -4,6 +4,13 @@ val HEAD_SPEED = 0.4
 val TURN_RATE = 4
 val UNIT_SIZE = 0.03
 
+val ARENA_W = 0.8
+val ARENA_H = 0.4 * ASPECT_RATIO
+val ARENA_LEFT = 0.5 - (ARENA_W / 2)
+val ARENA_RIGHT = 0.5 + (ARENA_W / 2)
+val ARENA_TOP = 0.5 - (ARENA_H / 2)
+val ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
+
 func AngleDiff(a, b) {
     val d = (b - a)
     return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
@@ -33,6 +40,17 @@ func SampleTrail(trail, targetDistance) {
     return(prev)
 }
 
+func Bounce(r, nx, ny) {
+    var result = r
+    if nx == 0 {
+        set result = (2 * math.pi) - result
+    }
+    if ny == 0 {
+        set result = math.pi - result
+    }
+    return(result)
+}
+
 val task SnakeUnit(index, character, trail, headRect) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
@@ -55,8 +73,31 @@ val task SnakeUnit(index, character, trail, headRect) {
                 val turn = math.max(math.min(diff, maxTurn), -maxTurn)
 
                 set pos.r = (pos.r + turn)
-                set pos.x = (pos.x + (math.cos(pos.r) * HEAD_SPEED * dt))
-                set pos.y = (pos.y + (math.sin(pos.r) * HEAD_SPEED * dt * ASPECT_RATIO))
+
+                ;; direction without collision
+                var nextX = (pos.x + (math.cos(pos.r) * HEAD_SPEED * dt))
+                var nextY = (pos.y + (math.sin(pos.r) * HEAD_SPEED * dt * ASPECT_RATIO))
+
+                val hitVertical = (nextX < ARENA_LEFT) || (nextX > ARENA_RIGHT)
+                val hitHorizontal = (nextY < ARENA_TOP) || (nextY > ARENA_BOTTOM)
+
+                if hitVertical && hitHorizontal {
+                    ;; corner hit
+                    set pos.r = (pos.r + math.pi)
+                } else {
+                    if hitVertical {
+                        set pos.r = Bounce(pos.r, 1, 0)
+                    }
+                    if hitHorizontal {
+                        set pos.r = Bounce(pos.r, 0, 1)
+                    }
+                }
+
+                set nextX = math.max(math.min(nextX, ARENA_RIGHT), ARENA_LEFT)
+                set nextY = math.max(math.min(nextY, ARENA_BOTTOM), ARENA_TOP)
+
+                set pos.x = nextX
+                set pos.y = nextY
 
                 set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
                 if (#trail > TRAIL_MAX) {
@@ -67,7 +108,7 @@ val task SnakeUnit(index, character, trail, headRect) {
             loop {
                 val us = await :clock
                 val dt = us/1s;
-                
+
                 val targetDistance = (SPACING * (index - 1))
                 val sample = SampleTrail(trail, targetDistance)
                 set pos.x = sample.x
@@ -101,20 +142,20 @@ val task Snake() {
 
 task Battle () {
     print("Battle Started!")
-    
+
     spawn {
         loop on :draw{
             ;; battle arena
             pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
             pico.output.draw.rect([
                 "%", x=0.5, y=0.5,
-                w=(0.8), h=(0.4 * ASPECT_RATIO),
+                w=ARENA_W, h=ARENA_H,
             ])
         }
     }
-    
+
     spawn Snake()
-    
+
     await(:level_end)
 }
 
