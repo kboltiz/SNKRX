@@ -3,7 +3,7 @@
 ;; PATTERN #5 : Signaling Mechanisms : Object -> target
 ;;  - object signals :over,:click to target listeners
 
-task Object (id, rect, target) {
+task Object (id, layer, rect, target) {
     val tgt = target || :parent
 
     ;; pub = the object: its rect + state, derived from the pointer
@@ -16,7 +16,7 @@ task Object (id, rect, target) {
         right  = over && m.right,
         middle = over && m.middle,
     ] where {
-        over = pico.vs.pos.rect(m, rect)
+        over = pico.vs.pos.rect(m, layer, rect)
     }
 
     par {
@@ -26,7 +26,7 @@ task Object (id, rect, target) {
             @(false) = :o.over.off,
         ]
         loop e on :mouse.motion {
-            val over = pico.vs.pos.rect(e, rect)
+            val over = pico.vs.pos.rect(:window, e, layer, rect)
             if over != pub.over {
                 set pub.over = over
                 emit @(tgt) [tag=tags@over, id=id, obj=pub]

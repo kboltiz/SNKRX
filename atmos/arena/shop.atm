@@ -65,17 +65,11 @@ task Popup (lines) {
     await(false)
 }
 
-val task CharacterIcon (id, rect, world, character, number, showName) {
+val task CharacterIcon (id, rect, character, number, showName) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
 
-    ;; larger hover box for popup detection
-    val hover = [
-        "%", anchor=world.anchor,
-        x=world.x, y=world.y, h=world.h*1.2, w=world.w*1.2,
-    ]
-
-    pin obj = spawn Object(nil, hover, 1)
+    pin obj = spawn Object(nil, id, rect, 1)
 
     do {
         pico.set.layer(id)
@@ -236,10 +230,13 @@ val task Card (id, x, y, character) {
     val dim = [ "%", w=0.16, h=0.2*ASPECT_RATIO ]
     val rat = dim.w / dim.h
     val rct = [ "%", x=x, y=y, w=dim.w, h=dim.h ]
-    pin obj = spawn Object(id, rct, 1)
+    pin obj = spawn Object(id, nil, rct, 1)
     pin spr = spawn Spring(1.3)
 
     pico.layer.empty('~', nil, id, false, dim)
+    pico.set.layer(id)
+    pico.set.scene [ target=rct ]
+    pico.set.layer :world
 
     spawn {
         loop on :draw {
@@ -253,14 +250,8 @@ val task Card (id, x, y, character) {
         }
     }
 
-    spawn CharacterIcon(id, r, world, character, 1, true) where {
+    spawn CharacterIcon(id, r, character, 1, true) where {
         r = [ "%", x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
-        world = rct ++ [
-            x = rct.x,
-            y = rct.y - (0.3 * rct.h),
-            h = 0.2 * rat * ASPECT_RATIO * rct.h,
-            w = 0.2 * rct.w,
-        ]
     }
     class_banners(id, rct, character)
 

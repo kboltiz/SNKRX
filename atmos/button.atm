@@ -14,7 +14,7 @@ val PAD = 0.01  ;; padding for buttons
 task Button (id, target, rect, text) {
     pico.get.text(rect, text)
 
-    pin obj = spawn Object(id, rect, target+1)
+    pin obj = spawn Object(id, nil, rect, target+1)
     pin spring = spawn Spring(1.3)
 
     par {
@@ -127,7 +127,7 @@ task RichTextButton(id, target, rect, text) {
         anchor = "C"
     ]
 
-    pin obj = spawn Object(id, fullRect, target+1)
+    pin obj = spawn Object(id, nil, fullRect, target+1)
     pin spring = spawn Spring(1.3)
 
     par {
