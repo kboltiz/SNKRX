@@ -1,7 +1,107 @@
+val SPACING = 0.03
+val TRAIL_MAX = 256
+val HEAD_SPEED = 0.2
+val TURN_RATE = 3.5
+val UNIT_SIZE = 0.03
+
+func AngleDiff(a, b) {
+    val d = (b - a)
+    return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
+}
+
+func SampleTrail(trail, targetDistance) {
+    var distanceSum = 0
+    var i = #trail
+    var prev = trail@i
+
+    loop {
+        set i = (i - 1)
+        until(i < 1)
+
+        val point = trail@i
+        val dx = (point.x - prev.x)
+        val dy = ((point.y - prev.y) / ASPECT_RATIO)
+        set distanceSum = (distanceSum + math.sqrt((dx*dx) + (dy*dy)))
+
+        if (distanceSum >= targetDistance) {
+            return(point)
+        }
+
+        set prev = point
+    }
+
+    return(prev)
+}
+
+val task SnakeUnit(index, character, trail, headRect) {
+    val charColorGroup = CHARACTERS@character.color
+    val charColors = COLORS@charColorGroup
+
+    var pos = [ x=headRect.x, y=headRect.y, r=0 ]
+
+    par {
+        if (index == 1) {
+            var lastTime = os.clock()
+
+            loop on :draw {
+                val now = os.clock()
+                val dt = math.min((now - lastTime), 0.05)
+                set lastTime = now
+
+                val m = pico.get.mouse('%')
+                val dxVisual = (m.x - pos.x)
+                val dyVisual = ((m.y - pos.y) / ASPECT_RATIO)
+                val desired = math.atan(dyVisual, dxVisual)
+
+                val diff = AngleDiff(pos.r, desired)
+                val maxTurn = (TURN_RATE * dt)
+                val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+
+                set pos.r = (pos.r + turn)
+                set pos.x = (pos.x + (math.cos(pos.r) * HEAD_SPEED * dt))
+                set pos.y = (pos.y + (math.sin(pos.r) * HEAD_SPEED * dt * ASPECT_RATIO))
+
+                set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
+                if (#trail > TRAIL_MAX) {
+                    table.remove(trail, 1)
+                }
+            }
+        } else {
+            loop on :draw {
+                val targetDistance = (SPACING * (index - 1))
+                val sample = SampleTrail(trail, targetDistance)
+                set pos.x = sample.x
+                set pos.y = sample.y
+                set pos.r = sample.r
+            }
+        }
+    } with {
+        loop on :draw {
+            pico.set.pencil [ color=charColors.base ]
+            pico.output.draw.oval([ "%",
+                x=pos.x, y=pos.y,
+                w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
+            ])
+        }
+    }
+}
+
+val task Snake() {
+    var trail = [[ x=0.5, y=0.5, r=0 ]]
+    val headRect = [ x=0.5, y=0.5 ]
+
+    pin units = tasks()
+    loop i, character in G.party {
+        spawn @units SnakeUnit(i, character, trail, headRect)
+    }
+
+    await(false)
+}
+
 task Battle () {
     print("Battle Started!")
     
-    watching 5s {
+    spawn {
         loop on :draw{
             ;; battle arena
             pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
@@ -11,6 +111,10 @@ task Battle () {
             ])
         }
     }
+    
+    spawn Snake()
+    
+    await(:level_end)
 }
 
 Battle
