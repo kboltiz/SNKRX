@@ -99,6 +99,20 @@ func Bounce(r, nx, ny) {
     return(result)
 }
 
+;; these can be moved to a separate "arena/units.atm"
+task SwordsmanAbility(unit) {
+    await(false)
+}
+
+task WizardAbility(unit) {
+    await(false)
+}
+
+val ABILITIES = [
+    swordsman = SwordsmanAbility,
+    wizard = WizardAbility
+]
+
 val task SnakeUnit(index, character, trail, headRect, positions) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
@@ -177,6 +191,10 @@ val task SnakeUnit(index, character, trail, headRect, positions) {
                 x=pos.x, y=pos.y,
                 w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
             ])
+        }
+    } with {
+        if (ABILITIES@character) {
+            spawn (ABILITIES@character)(pos)
         }
     }
 }
