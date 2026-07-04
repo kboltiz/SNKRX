@@ -49,10 +49,14 @@ func AngleDiff(a, b) {
     return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
 }
 
-func SampleTrail(trail, targetDistance) {
+;; single backward pass over the trail, satisfying every follower's
+;; target distance in one walk instead of one walk per follower
+func SampleAllTrail(trail, followerCount) {
+    val results = []
     var distanceSum = 0
     var i = #trail
     var prev = trail@i
+    var nextIdx = 1
 
     loop {
         set i = (i - 1)
@@ -63,14 +67,25 @@ func SampleTrail(trail, targetDistance) {
         val dy = ((point.y - prev.y) / ASPECT_RATIO)
         set distanceSum = (distanceSum + math.sqrt((dx*dx) + (dy*dy)))
 
-        if (distanceSum >= targetDistance) {
-            return(point)
+        loop {
+            until((nextIdx > (followerCount - 1)) || (distanceSum < (SPACING * nextIdx)))
+            set results@nextIdx = point
+            set nextIdx = (nextIdx + 1)
+        }
+        if nextIdx > (followerCount - 1) {
+            return(results)
         }
 
         set prev = point
     }
 
-    return(prev)
+    ;; ran out of trail before satisfying everyone: fill remainder with oldest point
+    loop {
+        until(nextIdx > (followerCount - 1))
+        set results@nextIdx = prev
+        set nextIdx = (nextIdx + 1)
+    }
+    return(results)
 }
 
 func Bounce(r, nx, ny) {
@@ -84,7 +99,7 @@ func Bounce(r, nx, ny) {
     return(result)
 }
 
-val task SnakeUnit(index, character, trail, headRect) {
+val task SnakeUnit(index, character, trail, headRect, positions) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
 
@@ -138,17 +153,21 @@ val task SnakeUnit(index, character, trail, headRect) {
                 if (#trail > TRAIL_MAX) {
                     table.remove(trail, 1)
                 }
+
+                val sampled = SampleAllTrail(trail, #G.party)
+                loop fi, s in sampled {
+                    set positions@fi = s
+                }
             }
         } else {
             loop {
-                val us = await :clock
-                val dt = us/1s;
-
-                val targetDistance = (SPACING * (index - 1))
-                val sample = SampleTrail(trail, targetDistance)
-                set pos.x = sample.x
-                set pos.y = sample.y
-                set pos.r = sample.r
+                await :clock
+                val s = positions@(index - 1)
+                if s {
+                    set pos.x = s.x
+                    set pos.y = s.y
+                    set pos.r = s.r
+                }
             }
         }
     } with {
@@ -166,10 +185,11 @@ val task Snake() {
     var trail = [[ x=0.5, y=0.5, r=0 ]]
     val headRect = [ x=0.5, y=0.5 ]
 
+    val positions = []
     pin units = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @units SnakeUnit(i, character, trail, headRect)
+        spawn @units SnakeUnit(i, character, trail, headRect, positions)
     }
 
     await(false)
