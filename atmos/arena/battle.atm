@@ -11,6 +11,39 @@ val ARENA_RIGHT = 0.5 + (ARENA_W / 2)
 val ARENA_TOP = 0.5 - (ARENA_H / 2)
 val ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
 
+val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
+
+func ClampAwayFromWall(r, isVertical) {
+    var result = r
+    if isVertical {
+        ;; angle measured from the vertical (wall-parallel) axis
+        val fromVertical = AngleDiff(math.pi/2, r)
+        if math.abs(fromVertical) < MIN_BOUNCE_ANGLE {
+            val sign = ((fromVertical >= 0) && 1) || -1
+            set result = (math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
+        } else {
+            val fromNegVertical = AngleDiff(-math.pi/2, r)
+            if math.abs(fromNegVertical) < MIN_BOUNCE_ANGLE {
+                val sign = ((fromNegVertical >= 0) && 1) || -1
+                set result = (-math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
+            }
+        }
+    } else {
+        val fromHorizontal = AngleDiff(0, r)
+        if math.abs(fromHorizontal) < MIN_BOUNCE_ANGLE {
+            val sign = ((fromHorizontal >= 0) && 1) || -1
+            set result = sign * MIN_BOUNCE_ANGLE
+        } else {
+            val fromPi = AngleDiff(math.pi, r)
+            if math.abs(fromPi) < MIN_BOUNCE_ANGLE {
+                val sign = ((fromPi >= 0) && 1) || -1
+                set result = math.pi - (sign * MIN_BOUNCE_ANGLE)
+            }
+        }
+    }
+    return(result)
+}
+
 func AngleDiff(a, b) {
     val d = (b - a)
     return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
@@ -87,9 +120,11 @@ val task SnakeUnit(index, character, trail, headRect) {
                 } else {
                     if hitVertical {
                         set pos.r = Bounce(pos.r, 1, 0)
+                        set pos.r = ClampAwayFromWall(pos.r, true)
                     }
                     if hitHorizontal {
                         set pos.r = Bounce(pos.r, 0, 1)
+                        set pos.r = ClampAwayFromWall(pos.r, false)
                     }
                 }
 
