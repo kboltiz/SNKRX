@@ -52,7 +52,7 @@ task Button (id, target, rect, text) {
 ;; TODO : fsantanna : unreviewed
 ;;;
 
-func ParseRichText(text) {
+func parse_rich_text(text) {
     var runs = []
     var currentColor = COLORS.idle.fg
     var pos = 1
@@ -73,7 +73,7 @@ func ParseRichText(text) {
     return(runs)
 }
 
-func MeasureRuns(runs, h) {
+func measure_runs(runs, h) {
     var cumulativeText = ""
     var lastWidth = 0
     val positions = []
@@ -82,7 +82,7 @@ func MeasureRuns(runs, h) {
         set cumulativeText = cumulativeText ++ run.text
         val m = [ "%", x=0, y=0, h=h, anchor="W" ]
         pico.get.text(m, cumulativeText)
-        
+
         set positions@i = [ start=lastWidth, width=m.w - lastWidth ]
         set lastWidth = m.w
     }

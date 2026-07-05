@@ -13,28 +13,28 @@ val ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
 
 val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
 
-func ClampAwayFromWall(r, isVertical) {
+func clamp_away_from_wall(r, isVertical) {
     var result = r
     if isVertical {
         ;; angle measured from the vertical (wall-parallel) axis
-        val fromVertical = AngleDiff(math.pi/2, r)
+        val fromVertical = angle_diff(math.pi/2, r)
         if math.abs(fromVertical) < MIN_BOUNCE_ANGLE {
             val sign = ((fromVertical >= 0) && 1) || -1
             set result = (math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
         } else {
-            val fromNegVertical = AngleDiff(-math.pi/2, r)
+            val fromNegVertical = angle_diff(-math.pi/2, r)
             if math.abs(fromNegVertical) < MIN_BOUNCE_ANGLE {
                 val sign = ((fromNegVertical >= 0) && 1) || -1
                 set result = (-math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
             }
         }
     } else {
-        val fromHorizontal = AngleDiff(0, r)
+        val fromHorizontal = angle_diff(0, r)
         if math.abs(fromHorizontal) < MIN_BOUNCE_ANGLE {
             val sign = ((fromHorizontal >= 0) && 1) || -1
             set result = sign * MIN_BOUNCE_ANGLE
         } else {
-            val fromPi = AngleDiff(math.pi, r)
+            val fromPi = angle_diff(math.pi, r)
             if math.abs(fromPi) < MIN_BOUNCE_ANGLE {
                 val sign = ((fromPi >= 0) && 1) || -1
                 set result = math.pi - (sign * MIN_BOUNCE_ANGLE)
@@ -44,14 +44,14 @@ func ClampAwayFromWall(r, isVertical) {
     return(result)
 }
 
-func AngleDiff(a, b) {
+func angle_diff(a, b) {
     val d = (b - a)
     return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
 }
 
 ;; single backward pass over the trail, satisfying every follower's
 ;; target distance in one walk instead of one walk per follower
-func SampleAllTrail(trail, followerCount) {
+func sample_all_trail(trail, followerCount) {
     val results = []
     var distanceSum = 0
     var i = #trail
@@ -88,7 +88,7 @@ func SampleAllTrail(trail, followerCount) {
     return(results)
 }
 
-func Bounce(r, nx, ny) {
+func bounce(r, nx, ny) {
     var result = r
     if nx == 0 {
         set result = (2 * math.pi) - result
@@ -130,7 +130,7 @@ val task SnakeUnit(index, character, trail, headRect, positions) {
                 val dyVisual = ((m.y - pos.y) / ASPECT_RATIO)
                 val desired = math.atan(dyVisual, dxVisual)
 
-                val diff = AngleDiff(pos.r, desired)
+                val diff = angle_diff(pos.r, desired)
                 val maxTurn = (TURN_RATE * dt)
                 val turn = math.max(math.min(diff, maxTurn), -maxTurn)
 
@@ -148,12 +148,12 @@ val task SnakeUnit(index, character, trail, headRect, positions) {
                     set pos.r = (pos.r + math.pi)
                 } else {
                     if hitVertical {
-                        set pos.r = Bounce(pos.r, 1, 0)
-                        set pos.r = ClampAwayFromWall(pos.r, true)
+                        set pos.r = bounce(pos.r, 1, 0)
+                        set pos.r = clamp_away_from_wall(pos.r, true)
                     }
                     if hitHorizontal {
-                        set pos.r = Bounce(pos.r, 0, 1)
-                        set pos.r = ClampAwayFromWall(pos.r, false)
+                        set pos.r = bounce(pos.r, 0, 1)
+                        set pos.r = clamp_away_from_wall(pos.r, false)
                     }
                 }
 
@@ -168,7 +168,7 @@ val task SnakeUnit(index, character, trail, headRect, positions) {
                     table.remove(trail, 1)
                 }
 
-                val sampled = SampleAllTrail(trail, #G.party)
+                val sampled = sample_all_trail(trail, #G.party)
                 loop fi, s in sampled {
                     set positions@fi = s
                 }
