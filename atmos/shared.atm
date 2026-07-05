@@ -10,50 +10,50 @@ set FONT = "../assets/fonts/PixulBrush.ttf"
 
 set COLORS = [
     idle = [
-        bg = [ "%", r=0.18, g=0.18, b=0.18 ],
-        fg = [ "%", r=0.43, g=0.43, b=0.43 ],
+        bg = [ '%', r=0.18, g=0.18, b=0.18 ],
+        fg = [ '%', r=0.43, g=0.43, b=0.43 ],
     ],
     hover = [
-        bg = [ "%", r=0.85, g=0.85, b=0.85 ],
-        fg = [ "%", r=0.72, g=0.72, b=0.72 ],
+        bg = [ '%', r=0.85, g=0.85, b=0.85 ],
+        fg = [ '%', r=0.72, g=0.72, b=0.72 ],
     ],
-    gold = ["%", r=0.98, g=0.81, b=0],
+    gold = ['%', r=0.98, g=0.81, b=0],
     empty = ['%', r=0, g=0, b=0, a=0],
 
     ;; Character Colors (Base and Dark variants)
     blue = [
-        base = ["%", r=0.28, g=0.47, b=0.73],
-        text = ["%", r=0.20, g=0.35, b=0.55]
+        base = ['%', r=0.28, g=0.47, b=0.73],
+        text = ['%', r=0.20, g=0.35, b=0.55]
     ],
     yellow = [
-        base = [ "%", r=0.98, g=0.81, b=0.00 ],
-        text = [ "%", r=0.72, g=0.60, b=0.0 ]
+        base = [ '%', r=0.98, g=0.81, b=0.00 ],
+        text = [ '%', r=0.72, g=0.60, b=0.0 ]
     ],
     red = [
-        base = [ "%", r=0.91, g=0.11, b=0.22 ],
-        text = [ "%", r=0.91, g=0.11, b=0.22 ]
+        base = [ '%', r=0.91, g=0.11, b=0.22 ],
+        text = [ '%', r=0.91, g=0.11, b=0.22 ]
     ],
 ]
 
 set CLASSES = [
-	warrior = [color = "yellow"],
-	mage = [color = "blue"],
-	nuker = [color = "red"]
+	warrior = [color = :yellow],
+	mage = [color = :blue],
+	nuker = [color = :red]
 ]
 
 set CHARACTERS = [
     swordsman = [
         name = "Swordsman",
-        color = "yellow",
-        classes = ["warrior"],
+        color = :yellow,
+        classes = [:warrior],
         description = "deals [yellow]10[idle] damage in an area, deals extra [yellow]1.65[idle] damage per unit hit",
         effect_name = "Cleave",
         effect_description = "the swordsman's damage is doubled"
     ],
     wizard = [
         name = "Wizard",
-        color = "blue",
-        classes = ["mage", "nuker"],
+        color = :blue,
+        classes = [:mage, :nuker],
         description = "shoots a projectile that deals [yellow]15 AoE[idle] damage",
         effect_name = "Magic Missile",
         effect_description = "the projectile chains 2 times"

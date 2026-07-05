@@ -1,7 +1,7 @@
 val G = [
     gold    = 0,
     level   = 1,
-    party   = ["swordsman", "wizard", "swordsman", "wizard"],
+    party   = [ :swordsman, :wizard, :swordsman, :wizard ],
     rerolls = 3,
 ]
 
@@ -25,7 +25,7 @@ task Popup (lines) {
     val totalHeight = #lines * LINE_H
 
     ;; calculate full rect to cover
-    val fullRect = [ "%",
+    val fullRect = [ '%',
         x = 0.5, y = 0.5,
         w = maxWidth / (1 - POPUP_PAD),
         h = totalHeight / (1 - POPUP_PAD),
@@ -53,7 +53,7 @@ task Popup (lines) {
             loop ri, run in entry.runs {
                 val pos = entry.positions@ri
                 pico.set.pencil [ color=run.color, font=FONT ]
-                pico.output.draw.text(run.text, [ "%",
+                pico.output.draw.text(run.text, [ '%',
                     x = rowStart + ((pos.start + (pos.width / 2)) * spring.pub.scale),
                     y = rowY,
                     h = LINE_H * (1 - POPUP_PAD) * spring.pub.scale,
@@ -79,13 +79,13 @@ val task CharacterIcon (id, rect, character, number, showName) {
 
         pico.set.pencil [ color=charColors.text, font=FONT ]
         pico.output.draw.text(tostring(number)) <- [
-            "%", x=rect.x, y=rect.y, h=rect.h*0.9,
+            '%', x=rect.x, y=rect.y, h=rect.h*0.9,
         ]
 
         if showName {
             pico.set.pencil [ color=charColors.base, font=FONT ]
             pico.output.draw.text(character) <- [
-                "%", x=rect.x, y=(rect.y + rect.h), h=rect.h*0.9,
+                '%', x=rect.x, y=(rect.y + rect.h), h=rect.h*0.9,
             ]
         }
 
@@ -97,26 +97,26 @@ val task CharacterIcon (id, rect, character, number, showName) {
         
     val headerColor, labelColor, effectText =
         if (G.level == 3)
-            => ("yellow", "idle",  CHARACTERS@character.effect_description)
-            => ("hover",  "hover", CHARACTERS@character.effect_description)
+            => (:yellow, :idle,  CHARACTERS@character.effect_description)
+            => (:hover,  :hover, CHARACTERS@character.effect_description)
 
     val classList = CHARACTERS@character.classes
     var formattedClasses = []
 
     loop i, c in classList {
         val classColor = (
-            if (CLASSES@c.color == nil) => "idle" => CLASSES@c.color
+            if (CLASSES@c.color == nil) => :idle => CLASSES@c.color
         )
-        set formattedClasses = formattedClasses ++ ["[" ++ classColor ++ "]" ++ c]
+        set formattedClasses = formattedClasses ++ ['[' ++ classColor ++ ']' ++ c]
     }
 
     val popupText = [ s1, s2, s3, s4, s5 ] where {
-        s1 = "[" ++ CHARACTERS@character.color ++ "]" ++
+        s1 = '[' ++ CHARACTERS@character.color ++ ']' ++
              CHARACTERS@character.name ++ "[idle] - cost: [gold]" ++ cost
         s2 = "[idle]Classes: " ++ table.concat(formattedClasses, "[idle], ")
         s3 = CHARACTERS@character.description
-        s4 = "[" ++ headerColor ++ "]" ++
-             "Lv.3 [" ++ labelColor ++ "]" ++
+        s4 = '[' ++ headerColor ++ ']' ++
+             "Lv.3 [" ++ labelColor ++ ']' ++
              "Effect - " ++ CHARACTERS@character.effect_name
         s5 = effectText
     }
@@ -137,7 +137,7 @@ val task PartyColumnCell (index, layerRect, character, slotHeight, group) {
         w=0.03, h=0.03 * ASPECT_RATIO * (layerRect.w / layerRect.h),
     ]
 
-    val worldRect = [ "%",
+    val worldRect = [ '%',
         x = (layerRect.x - (layerRect.w / 2)) + (rect.x * layerRect.w),
         y = layerRect.y + (rect.y * layerRect.h),
         w = rect.w * layerRect.w,
@@ -157,7 +157,7 @@ val task PartyColumnCell (index, layerRect, character, slotHeight, group) {
             await(:slot_changed)
         }
     } with {
-        var m = ["%", x=0, y=0]
+        var m = ['%', x=0, y=0]
     
         loop on :o.click.dn [id=cellId] {                
             await :mouse.button.up
@@ -211,13 +211,13 @@ val func class_banners (id, rect, character) {
 
         pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
         pico.output.draw.rect([
-            "%", x=x, y=0.56,
+            '%', x=x, y=0.56,
             w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
         ])
 
         pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
         pico.output.draw.image("../assets/images/" ++ class ++ ".png") <- [
-            "%", x=x, y=0.56,
+            '%', x=x, y=0.56,
             w=0.17,
             h=0.17 * CLASS_ICON_ASPECT_RATIO * cardAspectRatio * ASPECT_RATIO,
         ]
@@ -227,9 +227,9 @@ val func class_banners (id, rect, character) {
 }
 
 val task Card (id, x, y, character) {
-    val dim = [ "%", w=0.16, h=0.2*ASPECT_RATIO ]
+    val dim = [ '%', w=0.16, h=0.2*ASPECT_RATIO ]
     val rat = dim.w / dim.h
-    val rct = [ "%", x=x, y=y, w=dim.w, h=dim.h ]
+    val rct = [ '%', x=x, y=y, w=dim.w, h=dim.h ]
     pin obj = spawn Object(id, nil, rct, 1)
     pin spr = spawn Spring(1.3)
 
@@ -251,7 +251,7 @@ val task Card (id, x, y, character) {
     }
 
     spawn CharacterIcon(id, r, character, 1, true) where {
-        r = [ "%", x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
+        r = [ '%', x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
     }
     class_banners(id, rct, character)
 
@@ -272,22 +272,22 @@ val task Card (id, x, y, character) {
 
 val func roll_cards () {
     ;; TODO: port tier_weights / weighted_pick from the Lua roll logic
-    return([
-        "swordsman",
-        "wizard",
-        "swordsman",
-    ])
+    return [
+        :swordsman,
+        :wizard,
+        :swordsman,
+    ]
 }
 
 val task Shop () {
     spawn Button(:go, 2, rect, "Go!") where {
-        rect = ["%", x=0.88, y=0.9, h=0.1]
+        rect = ['%', x=0.88, y=0.9, h=0.1]
     }
 
     spawn {
         loop {
             spawn RichTextButton(:reroll, 1, rct, lbl) where {
-                rct = ["%", x=0.28, y=0.06, h=0.07]
+                rct = ['%', x=0.28, y=0.06, h=0.07]
                 lbl = "[idle]Rerolls: [gold]" ++ G.rerolls
             }
 

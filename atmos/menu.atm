@@ -50,23 +50,23 @@ val task Options() {
         loop on :draw {
             pico.set.pencil [ color=clr ]
             pico.output.draw.rect [
-                "%", x=0.5, y=0.5, w=1, h=1, anchor="C"
+                '%', x=0.5, y=0.5, w=1, h=1
             ]
         }
     }
 
     ;; TODO text-dependent center alignment of option buttons
     spawn Button(:opts.quit, 1, rect, "quit") where {
-        rect = ["%", x=0.5, y=0.6, h=h]
+        rect = ['%', x=0.5, y=0.6, h=h]
     }
     spawn ToggleButton(:opts.shake, rect, "screen shake") where {
-        rect = ["%", x=0.5, y=0.4, h=h]
+        rect = ['%', x=0.5, y=0.4, h=h]
     }
     spawn RangeButton(:opts.music, rect, "music volume") where {
-        rect = ["%", x=0.5, y=0.5, h=h]
+        rect = ['%', x=0.5, y=0.5, h=h]
     }
     spawn Button(:opts.close, 1, rect, "main menu") where {
-        rect = ["%", x=0.5, y=0.2, h=h]
+        rect = ['%', x=0.5, y=0.2, h=h]
     }
 
     ;; only :close / :quit escape

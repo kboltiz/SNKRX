@@ -46,7 +46,7 @@ task Transition (msg, pos, Next, ...) {
         watching :1 {
             loop on :draw {
                 pico.output.draw.layer(:transition) <- [
-                    "%", x=0.5, y=0.5, w=1, h=1
+                    '%', x=0.5, y=0.5, w=1, h=1
                 ]
             }
         }
@@ -60,7 +60,7 @@ task Transition (msg, pos, Next, ...) {
                 loop on :draw {
                     pico.set.pencil [ color=COLORS.hover.bg, font=FONT ]
                     pico.output.draw.oval [
-                        "%", x=pos.x, y=pos.y,
+                        '%', x=pos.x, y=pos.y,
                         w = pct * cover * 2,
                         h = pct * cover * 2 * ASPECT_RATIO,
                     ]
@@ -68,7 +68,7 @@ task Transition (msg, pos, Next, ...) {
             } with {
                 loop on :draw {
                     pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
-                    pico.output.draw.text(msg, ["%", x=0.5, y=0.5, h=0.05])
+                    pico.output.draw.text(msg, ['%', x=0.5, y=0.5, h=0.05])
                 }
             }
         }
