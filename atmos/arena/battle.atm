@@ -13,7 +13,12 @@ val ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
 
 val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
 
-func clamp_away_from_wall(r, isVertical) {
+val func angle_diff(a, b) {
+    val d = (b - a)
+    return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
+}
+
+val func clamp_away_from_wall(r, isVertical) {
     var result = r
     if isVertical {
         ;; angle measured from the vertical (wall-parallel) axis
@@ -44,14 +49,9 @@ func clamp_away_from_wall(r, isVertical) {
     return(result)
 }
 
-func angle_diff(a, b) {
-    val d = (b - a)
-    return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
-}
-
 ;; single backward pass over the trail, satisfying every follower's
 ;; target distance in one walk instead of one walk per follower
-func sample_all_trail(trail, followerCount) {
+val func sample_all_trail(trail, followerCount) {
     val results = []
     var distanceSum = 0
     var i = #trail
@@ -88,7 +88,7 @@ func sample_all_trail(trail, followerCount) {
     return(results)
 }
 
-func bounce(r, nx, ny) {
+val func bounce(r, nx, ny) {
     var result = r
     if nx == 0 {
         set result = (2 * math.pi) - result

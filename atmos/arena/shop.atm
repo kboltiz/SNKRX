@@ -7,8 +7,8 @@ task Popup(lines) {
     var maxWidth = 0
 
     loop i, line in lines {
-        val runs = ParseRichText(line)
-        val positions, width = MeasureRuns(runs, LINE_H)
+        val runs = parse_rich_text(line)
+        val positions, width = measure_runs(runs, LINE_H)
         set parsed@i = [ runs=runs, positions=positions, width=width ]
         if width > maxWidth {
             set maxWidth = width
@@ -93,7 +93,7 @@ val task CharacterIcon (id, rect, world, character, number, showName) {
 
     ;; TODO, cost calculation of unit
     val cost = 0;
-        
+
     val headerColor, labelColor, effectText =
         if (G.level == 3)
             => ("yellow", "idle",  CHARACTERS@character.effect_description)
@@ -157,8 +157,8 @@ val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
         }
     } with {
         var m = ["%", x=0, y=0]
-    
-        loop on :o.click.dn [id=cellId] {                
+
+        loop on :o.click.dn [id=cellId] {
             await :mouse.button.up
 
             val mouse = pico.get.mouse(m)
@@ -166,16 +166,16 @@ val task PartyColumnCell(index, layerRect, character, slotHeight, group) {
             var targetSlot = math.floor((localY / slotHeight) + 0.5)
             set targetSlot = math.min(targetSlot, #(G.party))
             set targetSlot = math.max(targetSlot, 1)
-            
+
             print("Moved "++pub.slot++" To "++targetSlot)
-            
+
             if targetSlot != pub.slot {
-                
+
                 emit @(:global) (:reorder [from=pub.slot, to=targetSlot])
-                
+
                 set pub.slot = targetSlot
             }
- 
+
         }
     } with {
         loop {
@@ -320,14 +320,14 @@ val task Shop () {
         loop {
             pico.push()
             defer { pico.pop() }
-            
+
             pin pt = tasks()
-            
+
             val columnLayerRect = ["%", x=0.95, y=0.1, w=1, h=0.8, anchor="N"]
             val colAspectRatio = columnLayerRect.w/columnLayerRect.h
-            
+
             pico.layer.empty(:world, :party_column, false, columnLayerRect)
-            
+
             loop i, character in G.party {
                 spawn @pt PartyColumnCell(i, columnLayerRect, character, 0.08, pt)
             }

@@ -117,8 +117,8 @@ task RichText(id, rect, runs, positions, totalWidth, textH) {
 }
 
 task RichTextButton(id, target, rect, text) {
-    val runs = ParseRichText(text)
-    val positions, totalWidth = MeasureRuns(runs, rect.h * (1 - PAD))
+    val runs = parse_rich_text(text)
+    val positions, totalWidth = measure_runs(runs, rect.h * (1 - PAD))
 
     val fullRect = [ "%",
         x = rect.x, y = rect.y,
