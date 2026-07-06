@@ -1,10 +1,3 @@
-val G = [
-    gold    = 0,
-    level   = 1,
-    party   = [ :swordsman, :wizard, :swordsman, :wizard ],
-    rerolls = 3,
-]
-
 val PAD = 0.03
 val POPUP_PAD = 0.1
 val LINE_H = 0.04
@@ -14,8 +7,8 @@ task Popup (lines) {
     var maxWidth = 0
 
     loop i, line in lines {
-        val runs = ParseRichText(line)
-        val positions, width = MeasureRuns(runs, LINE_H)
+        val runs = parse_rich_text(line)
+        val positions, width = measure_runs(runs, LINE_H)
         set parsed@i = [ runs=runs, positions=positions, width=width ]
         if width > maxWidth {
             set maxWidth = width
@@ -95,7 +88,7 @@ val task CharacterIcon (up, rect, character, number, showName) {
 
     ;; TODO, cost calculation of unit
     val cost = 0;
-        
+
     val headerColor, labelColor, effectText =
         if (G.level == 3)
             => (:yellow, :idle,  CHARACTERS@character.effect_description)

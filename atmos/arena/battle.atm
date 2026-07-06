@@ -1,16 +1,235 @@
+val SPACING = 0.03
+val TRAIL_MAX = 256
+val HEAD_SPEED = 0.4
+val TURN_RATE = 4
+val UNIT_SIZE = 0.03
+
+val ARENA_W = 0.8
+val ARENA_H = 0.4 * ASPECT_RATIO
+val ARENA_LEFT = 0.5 - (ARENA_W / 2)
+val ARENA_RIGHT = 0.5 + (ARENA_W / 2)
+val ARENA_TOP = 0.5 - (ARENA_H / 2)
+val ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
+
+val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
+
+val func angle_diff(a, b) {
+    val d = (b - a)
+    return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
+}
+
+val func clamp_away_from_wall(r, isVertical) {
+    var result = r
+    if isVertical {
+        ;; angle measured from the vertical (wall-parallel) axis
+        val fromVertical = angle_diff(math.pi/2, r)
+        if math.abs(fromVertical) < MIN_BOUNCE_ANGLE {
+            val sign = ((fromVertical >= 0) && 1) || -1
+            set result = (math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
+        } else {
+            val fromNegVertical = angle_diff(-math.pi/2, r)
+            if math.abs(fromNegVertical) < MIN_BOUNCE_ANGLE {
+                val sign = ((fromNegVertical >= 0) && 1) || -1
+                set result = (-math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
+            }
+        }
+    } else {
+        val fromHorizontal = angle_diff(0, r)
+        if math.abs(fromHorizontal) < MIN_BOUNCE_ANGLE {
+            val sign = ((fromHorizontal >= 0) && 1) || -1
+            set result = sign * MIN_BOUNCE_ANGLE
+        } else {
+            val fromPi = angle_diff(math.pi, r)
+            if math.abs(fromPi) < MIN_BOUNCE_ANGLE {
+                val sign = ((fromPi >= 0) && 1) || -1
+                set result = math.pi - (sign * MIN_BOUNCE_ANGLE)
+            }
+        }
+    }
+    return(result)
+}
+
+;; single backward pass over the trail, satisfying every follower's
+;; target distance in one walk instead of one walk per follower
+val func sample_all_trail(trail, followerCount) {
+    val results = []
+    var distanceSum = 0
+    var i = #trail
+    var prev = trail@i
+    var nextIdx = 1
+
+    loop {
+        set i = (i - 1)
+        until(i < 1)
+
+        val point = trail@i
+        val dx = (point.x - prev.x)
+        val dy = ((point.y - prev.y) / ASPECT_RATIO)
+        set distanceSum = (distanceSum + math.sqrt((dx*dx) + (dy*dy)))
+
+        loop {
+            until((nextIdx > (followerCount - 1)) || (distanceSum < (SPACING * nextIdx)))
+            set results@nextIdx = point
+            set nextIdx = (nextIdx + 1)
+        }
+        if nextIdx > (followerCount - 1) {
+            return(results)
+        }
+
+        set prev = point
+    }
+
+    ;; ran out of trail before satisfying everyone: fill remainder with oldest point
+    loop {
+        until(nextIdx > (followerCount - 1))
+        set results@nextIdx = prev
+        set nextIdx = (nextIdx + 1)
+    }
+    return(results)
+}
+
+val func bounce(r, nx, ny) {
+    var result = r
+    if nx == 0 {
+        set result = (2 * math.pi) - result
+    }
+    if ny == 0 {
+        set result = math.pi - result
+    }
+    return(result)
+}
+
+;; these can be moved to a separate "arena/units.atm"
+task SwordsmanAbility(unit) {
+    await(false)
+}
+
+task WizardAbility(unit) {
+    await(false)
+}
+
+val ABILITIES = [
+    swordsman = SwordsmanAbility,
+    wizard = WizardAbility
+]
+
+val task SnakeUnit(index, character, trail, headRect, positions) {
+    val charColorGroup = CHARACTERS@character.color
+    val charColors = COLORS@charColorGroup
+
+    var pos = [ x=headRect.x, y=headRect.y, r=0 ]
+
+    par {
+        if (index == 1) {
+            loop {
+                val us = await :clock
+                val dt = us/1s;
+
+                val m = pico.get.mouse('%')
+                val dxVisual = (m.x - pos.x)
+                val dyVisual = ((m.y - pos.y) / ASPECT_RATIO)
+                val desired = math.atan(dyVisual, dxVisual)
+
+                val diff = angle_diff(pos.r, desired)
+                val maxTurn = (TURN_RATE * dt)
+                val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+
+                set pos.r = (pos.r + turn)
+
+                ;; direction without collision
+                var nextX = (pos.x + (math.cos(pos.r) * HEAD_SPEED * dt))
+                var nextY = (pos.y + (math.sin(pos.r) * HEAD_SPEED * dt * ASPECT_RATIO))
+
+                val hitVertical = (nextX < ARENA_LEFT) || (nextX > ARENA_RIGHT)
+                val hitHorizontal = (nextY < ARENA_TOP) || (nextY > ARENA_BOTTOM)
+
+                if hitVertical && hitHorizontal {
+                    ;; corner hit
+                    set pos.r = (pos.r + math.pi)
+                } else {
+                    if hitVertical {
+                        set pos.r = bounce(pos.r, 1, 0)
+                        set pos.r = clamp_away_from_wall(pos.r, true)
+                    }
+                    if hitHorizontal {
+                        set pos.r = bounce(pos.r, 0, 1)
+                        set pos.r = clamp_away_from_wall(pos.r, false)
+                    }
+                }
+
+                set nextX = math.max(math.min(nextX, ARENA_RIGHT), ARENA_LEFT)
+                set nextY = math.max(math.min(nextY, ARENA_BOTTOM), ARENA_TOP)
+
+                set pos.x = nextX
+                set pos.y = nextY
+
+                set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
+                if (#trail > TRAIL_MAX) {
+                    table.remove(trail, 1)
+                }
+
+                val sampled = sample_all_trail(trail, #G.party)
+                loop fi, s in sampled {
+                    set positions@fi = s
+                }
+            }
+        } else {
+            loop {
+                await :clock
+                val s = positions@(index - 1)
+                if s {
+                    set pos.x = s.x
+                    set pos.y = s.y
+                    set pos.r = s.r
+                }
+            }
+        }
+    } with {
+        loop on :draw {
+            pico.set.pencil [ color=charColors.base ]
+            pico.output.draw.oval([ "%",
+                x=pos.x, y=pos.y,
+                w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
+            ])
+        }
+    } with {
+        if (ABILITIES@character) {
+            spawn (ABILITIES@character)(pos)
+        }
+    }
+}
+
+val task Snake() {
+    var trail = [[ x=0.5, y=0.5, r=0 ]]
+    val headRect = [ x=0.5, y=0.5 ]
+
+    val positions = []
+    pin units = tasks()
+    loop i, character in G.party {
+        print("Spawning "++character++ " " ++ i)
+        spawn @units SnakeUnit(i, character, trail, headRect, positions)
+    }
+
+    await(false)
+}
+
 task Battle () {
     print("Battle Started!")
-    
-    watching 5s {
+
+    spawn {
         loop on :draw{
             ;; battle arena
             pico.set.pencil [ color=COLORS.idle.bg ]
             pico.output.draw.rect([
                 "%", x=0.5, y=0.5,
-                w=(0.8), h=(0.4 * ASPECT_RATIO),
+                w=ARENA_W, h=ARENA_H,
             ])
         }
     }
+
+    spawn Snake()
+
+    await(:level_end)
 }
 
 Battle
