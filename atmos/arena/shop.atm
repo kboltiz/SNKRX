@@ -52,7 +52,7 @@ task Popup (lines) {
 
             loop ri, run in entry.runs {
                 val pos = entry.positions@ri
-                pico.set.pencil [ color=run.color, font=FONT ]
+                pico.set.pencil [ color=run.color ]
                 pico.output.draw.text(run.text, [ '%',
                     x = rowStart + ((pos.start + (pos.width / 2)) * spring.pub.scale),
                     y = rowY,
@@ -73,17 +73,18 @@ val task CharacterIcon (up, rect, character, number, showName) {
 
     do {
         pico.set.layer(up)
+        pico.set.pencil [ font=FONT ]
 
         pico.set.pencil [ color=charColors.base ]
         pico.output.draw.rect(rect)
 
-        pico.set.pencil [ color=charColors.text, font=FONT ]
+        pico.set.pencil [ color=charColors.text ]
         pico.output.draw.text(tostring(number)) <- [
             '%', x=rect.x, y=rect.y, h=rect.h*0.9,
         ]
 
         if showName {
-            pico.set.pencil [ color=charColors.base, font=FONT ]
+            pico.set.pencil [ color=charColors.base ]
             pico.output.draw.text(character) <- [
                 '%', x=rect.x, y=(rect.y + rect.h), h=rect.h*0.9,
             ]
@@ -193,13 +194,13 @@ val func class_banners (id, rect, character) {
         ;; center + (divided_x * spacing)
         val x = 0.5 + ((i - ((charClassesCount + 1)/2)) * 0.23)
 
-        pico.set.pencil [ color=COLORS.idle.bg, font=FONT ]
+        pico.set.pencil [ color=COLORS.idle.bg ]
         pico.output.draw.rect([
             '%', x=x, y=0.56,
             w=0.2, h=0.33 * cardAspectRatio * ASPECT_RATIO,
         ])
 
-        pico.set.pencil [ color=COLORS.idle.fg, font=FONT ]
+        pico.set.pencil [ color=COLORS.idle.fg ]
         pico.output.draw.image("../assets/images/" ++ class ++ ".png") <- [
             '%', x=x, y=0.56,
             w=0.17,

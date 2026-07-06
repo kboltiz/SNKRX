@@ -42,6 +42,7 @@ val Arena = require "arena"
 
 pico.set.window [ title="SNKRX Menu" ]
 pico.set.dim [ '!', w=W, h=H ]
+pico.set.pencil [ font=FONT ]
 
 ;; PATTERN #2 : Continuation Passing : main game loop
 ;;  - completion of long-lasting Menu activates Arena

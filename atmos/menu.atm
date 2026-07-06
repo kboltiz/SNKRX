@@ -1,7 +1,8 @@
 require "button"
 require "transition"
 
-val h = 0.08
+val h = 0.05    ;; height of all button labels
+val x = 0.01    ;; x of main menu
 
 ;; ToggleButton, RangeButton
 ;; PATTERN #3 : Dispatching Hierarchies: Outer -> Inner button
@@ -78,8 +79,6 @@ val task Options() {
         }
     }
 }
-
-val x = 0.01
 
 ;; Main Menu
 ;; PATTERN #3 : Dispatching Hierarchies: Menu -> Buttons
