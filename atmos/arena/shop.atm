@@ -65,14 +65,14 @@ task Popup (lines) {
     await(false)
 }
 
-val task CharacterIcon (id, rect, character, number, showName) {
+val task CharacterIcon (up, rect, character, number, showName) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
 
-    pin obj = spawn Object(nil, id, rect, 1)
+    pin obj = spawn Object(nil, up, rect, 1)
 
     do {
-        pico.set.layer(id)
+        pico.set.layer(up)
 
         pico.set.pencil [ color=charColors.base ]
         pico.output.draw.rect(rect)
@@ -128,70 +128,54 @@ val task CharacterIcon (id, rect, character, number, showName) {
     }
 }
 
-val task PartyColumnCell (index, layerRect, character, slotHeight, group) {
-    set pub = [ slot = index ]
-    val cellId = :party_column_ ++ index
+val task PartyColumnCell (slot, character) {
+    val id = "party." ++ slot
+    var cur = slot
 
-    val rect = ["%",
-        x=0.5, y=pub.slot * slotHeight,
-        w=0.03, h=0.03 * ASPECT_RATIO * (layerRect.w / layerRect.h),
+    val h = 0.08
+    val rct = [ '%',
+        x = 0.95,
+        y = 0.1 + (cur * h),
+        w = 0.03,
+        h = 0.03 * ASPECT_RATIO,
     ]
 
-    val worldRect = [ '%',
-        x = (layerRect.x - (layerRect.w / 2)) + (rect.x * layerRect.w),
-        y = layerRect.y + (rect.y * layerRect.h),
-        w = rect.w * layerRect.w,
-        h = rect.h * layerRect.h,
-    ]
+    pin obj = spawn Object(id, nil, rct, 1)
 
-    pin obj = spawn Object(cellId, worldRect, 1)
+    pico.layer.empty [ mode='~', key=id, target=rct ]
+
+    spawn CharacterIcon(id, r, character, 1, false) where {
+        r = [ '%', x=0.5, y=0.5, w=1, h=1 ]
+    }
 
     par {
-        loop {
-            set rect.y = pub.slot * slotHeight
-            set worldRect.x = (layerRect.x - (layerRect.w / 2)) + (rect.x * layerRect.w)
-            set worldRect.y = layerRect.y + (rect.y * layerRect.h)
-
-            spawn CharacterIcon(:party_column, rect, worldRect, character, 1, false)
-
-            await(:slot_changed)
+        loop on :draw {
+            pico.output.draw.layer(id)
         }
     } with {
-        var m = ['%', x=0, y=0]
-    
-        loop on :o.click.dn [id=cellId] {                
-            await :mouse.button.up
-
-            val mouse = pico.get.mouse(m)
-            val localY = (mouse.y - layerRect.y) / layerRect.h
-            var targetSlot = math.floor((localY / slotHeight) + 0.5)
-            set targetSlot = math.min(targetSlot, #(G.party))
-            set targetSlot = math.max(targetSlot, 1)
-            
-            print("Moved "++pub.slot++" To "++targetSlot)
-            
-            if targetSlot != pub.slot {
-                
-                emit @(:global) (:reorder [from=pub.slot, to=targetSlot])
-                
-                set pub.slot = targetSlot
+        loop e on :slot until (it@1==cur) || (it@2==cur) {
+            val to = ifs {
+                (e@1 == cur) => e@2
+                (e@2 == cur) => e@1
             }
- 
+            set cur = to
+            set rct.y = 0.1 + (to * h)
+            pico.set.layer(id)
+            pico.set.scene [ target=rct ]
+            pico.set.layer :world
         }
     } with {
-        loop {
-            val r = await(:reorder)
-
-            val newSlot = ifs {
-                r.from == pub.slot => r.to
-                (r.to <= pub.slot) && (pub.slot < r.from) => pub.slot + 1
-                (r.from < pub.slot) && (pub.slot <= r.to) => pub.slot - 1
-                else => pub.slot
-            }
-
-            if newSlot != pub.slot {
-                set pub = [ slot = newSlot ]
-                emit(:slot_changed)
+        loop on :o.click.dn [id=id] {                
+            watching :mouse.button.up {
+                loop on :mouse.motion {
+                    val mouse = pico.get.mouse '%'
+                    ifs {
+                        (mouse.y >= (rct.y + 0.08)) && (cur < #G.party) =>
+                            emit @(:parent) :slot [cur, cur+1]
+                        (mouse.y <= (rct.y - 0.08)) && (cur > 1) =>
+                            emit @(:parent) :slot [cur, cur-1]
+                    }
+                }
             }
         }
     }
@@ -226,17 +210,17 @@ val func class_banners (id, rect, character) {
     pico.set.layer(:world)
 }
 
-val task Card (id, x, y, character) {
+val task Card (slot, character) {
+    val id = "card." ++ slot
+
     val dim = [ '%', w=0.16, h=0.2*ASPECT_RATIO ]
     val rat = dim.w / dim.h
-    val rct = [ '%', x=x, y=y, w=dim.w, h=dim.h ]
+    val rct = [ '%', x=slot*0.16, y=0.3, w=dim.w, h=dim.h ]
+
     pin obj = spawn Object(id, nil, rct, 1)
     pin spr = spawn Spring(1.3)
 
-    pico.layer.empty('~', nil, id, false, dim)
-    pico.set.layer(id)
-    pico.set.scene [ target=rct ]
-    pico.set.layer :world
+    pico.layer.empty [ mode='~', key=id, dim=dim, target=rct ]
 
     spawn {
         loop on :draw {
@@ -293,7 +277,7 @@ val task Shop () {
 
             pin cs = tasks()
             loop i, character in roll_cards() {
-                spawn @cs Card(:card_ ++ i, i * 0.16, 0.3, character)
+                spawn @cs Card(i, character)
             }
 
             await :o.click.dn [id=:reroll] until (G.rerolls > 0)
@@ -301,26 +285,15 @@ val task Shop () {
         }
     }
 
-;;;
     spawn {
         loop {
-            pico.push()
-            defer { pico.pop() }
-            
-            pin pt = tasks()
-            
-            val columnLayerRect = ["%", x=0.95, y=0.1, w=1, h=0.8, anchor="N"]
-            val colAspectRatio = columnLayerRect.w/columnLayerRect.h
-            
-            pico.layer.empty(:world, :party_column, false, columnLayerRect)
-            
+            pin ps = tasks()
             loop i, character in G.party {
-                spawn @pt PartyColumnCell(i, columnLayerRect, character, 0.08, pt)
+                spawn @ps PartyColumnCell(i, character)
             }
-            await(false)
+            await(false)    ;; TODO: awakes on each card click?
         }
     }
-;;;
 
     par:any {
         await :o.click.dn [id=:go]

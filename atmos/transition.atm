@@ -42,7 +42,7 @@ task Transition (msg, pos, Next, ...) {
 
     par:any {
         ;; freeze and show old until oval covers it
-        pico.layer.screenshot('~', nil, :transition, :window)
+        pico.layer.screenshot [ mode='~', key=:transition, sup=:window ]
         watching :1 {
             loop on :draw {
                 pico.output.draw.layer(:transition) <- [
