@@ -1,6 +1,6 @@
 val PAD = 0.03
 val POPUP_PAD = 0.1
-val LINE_H = 0.04
+val LINE_H = 0.03
 
 task Popup (lines) {
     val parsed = []
@@ -73,13 +73,13 @@ val task CharacterIcon (up, rect, character, number, showName) {
 
         pico.set.pencil [ color=charColors.text ]
         pico.output.draw.text(tostring(number)) <- [
-            '%', x=rect.x, y=rect.y, h=rect.h*0.9,
+            '%', x=rect.x, y=rect.y, h=rect.h*0.6,
         ]
 
         if showName {
             pico.set.pencil [ color=charColors.base ]
             pico.output.draw.text(character) <- [
-                '%', x=rect.x, y=(rect.y + rect.h), h=rect.h*0.9,
+                '%', x=rect.x, y=(rect.y + rect.h), h=rect.h*0.6,
             ]
         }
 
@@ -265,7 +265,7 @@ val task Shop () {
     spawn {
         loop {
             spawn RichTextButton(:reroll, 1, rct, lbl) where {
-                rct = ['%', x=0.28, y=0.06, h=0.07]
+                rct = ['%', x=0.28, y=0.06, h=0.05]
                 lbl = "[idle]Rerolls: [gold]" ++ G.rerolls
             }
 
