@@ -58,14 +58,13 @@ task Popup (lines) {
     await(false)
 }
 
-val task CharacterIcon (up, rect, character, number, showName) {
-    val charColorGroup = CHARACTERS@character.color
+val task CharacterIcon (me, rect, number, showName) {
+    val char = me.pub.char
+    val charColorGroup = CHARACTERS@char.color
     val charColors = COLORS@charColorGroup
 
-    pin obj = spawn Object(nil, up, rect, 1)
-
     do {
-        pico.set.layer(up)
+        pico.set.layer(me.pub.id)
         pico.set.pencil [ font=FONT ]
 
         pico.set.pencil [ color=charColors.base ]
@@ -78,7 +77,7 @@ val task CharacterIcon (up, rect, character, number, showName) {
 
         if showName {
             pico.set.pencil [ color=charColors.base ]
-            pico.output.draw.text(character) <- [
+            pico.output.draw.text(me.pub.char) <- [
                 '%', x=rect.x, y=(rect.y + rect.h), h=rect.h*0.6,
             ]
         }
@@ -91,10 +90,10 @@ val task CharacterIcon (up, rect, character, number, showName) {
 
     val headerColor, labelColor, effectText =
         if (G.level == 3)
-            => (:yellow, :idle,  CHARACTERS@character.effect_description)
-            => (:hover,  :hover, CHARACTERS@character.effect_description)
+            => (:yellow, :idle,  CHARACTERS@char.effect_description)
+            => (:hover,  :hover, CHARACTERS@char.effect_description)
 
-    val classList = CHARACTERS@character.classes
+    val classList = CHARACTERS@char.classes
     var formattedClasses = []
 
     loop i, c in classList {
@@ -104,47 +103,63 @@ val task CharacterIcon (up, rect, character, number, showName) {
         set formattedClasses = formattedClasses ++ ['[' ++ classColor ++ ']' ++ c]
     }
 
-    val popupText = [ s1, s2, s3, s4, s5 ] where {
-        s1 = '[' ++ CHARACTERS@character.color ++ ']' ++
-             CHARACTERS@character.name ++ "[idle] - cost: [gold]" ++ cost
-        s2 = "[idle]Classes: " ++ table.concat(formattedClasses, "[idle], ")
-        s3 = CHARACTERS@character.description
-        s4 = '[' ++ headerColor ++ ']' ++
-             "Lv.3 [" ++ labelColor ++ ']' ++
-             "Effect - " ++ CHARACTERS@character.effect_name
-        s5 = effectText
-    }
+    ;; popup
 
-    loop {
-        await :o.over.on [obj=obj.pub]
-        spawn Popup(popupText)
-        await :o.over.off [obj=obj.pub]
+    do {
+        set pub = [
+            id    = me.pub.id,
+            layer = me.pub.id,
+            rect  = rect,
+        ]
+
+        spawn Object(task, 1)
+
+        val text = [ s1, s2, s3, s4, s5 ] where {
+            s1 = '[' ++ CHARACTERS@char.color ++ ']' ++
+                 CHARACTERS@char.name ++ "[idle] - cost: [gold]" ++ cost
+            s2 = "[idle]Classes: " ++ table.concat(formattedClasses, "[idle], ")
+            s3 = CHARACTERS@char.description
+            s4 = '[' ++ headerColor ++ ']' ++
+                 "Lv.3 [" ++ labelColor ++ ']' ++
+                 "Effect - " ++ CHARACTERS@char.effect_name
+            s5 = effectText
+        }
+
+        loop {
+            await :o.over.on [me=task]
+            spawn Popup(text)
+            await :o.over.off [me=task]
+        }
     }
 }
 
-val task PartyColumnCell (slot, character) {
-    val id = "party." ++ slot
+val task PartyColumnCell (slot, char) {
     var cur = slot
 
     val h = 0.08
-    val rct = [ '%',
-        x = 0.95,
-        y = 0.1 + (cur * h),
-        w = 0.03,
-        h = 0.03 * ASPECT_RATIO,
+    set pub = [
+        id   = nil,     ;; see below
+        rect = [ '%',
+            x = 0.95,
+            y = 0.1 + (cur * h),
+            w = 0.03,
+            h = 0.03 * ASPECT_RATIO,
+        ],
+        char = char,
     ]
+    set pub.id = pico.layer.empty [ target=pub.rect ]
 
-    pin obj = spawn Object(id, nil, rct, 1)
+    spawn Object(task, 1)
 
-    pico.layer.empty [ mode='~', key=id, target=rct ]
-
-    spawn CharacterIcon(id, r, character, 1, false) where {
+    ;; v->f(...) is same as f(v, ...)
+    ;; spawn CharacterIcon(task, r, 1, false)
+    spawn task->CharacterIcon(r, 1, false) where {
         r = [ '%', x=0.5, y=0.5, w=1, h=1 ]
     }
 
     par {
         loop on :draw {
-            pico.output.draw.layer(id)
+            pico.output.draw.layer(pub.id)
         }
     } with {
         loop e on :slot until (it@1==cur) || (it@2==cur) {
@@ -153,20 +168,20 @@ val task PartyColumnCell (slot, character) {
                 (e@2 == cur) => e@1
             }
             set cur = to
-            set rct.y = 0.1 + (to * h)
-            pico.set.layer(id)
-            pico.set.scene [ target=rct ]
+            set pub.rect.y = 0.1 + (to * h)
+            pico.set.layer(pub.id)
+            pico.set.scene [ target=pub.rect ]
             pico.set.layer :world
         }
     } with {
-        loop on :o.click.dn [id=id] {                
+        loop on :o.click.dn [me=task] {                
             watching :mouse.button.up {
                 loop on :mouse.motion {
                     val mouse = pico.get.mouse '%'
                     ifs {
-                        (mouse.y >= (rct.y + 0.08)) && (cur < #G.party) =>
+                        (mouse.y >= (pub.rect.y + 0.08)) && (cur < #G.party) =>
                             emit @(:parent) :slot [cur, cur+1]
-                        (mouse.y <= (rct.y - 0.08)) && (cur > 1) =>
+                        (mouse.y <= (pub.rect.y - 0.08)) && (cur > 1) =>
                             emit @(:parent) :slot [cur, cur-1]
                     }
                 }
@@ -175,12 +190,12 @@ val task PartyColumnCell (slot, character) {
     }
 }
 
-val func class_banners (id, rect, character) {
-    val charClasses = CHARACTERS@character.classes
+val func class_banners (me) {
+    val charClasses = CHARACTERS@(me.pub.char).classes
     val charClassesCount = #charClasses
-    val cardAspectRatio = rect.w / rect.h
+    val cardAspectRatio = me.pub.rect.w / me.pub.rect.h
 
-    pico.set.layer(id)
+    pico.set.layer(me.pub.id)
 
     ;; TODO: color the class icon to COLORS.hover.fg
     loop i, class in charClasses {
@@ -204,48 +219,50 @@ val func class_banners (id, rect, character) {
     pico.set.layer(:world)
 }
 
-val task Card (slot, character) {
-    val id = "card." ++ slot
-
+val task Card (slot, char) {
     val dim = [ '%', w=0.16, h=0.2*ASPECT_RATIO ]
     val rat = dim.w / dim.h
-    val rct = [ '%', x=slot*0.16, y=0.3, w=dim.w, h=dim.h ]
 
-    pin obj = spawn Object(id, nil, rct, 1)
+    set pub = [
+        id   = nil,     ;; see below
+        rect = [ '%', x=slot*0.16, y=0.3, w=dim.w, h=dim.h ],
+        char = char,
+    ]
+    set pub.id = pico.layer.empty [ target=pub.rect ]
+
+    spawn Object(task, 1)
     pin spr = spawn Spring(1.3)
-
-    pico.layer.empty [ mode='~', key=id, dim=dim, target=rct ]
 
     spawn {
         loop on :draw {
-            set rct.w = dim.w * spr.pub.scale
-            set rct.h = dim.h * spr.pub.scale
-            if obj.pub.over {
+            set pub.rect.w = dim.w * spr.pub.scale
+            set pub.rect.h = dim.h * spr.pub.scale
+            if pub.over {
                 pico.set.pencil [ color=COLORS.idle.bg ] ;; TODO: verify color
-                pico.output.draw.rect(rct)
+                pico.output.draw.rect(pub.rect)
             }
-            pico.output.draw.layer(id, rct)
+            pico.output.draw.layer(pub.id, pub.rect)
         }
     }
 
-    spawn CharacterIcon(id, r, character, 1, true) where {
+    spawn task->CharacterIcon(r, 1, true) where {
         r = [ '%', x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
     }
-    class_banners(id, rct, character)
+    task->class_banners()
 
     spawn {
         loop {
-            if obj.pub.over {
+            if pub.over {
                 emit @spr :start
                 pico.output.sound(SOUNDS.hover)
             }
-            await :o.over.on [id=id]
+            await :o.over.on [me=task]
         }
     }
 
-    await :o.click.dn [id=id]
+    await :o.click.dn [me=task]
     pico.output.sound(SOUNDS.pop)
-    id
+    pub.id
 }
 
 val func roll_cards () {
@@ -270,8 +287,8 @@ val task Shop () {
             }
 
             pin cs = tasks()
-            loop i, character in roll_cards() {
-                spawn @cs Card(i, character)
+            loop i, char in roll_cards() {
+                spawn @cs Card(i, char)
             }
 
             await :o.click.dn [id=:reroll] until (G.rerolls > 0)
@@ -282,8 +299,8 @@ val task Shop () {
     spawn {
         loop {
             pin ps = tasks()
-            loop i, character in G.party {
-                spawn @ps PartyColumnCell(i, character)
+            loop i, char in G.party {
+                spawn @ps PartyColumnCell(i, char)
             }
             await(false)    ;; TODO: awakes on each card click?
         }
