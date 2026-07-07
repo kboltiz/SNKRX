@@ -10,6 +10,14 @@ func cover_radius (x, y) {
     math.max(d1, d2, d3, d4) + 0.1
 }
 
+;; PATTERN #5 : Signaling Mechanisms : Transition
+;;  - separate phases: [1] pct 0->1; [2] delay pause; [3] pct 1->0
+;;  - from effects: freeze old, start next, draw oval
+;; PATTERN #1 : Finite State Machines : Transition
+;;  - phase transitions trigger state transitions:
+;;      - freezed state -> next state
+;;      - oval animation -> idle
+
 task Transition (msg, pos, Next, ...) {
     val args = [ ... ]
     pico.push()

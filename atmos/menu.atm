@@ -25,7 +25,7 @@ val task ToggleButton (id, rect, label) {
     }
 }
 
-val task RangeButton(id, rect, label) {
+val task RangeButton (id, rect, label) {
     loop {
         val cur,max = table.unpack(SETTINGS@id)
         spawn Button(id, 1, rect, label ++ ": " ++ cur)

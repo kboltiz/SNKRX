@@ -27,7 +27,7 @@ likely apply to other games:
     container entity automatically destroys its managed children.
     How: nested spawns in tasks and blocks.
 5. Signaling Mechanisms:
-    Entities often need to signal  changes that affect each other.
+    Entities often need to signal changes that affect each other.
     How: paired emit/await of tagged events.
 6. Pausing:
     TODO
