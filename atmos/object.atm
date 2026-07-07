@@ -1,5 +1,6 @@
 ;; PATTERN #1 : Finite State Machines : over,left,right,middle
 ;;  - awaits in loop bookkeep internal state
+;;  - (but too simple, not the best example)
 ;; PATTERN #3 : Dispatching Hierarchies : Object -> target
 ;;  - Object dispatches :over,:click to target listeners and their children
 

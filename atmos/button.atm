@@ -11,6 +11,14 @@ val PAD = 0.01  ;; padding for buttons
 ;;      :o.over.[on|off]
 ;;      :o.click.[dn|up]
 
+;; PATTERN #4 : Lifespan Hierarchies : Button > Spring/Object
+;;  - Button owns Spring animation, safely aborting it on termination,
+;;    regardless of its state.
+;;  - (same for Object)
+;; PATTERN #1 : Finite State Machines
+;;  - over -> spring
+;;  - (but too simple, not the best example)
+
 task Button (id, target, rect, text) {
     pico.get.text(rect, text)
     set pub = [
