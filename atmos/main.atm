@@ -5,7 +5,6 @@ require "shared"
 require "settings"
 
 ;;;
-
 We selected 9 representative game behaviors and describe their implementations
 in C++ and Céu.
 We also categorized these examples in 5 abstract C++ control-flow patterns that
@@ -34,7 +33,6 @@ likely apply to other games:
     TODO
     This pattern is emerging in many projects I'm working on.
     Need to document it.
-
 ;;;
 
 val Menu = require "menu"

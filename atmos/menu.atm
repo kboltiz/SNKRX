@@ -16,7 +16,7 @@ val x = 0.01    ;; x of main menu
 ;; They never terminate and handle their effects internally.
 ;; We re-create their internal Buttons in a loop bc they change labels.
 
-val task ToggleButton(id, rect, property) {
+val task ToggleButton (id, rect, property) {
     loop {
         val cur = SETTINGS@property;
         spawn Button(id, 1, rect, property ++ ": " ++ (if cur => "yes" => "no"))
@@ -42,7 +42,7 @@ val task RangeButton(id, rect, property) {
 ;; PATTERN #5 : Signaling Mechanisms : Buttons -> Menu
 ;;  - button clicks :quit/:close signal menu to terminate
 
-val task Options() {
+val task Options () {
     print("Options Opened")
 
     ;; overlay translucent background
@@ -72,7 +72,7 @@ val task Options() {
 
     ;; only :close / :quit escape
     ;; other buttons have internal effects, we ignore them here
-    loop b on :o.click.dn until it.id ?? :opts {
+    loop b on :o.click.dn [id=:opts] {
         match b.id {
             :opts.close => break(false)
             :opts.quit  => break(true)
@@ -103,7 +103,7 @@ task Menu () {
     }
 
     ;; we react to each click
-    loop b on :o.click.dn until it.id ?? :menu  {
+    loop b on :o.click.dn [id=:menu]  {
         until (b.id != :menu.options, b.id) ;; escape except on option
         toggle bs(false) with :draw
         val quit = await Options()          ;; overlay Option with paused `bs`
