@@ -1,5 +1,5 @@
 set SETTINGS = [
-    @("music volume") = [3, 10],
-    @("sfx volume") = [3, 10],
-    @("screen shake") = true,
+    @(:opts.music) = [3, 10],
+    @(:opts.sfx)   = [3, 10],
+    @(:opts.shake) = true,
 ]

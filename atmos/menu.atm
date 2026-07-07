@@ -16,21 +16,21 @@ val x = 0.01    ;; x of main menu
 ;; They never terminate and handle their effects internally.
 ;; We re-create their internal Buttons in a loop bc they change labels.
 
-val task ToggleButton (id, rect, property) {
+val task ToggleButton (id, rect, label) {
     loop {
-        val cur = SETTINGS@property;
-        spawn Button(id, 1, rect, property ++ ": " ++ (if cur => "yes" => "no"))
+        val cur = SETTINGS@id;
+        spawn Button(id, 1, rect, label ++ ": " ++ (if cur => "yes" => "no"))
         await :o.click.dn [id=id]
-        set SETTINGS@property = !cur
+        set SETTINGS@id = !cur
     }
 }
 
-val task RangeButton(id, rect, property) {
+val task RangeButton(id, rect, label) {
     loop {
-        val cur,max = table.unpack(SETTINGS@property)
-        spawn Button(id, 1, rect, property ++ ": " ++ cur)
+        val cur,max = table.unpack(SETTINGS@id)
+        spawn Button(id, 1, rect, label ++ ": " ++ cur)
         await :o.click.dn [id=id]
-        set SETTINGS@property = [(cur + 1) % (max + 1), max]
+        set SETTINGS@id = [(cur + 1) % (max + 1), max]
     }
 }
 
