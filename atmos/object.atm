@@ -1,9 +1,9 @@
 ;; PATTERN #1 : Finite State Machines : over,left,right,middle
 ;;  - awaits in loop bookkeep internal state
-;; PATTERN #5 : Signaling Mechanisms : Object -> target
-;;  - object signals :over,:click to target listeners
+;; PATTERN #3 : Dispatching Hierarchies : Object -> target
+;;  - Object dispatches :over,:click to target listeners and their children
 
-task Object (me, tgt) {
+task Object (me, target) {
     set me.pub = me.pub ++ [
         ;; id, rect, layer          ;; from outer `me`
         over   = over,              ;; if mouse over rect
@@ -25,7 +25,7 @@ task Object (me, tgt) {
             val over = pico.vs.pos.rect(:window, e, me.pub.layer, me.pub.rect)
             if over != me.pub.over {
                 set me.pub.over = over
-                emit @(tgt) [tag=tags@over, me=me, id=me.pub.id]
+                emit @(target) [tag=tags@over, me=me, id=me.pub.id]
             }
         }
     } with {
@@ -38,7 +38,7 @@ task Object (me, tgt) {
             set me.pub.left   = e.left
             set me.pub.right  = e.right
             set me.pub.middle = e.middle
-            emit @(tgt) [tag=tags@(e.tag), me=me, id=me.pub.id]
+            emit @(target) [tag=tags@(e.tag), me=me, id=me.pub.id]
         }
     }
 }
