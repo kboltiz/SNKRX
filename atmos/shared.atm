@@ -3,10 +3,10 @@ set H = 360
 set ASPECT_RATIO = W/H
 
 set G = [
-    gold    = 0,
-    level   = 1,
-    party   = ["swordsman", "wizard", "swordsman", "wizard"],
-    rerolls = 3,
+    gold  = 0,
+    level = 1,
+    party = ["swordsman", "wizard", "swordsman", "wizard"],
+    rolls = 3,
 ]
 
 set SOUNDS = [

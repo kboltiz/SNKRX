@@ -265,7 +265,7 @@ val task Card (slot, char) {
     pub.id
 }
 
-val func roll_cards () {
+val func roll () {
     ;; TODO: port tier_weights / weighted_pick from the Lua roll logic
     return [
         :swordsman,
@@ -281,18 +281,18 @@ val task Shop () {
 
     spawn {
         loop {
-            spawn RichTextButton(:reroll, 1, rct, lbl) where {
+            spawn RichTextButton(:roll, 1, rct, lbl) where {
                 rct = ['%', x=0.28, y=0.06, h=0.05]
-                lbl = "[idle]Rerolls: [gold]" ++ G.rerolls
+                lbl = "[idle]Rerolls: [gold]" ++ G.rolls
             }
 
             pin cs = tasks()
-            loop i, char in roll_cards() {
+            loop i, char in roll() {
                 spawn @cs Card(i, char)
             }
 
-            await :o.click.dn [id=:reroll] until (G.rerolls > 0)
-            set G.rerolls = (G.rerolls - 1)
+            await :o.click.dn [id=:roll] until (G.rolls > 0)
+            set G.rolls = (G.rolls - 1)
         }
     }
 
