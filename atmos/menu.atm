@@ -5,6 +5,7 @@ val h = 0.05    ;; height of all button labels
 val x = 0.01    ;; x of main menu
 
 ;; ToggleButton, RangeButton
+
 ;; PATTERN #3 : Dispatching Hierarchies: Outer -> Inner button
 ;;  - outer dispatches :draw,:mouse to inner automatically
 ;; PATTERN #4 : Lifespan Hierarchies : Outer > Inner

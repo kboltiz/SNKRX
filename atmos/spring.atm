@@ -33,6 +33,10 @@ task M.Simple (size) {
     }
 }
 
+;; PATTERN #4 : Lifespan Hierarchies : Object > Simple
+;;  - Button owns Simple animation, safely aborting it on termination,
+;;    regardless of its state.
+
 task M.Object (me, size) {
     pin spring = spawn M.Simple(size)
     set me.pub.spring = spring.pub

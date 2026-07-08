@@ -2,6 +2,10 @@ val PAD = 0.03
 val POPUP_PAD = 0.1
 val LINE_H = 0.03
 
+;;;
+;; TODO : fsantanna : unreviewed
+;;;
+
 task Popup (lines) {
     val parsed = []
     var maxWidth = 0
@@ -57,6 +61,11 @@ task Popup (lines) {
 
     await(false)
 }
+
+;; PATTERN #4 : Lifespan Hierarchies : Char_Icon > loop > Popup
+;;  - nested loop owns Popup, which aborts on each iteration
+;; PATTERN #1 : Finite State Machines : Popup show/hide
+;;  - over on -> show -> off -> hide
 
 val task Char_Icon (me, rect, number, showName) {
     val char = me.pub.char
@@ -226,6 +235,9 @@ val func class_banners (me) {
 
     pico.set.layer(:world)
 }
+
+;; PATTERN #4 : Lifespan Hierarchies : Card > Object,Spring,Char_Icon
+;;  - Card encapsulates its constituents, which are restricted to its lifespan.
 
 val task Card (slot, char) {
     val dim = [ '%', w=0.16, h=0.2*ASPECT_RATIO ]
