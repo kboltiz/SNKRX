@@ -239,12 +239,12 @@ val task Card (slot, char) {
     set pub.id = pico.layer.empty [ target=pub.rect ]
 
     spawn Object(task, 1)
-    pin spr = spawn Spring(1.3)
+    pin spring = spawn Spring(1.3)
 
     spawn {
         loop on :draw {
-            set pub.rect.w = dim.w * spr.pub.scale
-            set pub.rect.h = dim.h * spr.pub.scale
+            set pub.rect.w = dim.w * spring.pub.scale
+            set pub.rect.h = dim.h * spring.pub.scale
             if pub.over {
                 pico.set.pencil [ color=COLORS.idle.bg ] ;; TODO: verify color
                 pico.output.draw.rect(pub.rect)
@@ -261,7 +261,7 @@ val task Card (slot, char) {
     spawn {
         loop {
             if pub.over {
-                emit @spr :start
+                emit @spring :start
                 pico.output.sound(SOUNDS.hover)
             }
             await :o.over.on [me=task]
