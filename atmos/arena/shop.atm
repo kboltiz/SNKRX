@@ -133,19 +133,27 @@ val task Char_Icon (me, rect, number, showName) {
     }
 }
 
+;; PATTERN #4 : Lifespan Hierarchies : Cell > Icon
+;;  - Cell (handles drag) owns Icon (handles draw and is reused elsewhere)
+;;  - (same for Object)
+;; PATTERN #5 : Signaling Mechanisms : :slot -> up pool
+;;  - cell drag signals pool with colliding ids
+;; PATTERN #1 : Finite State Machines : drag n' drop
+;;  - click -> motion -> release
+
 val task Party_Cell (slot, char) {
     var cur = slot
 
     val h = 0.08
     set pub = [
         id   = nil,     ;; see below
+        char = char,
         rect = [ '%',
             x = 0.95,
             y = 0.1 + (cur * h),
             w = 0.03,
             h = 0.03 * ASPECT_RATIO,
         ],
-        char = char,
     ]
     set pub.id = pico.layer.empty [ target=pub.rect ]
 
@@ -273,6 +281,11 @@ val func roll () {
         :swordsman,
     ]
 }
+
+;; PATTERN #4 : Lifespan Hierarchies : Shop > Widgets (go,roll,cards,party)
+;;  - Shop owns all widgets which nest complex behavior, safely aborting them
+;;    on termination, regardless of their state.
+;; PATTERN #7 : Dynamic Collections : TODO
 
 val task Shop () {
     spawn Button(:go, 2, rect, "Go!") where {

@@ -33,6 +33,9 @@ likely apply to other games:
     TODO
     This pattern is emerging in many projects I'm working on.
     Need to document it.
+7. Dynamic Collections
+    - same behavior, dynamic lifetime
+    TODO
 ;;;
 
 val Menu = require "menu"
