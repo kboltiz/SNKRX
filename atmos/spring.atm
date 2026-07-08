@@ -1,3 +1,9 @@
+;; PATTERN #5 : Signaling Mechanisms : action :start
+;;  - outer object controls spring through :start
+;; PATTERN #1 : Finite State Machines : idle -> running -> idle
+;;  - waits initial start, runs to completion
+;;  - restarts when requested
+;;  - uses await/watching/await
 
 ;; TODO: document vars, any possible simplification?
 task (size) {
