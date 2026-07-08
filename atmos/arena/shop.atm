@@ -279,39 +279,40 @@ val task Shop () {
         rect = ['%', x=0.88, y=0.9, h=0.1]
     }
 
+    ;; TODO: incomplete
     spawn {
-        loop {
-            spawn RichTextButton(:roll, 1, rct, lbl) where {
-                rct = ['%', x=0.28, y=0.06, h=0.05]
-                lbl = "[idle]Rerolls: [gold]" ++ G.rolls
-            }
+        par {
+            loop {
+                spawn RichTextButton(:roll, 1, rct, lbl) where {
+                    rct = ['%', x=0.28, y=0.06, h=0.05]
+                    lbl = "[idle]Rerolls: [gold]" ++ G.rolls
+                }
 
-            pin cs = tasks()
-            loop i, char in roll() {
-                spawn @cs Card(i, char)
-            }
+                pin cs = tasks()
+                loop i, char in roll() {
+                    spawn @cs Card(i, char)
+                }
 
-            await :o.click.dn [id=:roll] until (G.rolls > 0)
-            set G.rolls = (G.rolls - 1)
-        }
-    }
-
-    spawn {
-        loop {
-            pin ps = tasks()
-            loop i, char in G.party {
-                spawn @ps PartyColumnCell(i, char)
+                await :o.click.dn [id=:roll] until (G.rolls > 0)
+                set G.rolls = (G.rolls - 1)
             }
-            await(false)    ;; TODO: awakes on each card click?
+        } with {
+            loop {
+                pin ps = tasks()
+                loop i, char in G.party {
+                    spawn @ps PartyColumnCell(i, char)
+                }
+                await(false)    ;; TODO: awakes on each card click?
+            }
         }
     }
 
     par:any {
         await :o.click.dn [id=:go]
-        true
+        true    ;; Go!
     } with {
         await :key.dn [key=:Escape]
-        false
+        false   ;; ESC
     }
 }
 
