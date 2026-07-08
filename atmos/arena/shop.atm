@@ -72,26 +72,31 @@ val task Char_Icon (me, rect, number, showName) {
     val charColorGroup = CHARACTERS@char.color
     val charColors = COLORS@charColorGroup
 
-    do {
-        pico.set.layer(me.pub.id)
-        pico.set.pencil [ font=FONT ]
+    spawn {
+        loop on :draw {
+            pico.set.layer(me.pub.id)
+            pico.set.pencil [ font=FONT ]
 
-        pico.set.pencil [ color=charColors.base ]
-        pico.output.draw.rect(rect)
+            val rectColor = (if me.pub.dragging => COLORS.idle.bg => charColors.base)
+            val textColor = (if me.pub.dragging => COLORS.idle.fg => charColors.text)            
+            
+            pico.set.pencil [ color=rectColor ]
+            pico.output.draw.rect(rect)
 
-        pico.set.pencil [ color=charColors.text ]
-        pico.output.draw.text(tostring(number)) <- [
-            '%', x=rect.x, y=rect.y, h=rect.h*0.6,
-        ]
-
-        if showName {
-            pico.set.pencil [ color=charColors.base ]
-            pico.output.draw.text(me.pub.char) <- [
-                '%', x=rect.x, y=(rect.y + rect.h), h=rect.h*0.6,
+            pico.set.pencil [ color=textColor ]
+            pico.output.draw.text(tostring(number)) <- [
+                '%', x=rect.x, y=rect.y, h=(rect.h*0.6),
             ]
-        }
 
-        pico.set.layer(:world)
+            if showName {
+                pico.set.pencil [ color=charColors.base ]
+                pico.output.draw.text(me.pub.char) <- [
+                    '%', x=rect.x, y=(rect.y + rect.h), h=(rect.h*0.6),
+                ]
+            }
+
+            pico.set.layer(:world)
+        }
     }
 
     ;; TODO, cost calculation of unit
@@ -155,8 +160,9 @@ val task Party_Cell (slot, char) {
 
     val h = 0.08
     set pub = [
-        id   = nil,     ;; see below
-        char = char,
+        id       = nil,     ;; see below
+        char     = char,
+        dragging = false,
         rect = [ '%',
             x = 0.95,
             y = 0.1 + (cur * h),
@@ -185,24 +191,43 @@ val task Party_Cell (slot, char) {
                 (e@2 == cur) => e@1
             }
             set cur = to
-            set pub.rect.y = 0.1 + (to * h)
-            pico.set.layer(pub.id)
-            pico.set.scene [ target=pub.rect ]
-            pico.set.layer :world
+            if (!pub.dragging) {
+                set pub.rect.y = (0.1 + (to * h))
+                pico.set.layer(pub.id)
+                pico.set.scene [ target=pub.rect ]
+                pico.set.layer :world
+            }
         }
     } with {
-        loop on :o.click.dn [me=task] {                
+        loop on :o.click.dn [me=task] {
+            set pub.dragging = true
             watching :mouse.button.up {
                 loop on :mouse.motion {
                     val mouse = pico.get.mouse '%'
+                    set pub.rect.y = mouse.y
+                    pico.set.layer(pub.id)
+                    pico.set.scene [ target=pub.rect ]
+                    pico.set.layer :world
+
                     ifs {
-                        (mouse.y >= (pub.rect.y + 0.08)) && (cur < #G.party) =>
-                            emit @(:parent) :slot [cur, cur+1]
-                        (mouse.y <= (pub.rect.y - 0.08)) && (cur > 1) =>
-                            emit @(:parent) :slot [cur, cur-1]
+                        ((mouse.y >= ((0.1 + (cur * h)) + 0.08)) && (cur < #G.party)) => {
+                            val to = (cur + 1)
+                            emit @(:parent) :slot [cur, to]
+                            set cur = to
+                        }
+                        ((mouse.y <= ((0.1 + (cur * h)) - 0.08)) && (cur > 1)) => {
+                            val to = (cur - 1)
+                            emit @(:parent) :slot [cur, to]
+                            set cur = to
+                        }
                     }
                 }
             }
+            set pub.dragging = false
+            set pub.rect.y = (0.1 + (cur * h))
+            pico.set.layer(pub.id)
+            pico.set.scene [ target=pub.rect ]
+            pico.set.layer :world
         }
     }
 }
