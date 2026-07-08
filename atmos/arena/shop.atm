@@ -58,7 +58,7 @@ task Popup (lines) {
     await(false)
 }
 
-val task CharacterIcon (me, rect, number, showName) {
+val task Char_Icon (me, rect, number, showName) {
     val char = me.pub.char
     val charColorGroup = CHARACTERS@char.color
     val charColors = COLORS@charColorGroup
@@ -133,7 +133,7 @@ val task CharacterIcon (me, rect, number, showName) {
     }
 }
 
-val task PartyColumnCell (slot, char) {
+val task Party_Cell (slot, char) {
     var cur = slot
 
     val h = 0.08
@@ -152,8 +152,8 @@ val task PartyColumnCell (slot, char) {
     spawn Object(task, 1)
 
     ;; v->f(...) is same as f(v, ...)
-    ;; spawn CharacterIcon(task, r, 1, false)
-    spawn task->CharacterIcon(r, 1, false) where {
+    ;; spawn Char_Icon(task, r, 1, false)
+    spawn task->Char_Icon(r, 1, false) where {
         r = [ '%', x=0.5, y=0.5, w=1, h=1 ]
     }
 
@@ -245,7 +245,7 @@ val task Card (slot, char) {
         }
     }
 
-    spawn task->CharacterIcon(r, 1, true) where {
+    spawn task->Char_Icon(r, 1, true) where {
         r = [ '%', x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
     }
     task->class_banners()
@@ -300,7 +300,7 @@ val task Shop () {
             loop {
                 pin ps = tasks()
                 loop i, char in G.party {
-                    spawn @ps PartyColumnCell(i, char)
+                    spawn @ps Party_Cell(i, char)
                 }
                 await(false)    ;; TODO: awakes on each card click?
             }
