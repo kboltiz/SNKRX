@@ -1,3 +1,5 @@
+val M = []
+
 ;; PATTERN #5 : Signaling Mechanisms : action :start
 ;;  - outer object controls spring through :start
 ;; PATTERN #1 : Finite State Machines : idle -> running -> idle
@@ -6,7 +8,7 @@
 ;;  - uses await/watching/await
 
 ;; TODO: document vars, any possible simplification?
-task (size) {
+task M.Simple (size) {
     set pub = [ scale=1.0 ]
     val k = 400
     val d = 15
@@ -30,3 +32,26 @@ task (size) {
         }
     }
 }
+
+task M.Object (me, size) {
+    pin spring = spawn M.Simple(size)
+    set me.pub.spring = spring.pub
+    set me.pub.spring.rect = [] ++ me.pub.rect
+
+    par {
+        loop {
+            if me.pub.over {
+                emit @spring :start
+                pico.output.sound(SOUNDS.hover)
+            }
+            await :o.over.on [me=me]
+        }
+    } with {
+        loop on :clock {
+            set me.pub.spring.rect.w = me.pub.rect.w * spring.pub.scale
+            set me.pub.spring.rect.h = me.pub.rect.h * spring.pub.scale
+        }
+    }
+}
+
+M

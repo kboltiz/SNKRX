@@ -24,7 +24,7 @@ task Popup (lines) {
         h = totalHeight / (1 - POPUP_PAD),
     ]
 
-    pin spring = spawn Spring(1.1)
+    pin spring = spawn Spring.Simple(1.1)
     emit @spring :start
 
     ;; TODO: popup layer may be required to draw it on top
@@ -239,17 +239,15 @@ val task Card (slot, char) {
     set pub.id = pico.layer.empty [ target=pub.rect ]
 
     spawn Object(task, 1)
-    pin spring = spawn Spring(1.3)
+    spawn Spring.Object(task, 1.3)
 
     spawn {
         loop on :draw {
-            set pub.rect.w = dim.w * spring.pub.scale
-            set pub.rect.h = dim.h * spring.pub.scale
             if pub.over {
                 pico.set.pencil [ color=COLORS.idle.bg ] ;; TODO: verify color
-                pico.output.draw.rect(pub.rect)
+                pico.output.draw.rect(pub.spring.rect)
             }
-            pico.output.draw.layer(pub.id, pub.rect)
+            pico.output.draw.layer(pub.id, pub.spring.rect)
         }
     }
 
@@ -257,16 +255,6 @@ val task Card (slot, char) {
         r = [ '%', x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
     }
     task->class_banners()
-
-    spawn {
-        loop {
-            if pub.over {
-                emit @spring :start
-                pico.output.sound(SOUNDS.hover)
-            }
-            await :o.over.on [me=task]
-        }
-    }
 
     await :o.click.dn [me=task]
     pico.output.sound(SOUNDS.pop)
