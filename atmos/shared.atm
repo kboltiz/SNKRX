@@ -3,7 +3,7 @@ set H = 360
 set ASPECT_RATIO = W/H
 
 set G = [
-    gold  = 0,
+    gold  = 3,
     level = 1,
     party = ["swordsman", "wizard", "swordsman", "wizard"],
     rolls = 3,

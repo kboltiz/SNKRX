@@ -316,13 +316,37 @@ val task Shop () {
     spawn Button(:go, 2, rect, "Go!") where {
         rect = ['%', x=0.88, y=0.9, h=0.1]
     }
+    
+    spawn {
+        loop {
+            val runs = parse_rich_text("shop - gold: [gold]" ++ G.gold)
+            val positions, totalWidth = measure_runs(runs, 0.04 * (1 - PAD))
+
+            watching :gold_spent {
+                loop on :draw {
+                    loop i, run in runs {
+                        val pos = positions@i
+
+                        pico.set.pencil [ color=run.color ]
+                        pico.output.draw.text(run.text, [
+                            '%',
+                            x = 0.03 + pos.start,
+                            y = 0.06,
+                            h = 0.04 * (1 - PAD),
+                            anchor = "W"
+                        ])
+                    }
+                }
+            }
+        }
+    }
 
     ;; TODO: incomplete
     spawn {
         par {
             loop {
                 spawn RichTextButton(:roll, 1, rct, lbl) where {
-                    rct = ['%', x=0.28, y=0.06, h=0.05]
+                    rct = ['%', x=0.34, y=0.06, h=0.04]
                     lbl = "[idle]Rerolls: [gold]" ++ G.rolls
                 }
 
