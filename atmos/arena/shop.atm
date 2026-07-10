@@ -67,7 +67,7 @@ task Popup (lines) {
 ;; PATTERN #1 : Finite State Machines : Popup show/hide
 ;;  - over on -> show -> off -> hide
 
-val task Char_Icon (me, rect, number, showName) {
+val task Char_Icon (me, rect, cost, showName) {
     val char = me.pub.char
     val charColorGroup = CHARACTERS@char.color
     val charColors = COLORS@charColorGroup
@@ -84,7 +84,7 @@ val task Char_Icon (me, rect, number, showName) {
             pico.output.draw.rect(rect)
 
             pico.set.pencil [ color=textColor ]
-            pico.output.draw.text(tostring(number)) <- [
+            pico.output.draw.text(tostring(cost)) <- [
                 '%', x=rect.x, y=rect.y, h=(rect.h*0.6),
             ]
 
@@ -98,9 +98,6 @@ val task Char_Icon (me, rect, number, showName) {
             pico.set.layer(:world)
         }
     }
-
-    ;; TODO, cost calculation of unit
-    val cost = 0;
 
     val headerColor, labelColor, effectText =
         if (G.level == 3)
@@ -287,14 +284,25 @@ val task Card (slot, char) {
             pico.output.draw.layer(pub.id, pub.spring.rect)
         }
     }
+    
+    val unit_cost = 1;
 
-    spawn task->Char_Icon(r, 1, true) where {
+    spawn task->Char_Icon(r, unit_cost, true) where {
         r = [ '%', x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
     }
     task->class_banners()
 
-    await :o.click.dn [me=task]
+    loop {
+        await :o.click.dn [me=task]
+        print(G.gold >= unit_cost)
+        until (G.gold >= unit_cost)
+    }
+    
     pico.output.sound(SOUNDS.pop)
+    
+    set G.gold = (G.gold - unit_cost)
+    emit @(2) (:gold_spent)
+
     pub.id
 }
 
@@ -355,8 +363,11 @@ val task Shop () {
                     spawn @cs Card(i, char)
                 }
 
-                await :o.click.dn [id=:roll] until (G.rolls > 0)
+                await :o.click.dn [id=:roll] until ((G.rolls > 0) && (G.gold >= 2))
                 set G.rolls = (G.rolls - 1)
+                
+                set G.gold = (G.gold - 2)
+                emit (:gold_spent)
             }
         } with {
             loop {
