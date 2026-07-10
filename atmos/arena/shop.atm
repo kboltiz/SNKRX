@@ -209,17 +209,28 @@ val task Party_Cell (slot, char) {
                     ifs {
                         ((mouse.y >= ((0.1 + (cur * h)) + 0.08)) && (cur < #G.party)) => {
                             val to = (cur + 1)
+
+                            val tmp = G.party@cur
+                            set G.party@cur = G.party@to
+                            set G.party@to = tmp
+                            
                             emit @(:parent) :slot [cur, to]
                             set cur = to
                         }
                         ((mouse.y <= ((0.1 + (cur * h)) - 0.08)) && (cur > 1)) => {
                             val to = (cur - 1)
+                            
+                            val tmp = G.party@cur
+                            set G.party@cur = G.party@to
+                            set G.party@to = tmp
+                            
                             emit @(:parent) :slot [cur, to]
                             set cur = to
                         }
                     }
                 }
             }
+            
             set pub.dragging = false
             set pub.rect.y = (0.1 + (cur * h))
             pico.set.layer(pub.id)
@@ -295,10 +306,13 @@ val task Card (slot, char) {
     loop {
         await :o.click.dn [me=task]
         print(G.gold >= unit_cost)
-        until (G.gold >= unit_cost)
+        until ((G.gold >= unit_cost) && (#G.party < 10))
     }
     
     pico.output.sound(SOUNDS.pop)
+    
+    set G.party = G.party ++ [char]
+    emit @(2) (:card_bought)
     
     set G.gold = (G.gold - unit_cost)
     emit @(2) (:gold_spent)
@@ -375,7 +389,7 @@ val task Shop () {
                 loop i, char in G.party {
                     spawn @ps Party_Cell(i, char)
                 }
-                await(false)    ;; TODO: awakes on each card click?
+                await(:card_bought)
             }
         }
     }
