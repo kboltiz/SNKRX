@@ -1,3 +1,6 @@
+;; this can be sent to shared.atm (need to find better options)
+var SNAKE_POS = [x=0, y=0]
+
 val SPACING = 0.03
 val TRAIL_MAX = 256
 val HEAD_SPEED = 0.4
@@ -113,11 +116,11 @@ val ABILITIES = [
     wizard = WizardAbility
 ]
 
-val task SnakeUnit(index, character, trail, headRect, positions) {
+val task SnakeUnit(index, character, trail, positions) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
 
-    var pos = [ x=headRect.x, y=headRect.y, r=0 ]
+    var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
 
     par {
         if (index == 1) {
@@ -143,8 +146,8 @@ val task SnakeUnit(index, character, trail, headRect, positions) {
                 val hitVertical = (nextX < ARENA_LEFT) || (nextX > ARENA_RIGHT)
                 val hitHorizontal = (nextY < ARENA_TOP) || (nextY > ARENA_BOTTOM)
 
+                ;; corner hit
                 if hitVertical && hitHorizontal {
-                    ;; corner hit
                     set pos.r = (pos.r + math.pi)
                 } else {
                     if hitVertical {
@@ -162,6 +165,9 @@ val task SnakeUnit(index, character, trail, headRect, positions) {
 
                 set pos.x = nextX
                 set pos.y = nextY
+
+                set SNAKE_POS.x = pos.x
+                set SNAKE_POS.y = pos.y
 
                 set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
                 if (#trail > TRAIL_MAX) {
@@ -201,16 +207,51 @@ val task SnakeUnit(index, character, trail, headRect, positions) {
 
 val task Snake() {
     var trail = [[ x=0.5, y=0.5, r=0 ]]
-    val headRect = [ x=0.5, y=0.5 ]
-
     val positions = []
     pin units = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @units SnakeUnit(i, character, trail, headRect, positions)
+        spawn @units SnakeUnit(i, character, trail, positions)
     }
 
     await(false)
+}
+
+;; Seeker Unit
+val SEEKER_SPEED = 0.15
+val SEEKER_SIZE = 0.025
+val SEEKER_TURN_RATE = 3
+
+task Seeker(startX, startY) {
+    var pos = [ x=startX, y=startY, r=0 ]
+
+    par {
+        loop {
+            val us = await :clock
+            val dt = us/1s
+
+            val dx = (SNAKE_POS.x - pos.x)
+            val dy = ((SNAKE_POS.y - pos.y) / ASPECT_RATIO)
+            val desired = math.atan(dy, dx)
+
+            val diff = angle_diff(pos.r, desired)
+            val maxTurn = (SEEKER_TURN_RATE * dt)
+            val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+            set pos.r = (pos.r + turn)
+
+            set pos.x = (pos.x + (math.cos(pos.r) * SEEKER_SPEED * dt))
+            set pos.y = (pos.y + (math.sin(pos.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
+        }
+    } with {
+        loop on :draw {
+            pico.set.pencil [ color=:red ]
+            pico.output.draw.oval([ "%",
+                x=pos.x, y=pos.y,
+                w=SEEKER_SIZE, h=(SEEKER_SIZE * ASPECT_RATIO),
+                r=pos.r,
+            ])
+        }
+    }
 }
 
 task Battle () {
@@ -228,6 +269,7 @@ task Battle () {
     }
 
     spawn Snake()
+    spawn Seeker(0.15,0.5)
 
     await(:level_end)
 }
