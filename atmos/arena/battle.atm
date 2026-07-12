@@ -180,10 +180,22 @@ val task SnakeUnit(index, character, trail, positions) {
             ])
         }
     } with {
+        ;; TODO: allow loop entry for next ability call
+        ;; only if enemies are in range
+    
         if (Abilities@character) {
-            ;; TODO: abilities can either yield till 
+            ;; abilities can either yield till 
             ;; completion OR snake unit existence
-            spawn (Abilities@character)(pos)
+            
+            ;; Sentry unit's turrets (that stays alive
+            ;; beyond one ability instance) is now possible
+            
+            pin castPool = tasks()
+            loop {
+                val ability = Abilities@character
+                spawn @castPool ability.caster(pos)
+                await (ability.interval)
+            }
         }
     }
 }
