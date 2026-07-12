@@ -1,5 +1,5 @@
-;; this can be sent to shared.atm (need to find better options)
-var SNAKE_POS = [x=0, y=0]
+val Seeker = require "arena.enemies"
+val Abilities = require "arena.abilities"
 
 val SPACING = 0.03
 val TRAIL_MAX = 256
@@ -15,11 +15,6 @@ val ARENA_TOP = 0.5 - (ARENA_H / 2)
 val ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
 
 val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
-
-val func angle_diff(a, b) {
-    val d = (b - a)
-    return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
-}
 
 val func clamp_away_from_wall(r, isVertical) {
     var result = r
@@ -101,20 +96,6 @@ val func bounce(r, nx, ny) {
     }
     return(result)
 }
-
-;; these can be moved to a separate "arena/units.atm"
-task SwordsmanAbility(unit) {
-    await(false)
-}
-
-task WizardAbility(unit) {
-    await(false)
-}
-
-val ABILITIES = [
-    swordsman = SwordsmanAbility,
-    wizard = WizardAbility
-]
 
 val task SnakeUnit(index, character, trail, positions) {
     val charColorGroup = CHARACTERS@character.color
@@ -199,8 +180,10 @@ val task SnakeUnit(index, character, trail, positions) {
             ])
         }
     } with {
-        if (ABILITIES@character) {
-            spawn (ABILITIES@character)(pos)
+        if (Abilities@character) {
+            ;; TODO: abilities can either yield till 
+            ;; completion OR snake unit existence
+            spawn (Abilities@character)(pos)
         }
     }
 }
@@ -215,43 +198,6 @@ val task Snake() {
     }
 
     await(false)
-}
-
-;; Seeker Unit
-val SEEKER_SPEED = 0.15
-val SEEKER_SIZE = 0.025
-val SEEKER_TURN_RATE = 3
-
-task Seeker(startX, startY) {
-    var pos = [ x=startX, y=startY, r=0 ]
-
-    par {
-        loop {
-            val us = await :clock
-            val dt = us/1s
-
-            val dx = (SNAKE_POS.x - pos.x)
-            val dy = ((SNAKE_POS.y - pos.y) / ASPECT_RATIO)
-            val desired = math.atan(dy, dx)
-
-            val diff = angle_diff(pos.r, desired)
-            val maxTurn = (SEEKER_TURN_RATE * dt)
-            val turn = math.max(math.min(diff, maxTurn), -maxTurn)
-            set pos.r = (pos.r + turn)
-
-            set pos.x = (pos.x + (math.cos(pos.r) * SEEKER_SPEED * dt))
-            set pos.y = (pos.y + (math.sin(pos.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
-        }
-    } with {
-        loop on :draw {
-            pico.set.pencil [ color=:red ]
-            pico.output.draw.oval([ "%",
-                x=pos.x, y=pos.y,
-                w=SEEKER_SIZE, h=(SEEKER_SIZE * ASPECT_RATIO),
-                r=pos.r,
-            ])
-        }
-    }
 }
 
 task Battle () {

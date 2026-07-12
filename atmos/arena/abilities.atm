@@ -1,0 +1,15 @@
+;; snake units now pull snake position from shared.atm 
+
+val task SwordsmanAbility(unit) {
+    print("swordsman_ability")
+}
+
+val task WizardAbility(unit) {
+    print("wizard_ability")
+}
+
+[
+    swordsman = SwordsmanAbility,
+    wizard = WizardAbility
+]
+

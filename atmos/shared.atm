@@ -9,6 +9,8 @@ set G = [
     rolls = 3,
 ]
 
+set SNAKE_POS = [x=0, y=0]
+
 set SOUNDS = [
     pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
     hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
@@ -77,3 +79,9 @@ set TEXT_TAGS = [
     blue = COLORS.blue.base,
     red = COLORS.red.base
 ]
+
+;; moved from battle.atm for enemies and snake to use
+func angle_diff(a, b) {
+    val d = (b - a)
+    return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
+}
