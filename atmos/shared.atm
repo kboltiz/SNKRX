@@ -3,10 +3,14 @@ set H = 360
 set ASPECT_RATIO = W/H
 
 set G = [
-    gold  = 3,
     level = 1,
-    party = ["swordsman", "wizard", "swordsman", "wizard"],
+    gold  = 3,
     rolls = 3,
+    party = [:swordsman, :wizard, :swordsman, :wizard],
+    cost  = [
+        swordsman = 1,
+        wizard    = 1,
+    ],
 ]
 
 set SNAKE_POS = [x=0, y=0]

@@ -79,7 +79,7 @@ val task Char_Icon (me, rect, cost, showName) {
 
             val rectColor = (if me.pub.dragging => COLORS.idle.bg => charColors.base)
             val textColor = (if me.pub.dragging => COLORS.idle.fg => charColors.text)            
-            
+
             pico.set.pencil [ color=rectColor ]
             pico.output.draw.rect(rect)
 
@@ -213,24 +213,24 @@ val task Party_Cell (slot, char) {
                             val tmp = G.party@cur
                             set G.party@cur = G.party@to
                             set G.party@to = tmp
-                            
+
                             emit @(:parent) :slot [cur, to]
                             set cur = to
                         }
                         ((mouse.y <= ((0.1 + (cur * h)) - 0.08)) && (cur > 1)) => {
                             val to = (cur - 1)
-                            
+
                             val tmp = G.party@cur
                             set G.party@cur = G.party@to
                             set G.party@to = tmp
-                            
+
                             emit @(:parent) :slot [cur, to]
                             set cur = to
                         }
                     }
                 }
             }
-            
+
             set pub.dragging = false
             set pub.rect.y = (0.1 + (cur * h))
             pico.set.layer(pub.id)
@@ -295,29 +295,17 @@ val task Card (slot, char) {
             pico.output.draw.layer(pub.id, pub.spring.rect)
         }
     }
-    
-    val unit_cost = 1;
 
-    spawn task->Char_Icon(r, unit_cost, true) where {
+    val cost = G.cost@char
+
+    spawn task->Char_Icon(r, cost, true) where {
         r = [ '%', x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
     }
     task->class_banners()
 
-    loop {
-        await :o.click.dn [me=task]
-        print(G.gold >= unit_cost)
-        until ((G.gold >= unit_cost) && (#G.party < 10))
-    }
-    
+    await :o.click.dn [me=task] until ((G.gold>=cost) && (#G.party<10))
     pico.output.sound(SOUNDS.pop)
-    
-    set G.party = G.party ++ [char]
-    emit @(2) (:card_bought)
-    
-    set G.gold = (G.gold - unit_cost)
-    emit @(2) (:gold_spent)
-
-    pub.id
+    char
 }
 
 val func roll () {
@@ -335,20 +323,26 @@ val func roll () {
 ;; PATTERN #7 : Dynamic Collections : TODO
 
 val task Shop () {
+    ;; GO
     spawn Button(:go, 2, rect, "Go!") where {
         rect = ['%', x=0.88, y=0.9, h=0.1]
     }
-    
+
+    ;; PARTY
+    pin ps = tasks()
+    loop i, char in G.party {
+        spawn @ps Party_Cell(i, char)
+    }
+
+    ;; GOLD
     spawn {
         loop {
             val runs = parse_rich_text("shop - gold: [gold]" ++ G.gold)
             val positions, totalWidth = measure_runs(runs, 0.04 * (1 - PAD))
-
-            watching :gold_spent {
+            spawn {
                 loop on :draw {
                     loop i, run in runs {
                         val pos = positions@i
-
                         pico.set.pencil [ color=run.color ]
                         pico.output.draw.text.fix(run.text, [
                             '%',
@@ -360,37 +354,36 @@ val task Shop () {
                     }
                 }
             }
+            val e = await :gold
+            set G.gold = G.gold - e.v
+            assert(G.gold >= 0)
         }
     }
 
-    ;; TODO: incomplete
+    ;; CARDS / REROLL
     spawn {
-        par {
-            loop {
-                spawn RichTextButton(:roll, 1, rct, lbl) where {
-                    rct = ['%', x=0.34, y=0.06, h=0.04]
-                    lbl = "[idle]Rerolls: [gold]" ++ G.rolls
-                }
-
-                pin cs = tasks()
-                loop i, char in roll() {
-                    spawn @cs Card(i, char)
-                }
-
-                await :o.click.dn [id=:roll] until ((G.rolls > 0) && (G.gold >= 2))
-                set G.rolls = (G.rolls - 1)
-                
-                set G.gold = (G.gold - 2)
-                emit (:gold_spent)
+        loop {
+            spawn RichTextButton(:roll, 1, rct, lbl) where {
+                rct = ['%', x=0.34, y=0.06, h=0.04]
+                lbl = "[idle]Rerolls: [gold]" ++ G.rolls
             }
-        } with {
-            loop {
-                pin ps = tasks()
-                loop i, char in G.party {
-                    spawn @ps Party_Cell(i, char)
-                }
-                await(:card_bought)
+
+            pin cs = tasks()
+            loop i, char in roll() {
+                spawn @cs Card(i, char)
             }
+
+            spawn {
+                loop char on :any cs {
+                    set G.party@+ = char
+                    spawn @ps Party_Cell(#ps+1, char)
+                    emit :gold [v=G.cost@char]
+                }
+            }
+
+            await :o.click.dn [id=:roll] until ((G.rolls>0) && (G.gold>=2))
+            set G.rolls = (G.rolls - 1)
+            emit :gold [v=2]
         }
     }
 
