@@ -50,7 +50,7 @@ task Popup (lines) {
             loop ri, run in entry.runs {
                 val pos = entry.positions@ri
                 pico.set.pencil [ color=run.color ]
-                pico.output.draw.text(run.text, [ '%',
+                pico.output.draw.text.fix(run.text, [ '%',
                     x = rowStart + ((pos.start + (pos.width / 2)) * spring.pub.scale),
                     y = rowY,
                     h = LINE_H * (1 - POPUP_PAD) * spring.pub.scale,
@@ -84,13 +84,13 @@ val task Char_Icon (me, rect, cost, showName) {
             pico.output.draw.rect(rect)
 
             pico.set.pencil [ color=textColor ]
-            pico.output.draw.text(tostring(cost)) <- [
+            pico.output.draw.text.fix(tostring(cost)) <- [
                 '%', x=rect.x, y=rect.y, h=(rect.h*0.6),
             ]
 
             if showName {
                 pico.set.pencil [ color=charColors.base ]
-                pico.output.draw.text(me.pub.char) <- [
+                pico.output.draw.text.fix(me.pub.char) <- [
                     '%', x=rect.x, y=(rect.y + rect.h), h=(rect.h*0.6),
                 ]
             }
@@ -350,7 +350,7 @@ val task Shop () {
                         val pos = positions@i
 
                         pico.set.pencil [ color=run.color ]
-                        pico.output.draw.text(run.text, [
+                        pico.output.draw.text.fix(run.text, [
                             '%',
                             x = 0.03 + pos.start,
                             y = 0.06,

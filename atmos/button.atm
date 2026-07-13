@@ -41,7 +41,7 @@ task Button (id, target, rect, text) {
             pico.output.draw.rect(pub.spring.rect)
 
             pico.set.pencil [ color=clr.fg ]
-            pico.output.draw.text(text, pub.spring.rect)
+            pico.output.draw.text.fix(text, pub.spring.rect)
         }
     }
 }
@@ -109,7 +109,7 @@ task RichText(id, rect, runs, positions, totalWidth, textH) {
             ]
 
             pico.set.pencil [ color=run.color ]
-            pico.output.draw.text(run.text, drawRect)
+            pico.output.draw.text.fix(run.text, drawRect)
         }
         pico.set.layer(:world)
     }
@@ -152,7 +152,7 @@ task RichTextButton(id, target, rect, text) {
                 pico.set.pencil [
                     color = (if pub.over => clr.fg => run.color),
                 ]
-                pico.output.draw.text(run.text, [ '%',
+                pico.output.draw.text.fix(run.text, [ '%',
                     x = blockStart + pos.start + (pos.width / 2),
                     y = r.y,
                     h = r.h * (1 - PAD),

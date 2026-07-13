@@ -78,7 +78,7 @@ task Transition (msg, pos, Next, ...) {
             } with {
                 loop on :draw {
                     pico.set.pencil [ color=COLORS.idle.bg ]
-                    pico.output.draw.text(msg, ['%', x=0.5, y=0.5, h=0.05])
+                    pico.output.draw.text.fix(msg, ['%', x=0.5, y=0.5, h=0.05])
                 }
             }
         }
