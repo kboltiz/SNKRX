@@ -167,7 +167,7 @@ val task Party_Cell (slot, char) {
             h = 0.03 * ASPECT_RATIO,
         ],
     ]
-    set pub.id = pico.layer.empty [ target=pub.rect ]
+    set pub.id = pico.layer.empty [ dim=pub.rect ]
 
     spawn Object(task, 1)
 
@@ -179,7 +179,7 @@ val task Party_Cell (slot, char) {
 
     par {
         loop on :draw {
-            pico.output.draw.layer(pub.id)
+            pico.output.draw.layer(pub.id, pub.rect)
         }
     } with {
         loop e on :slot until (it@1==cur) || (it@2==cur) {
@@ -190,9 +190,6 @@ val task Party_Cell (slot, char) {
             set cur = to
             if (!pub.dragging) {
                 set pub.rect.y = (0.1 + (to * h))
-                pico.set.layer(pub.id)
-                pico.set.scene [ target=pub.rect ]
-                pico.set.layer :world
             }
         }
     } with {
@@ -202,9 +199,6 @@ val task Party_Cell (slot, char) {
                 loop on :mouse.motion {
                     val mouse = pico.get.mouse '%'
                     set pub.rect.y = mouse.y
-                    pico.set.layer(pub.id)
-                    pico.set.scene [ target=pub.rect ]
-                    pico.set.layer :world
 
                     ifs {
                         ((mouse.y >= ((0.1 + (cur * h)) + 0.08)) && (cur < #G.party)) => {
@@ -233,9 +227,6 @@ val task Party_Cell (slot, char) {
 
             set pub.dragging = false
             set pub.rect.y = (0.1 + (cur * h))
-            pico.set.layer(pub.id)
-            pico.set.scene [ target=pub.rect ]
-            pico.set.layer :world
         }
     }
 }
