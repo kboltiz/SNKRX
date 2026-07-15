@@ -97,6 +97,18 @@ val func bounce(r, nx, ny) {
     return(result)
 }
 
+val ABILITY_RANGE = 0.15
+val func enemy_in_range(pos) {
+    var found = false
+    loop t, _ in ENEMIES {
+        val dx = (t.pub.x - pos.x)
+        val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
+        ;; when found, exit loop
+        until (math.sqrt((dx*dx) + (dy*dy)) < ABILITY_RANGE)
+    }
+    return(found)
+}
+
 val task SnakeUnit(index, character, trail, positions) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
@@ -193,8 +205,27 @@ val task SnakeUnit(index, character, trail, positions) {
             pin castPool = tasks()
             loop {
                 val ability = Abilities@character
-                spawn @castPool ability.caster(pos)
                 await (ability.interval)
+                if enemy_in_range(pos) {
+                    spawn @castPool ability.caster(pos)
+                }
+            }
+        }
+    } with {
+        ;; enemy collision
+        val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
+        val TOUCH_KNOCKBACK = 0.05
+
+        ;; TODO snake unit health, destroy and rechain on death
+
+        loop {
+            await :clock
+            loop t, _ in ENEMIES {
+                val dx = (t.pub.x - pos.x)
+                val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
+                if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
+                    emit @t :on_collided [ srcX=pos.x, srcY=pos.y, knockback=TOUCH_KNOCKBACK ]
+                }
             }
         }
     }

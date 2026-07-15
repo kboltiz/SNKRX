@@ -1,40 +1,64 @@
 val SEEKER_SPEED = 0.15
 val SEEKER_SIZE = 0.025
 val SEEKER_TURN_RATE = 3
+val SEEKER_HEALTH = 20
 
 ;; seeker is the most basic type of enemy
 ;; bosses will build on top of this seeker behavior
 
 val task Seeker(startX, startY) {
-    var pos = [ x=startX, y=startY, r=0 ]
+    ;; health can be made public, but no
+    ;; strong reason to do that yet
+    var health = SEEKER_HEALTH
+    set pub = [ x=startX, y=startY, r=0 ]
 
-    par {
-        loop {
-            val us = await :clock
-            val dt = us/1s
+    ;; add to enemy pool
+    set ENEMIES@(task) = true
 
-            val dx = (SNAKE_POS.x - pos.x)
-            val dy = ((SNAKE_POS.y - pos.y) / ASPECT_RATIO)
-            val desired = math.atan(dy, dx)
+    par:any {
+        par {
+            loop {
+                val us = await :clock
+                val dt = us/1s
+                val dx = (SNAKE_POS.x - pub.x)
+                val dy = ((SNAKE_POS.y - pub.y) / ASPECT_RATIO)
+                val desired = math.atan(dy, dx)
+                
+                val diff = angle_diff(pub.r, desired)
+                val maxTurn = (SEEKER_TURN_RATE * dt)
+                val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+                set pub.r = (pub.r + turn)
 
-            val diff = angle_diff(pos.r, desired)
-            val maxTurn = (SEEKER_TURN_RATE * dt)
-            val turn = math.max(math.min(diff, maxTurn), -maxTurn)
-            set pos.r = (pos.r + turn)
-
-            set pos.x = (pos.x + (math.cos(pos.r) * SEEKER_SPEED * dt))
-            set pos.y = (pos.y + (math.sin(pos.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
+                set pub.x = (pub.x + (math.cos(pub.r) * SEEKER_SPEED * dt))
+                set pub.y = (pub.y + (math.sin(pub.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
+            }
+        } with {
+            loop on :draw {
+                pico.set.pencil [ color=:red ]
+                pico.output.draw.oval([ "%",
+                    x=pub.x, y=pub.y,
+                    w=SEEKER_SIZE, h=(SEEKER_SIZE * ASPECT_RATIO),
+                    r=pub.r,
+                ])
+            }
+        } with {
+            ;; collision detection done by snake units
+            loop e on :on_collided {
+                val ang = math.atan(
+                    ((pub.y - e.srcY) / ASPECT_RATIO),
+                    (pub.x - e.srcX)
+                )
+                set pub.x = (pub.x + (math.cos(ang) * e.knockback))
+                set pub.y = (pub.y + (math.sin(ang) * e.knockback * ASPECT_RATIO))
+            }
         }
     } with {
-        loop on :draw {
-            pico.set.pencil [ color=:red ]
-            pico.output.draw.oval([ "%",
-                x=pos.x, y=pos.y,
-                w=SEEKER_SIZE, h=(SEEKER_SIZE * ASPECT_RATIO),
-                r=pos.r,
-            ])
+        loop e on :damaged until (health <= 0) {
+            set health = (health - e.dmg)
         }
     }
-}
 
+    ;; remove enemy from pool
+    set ENEMIES@(task) = nil
+}
 Seeker
