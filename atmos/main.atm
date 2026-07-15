@@ -5,7 +5,6 @@ require "shared"
 require "settings"
 
 ;;;
-
 We selected 9 representative game behaviors and describe their implementations
 in C++ and Céu.
 We also categorized these examples in 5 abstract C++ control-flow patterns that
@@ -28,13 +27,15 @@ likely apply to other games:
     container entity automatically destroys its managed children.
     How: nested spawns in tasks and blocks.
 5. Signaling Mechanisms:
-    Entities often need to signal  changes that affect each other.
+    Entities often need to signal changes that affect each other.
     How: paired emit/await of tagged events.
 6. Pausing:
     TODO
     This pattern is emerging in many projects I'm working on.
     Need to document it.
-
+7. Dynamic Collections
+    - same behavior, dynamic lifetime
+    TODO
 ;;;
 
 val Menu = require "menu"

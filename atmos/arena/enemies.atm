@@ -1,0 +1,40 @@
+val SEEKER_SPEED = 0.15
+val SEEKER_SIZE = 0.025
+val SEEKER_TURN_RATE = 3
+
+;; seeker is the most basic type of enemy
+;; bosses will build on top of this seeker behavior
+
+val task Seeker(startX, startY) {
+    var pos = [ x=startX, y=startY, r=0 ]
+
+    par {
+        loop {
+            val us = await :clock
+            val dt = us/1s
+
+            val dx = (SNAKE_POS.x - pos.x)
+            val dy = ((SNAKE_POS.y - pos.y) / ASPECT_RATIO)
+            val desired = math.atan(dy, dx)
+
+            val diff = angle_diff(pos.r, desired)
+            val maxTurn = (SEEKER_TURN_RATE * dt)
+            val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+            set pos.r = (pos.r + turn)
+
+            set pos.x = (pos.x + (math.cos(pos.r) * SEEKER_SPEED * dt))
+            set pos.y = (pos.y + (math.sin(pos.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
+        }
+    } with {
+        loop on :draw {
+            pico.set.pencil [ color=:red ]
+            pico.output.draw.oval([ "%",
+                x=pos.x, y=pos.y,
+                w=SEEKER_SIZE, h=(SEEKER_SIZE * ASPECT_RATIO),
+                r=pos.r,
+            ])
+        }
+    }
+}
+
+Seeker

@@ -2,6 +2,10 @@ val PAD = 0.03
 val POPUP_PAD = 0.1
 val LINE_H = 0.03
 
+;;;
+;; TODO : fsantanna : unreviewed
+;;;
+
 task Popup (lines) {
     val parsed = []
     var maxWidth = 0
@@ -24,7 +28,7 @@ task Popup (lines) {
         h = totalHeight / (1 - POPUP_PAD),
     ]
 
-    pin spring = spawn Spring(1.1)
+    pin spring = spawn Spring.Simple(1.1)
     emit @spring :start
 
     ;; TODO: popup layer may be required to draw it on top
@@ -46,7 +50,7 @@ task Popup (lines) {
             loop ri, run in entry.runs {
                 val pos = entry.positions@ri
                 pico.set.pencil [ color=run.color ]
-                pico.output.draw.text(run.text, [ '%',
+                pico.output.draw.text.fix(run.text, [ '%',
                     x = rowStart + ((pos.start + (pos.width / 2)) * spring.pub.scale),
                     y = rowY,
                     h = LINE_H * (1 - POPUP_PAD) * spring.pub.scale,
@@ -58,43 +62,49 @@ task Popup (lines) {
     await(false)
 }
 
-val task CharacterIcon (up, rect, character, number, showName) {
-    val charColorGroup = CHARACTERS@character.color
+;; PATTERN #4 : Lifespan Hierarchies : Char_Icon > loop > Popup
+;;  - nested loop owns Popup, which aborts on each iteration
+;; PATTERN #1 : Finite State Machines : Popup show/hide
+;;  - over on -> show -> off -> hide
+
+val task Char_Icon (me, rect, cost, showName) {
+    val char = me.pub.char
+    val charColorGroup = CHARACTERS@char.color
     val charColors = COLORS@charColorGroup
 
-    pin obj = spawn Object(nil, up, rect, 1)
+    spawn {
+        loop on :draw {
+            pico.set.layer(me.pub.id)
+            pico.set.pencil [ font=FONT ]
 
-    do {
-        pico.set.layer(up)
-        pico.set.pencil [ font=FONT ]
+            val rectColor = (if me.pub.dragging => COLORS.idle.bg => charColors.base)
+            val textColor = (if me.pub.dragging => COLORS.idle.fg => charColors.text)            
 
-        pico.set.pencil [ color=charColors.base ]
-        pico.output.draw.rect(rect)
+            pico.set.pencil [ color=rectColor ]
+            pico.output.draw.rect(rect)
 
-        pico.set.pencil [ color=charColors.text ]
-        pico.output.draw.text(tostring(number)) <- [
-            '%', x=rect.x, y=rect.y, h=rect.h*0.6,
-        ]
-
-        if showName {
-            pico.set.pencil [ color=charColors.base ]
-            pico.output.draw.text(character) <- [
-                '%', x=rect.x, y=(rect.y + rect.h), h=rect.h*0.6,
+            pico.set.pencil [ color=textColor ]
+            pico.output.draw.text.fix(tostring(cost)) <- [
+                '%', x=rect.x, y=rect.y, h=(rect.h*0.6),
             ]
+
+            if showName {
+                pico.set.pencil [ color=charColors.base ]
+                pico.output.draw.text.fix(me.pub.char) <- [
+                    '%', x=rect.x, y=(rect.y + rect.h), h=(rect.h*0.6),
+                ]
+            }
+
+            pico.set.layer(:world)
         }
-
-        pico.set.layer(:world)
     }
-
-    ;; TODO, cost calculation of unit
-    val cost = 0;
 
     val headerColor, labelColor, effectText =
         if (G.level == 3)
-            => (:yellow, :idle,  CHARACTERS@character.effect_description)
-            => (:hover,  :hover, CHARACTERS@character.effect_description)
+            => (:yellow, :idle,  CHARACTERS@char.effect_description)
+            => (:hover,  :hover, CHARACTERS@char.effect_description)
 
-    val classList = CHARACTERS@character.classes
+    val classList = CHARACTERS@char.classes
     var formattedClasses = []
 
     loop i, c in classList {
@@ -104,47 +114,72 @@ val task CharacterIcon (up, rect, character, number, showName) {
         set formattedClasses = formattedClasses ++ ['[' ++ classColor ++ ']' ++ c]
     }
 
-    val popupText = [ s1, s2, s3, s4, s5 ] where {
-        s1 = '[' ++ CHARACTERS@character.color ++ ']' ++
-             CHARACTERS@character.name ++ "[idle] - cost: [gold]" ++ cost
-        s2 = "[idle]Classes: " ++ table.concat(formattedClasses, "[idle], ")
-        s3 = CHARACTERS@character.description
-        s4 = '[' ++ headerColor ++ ']' ++
-             "Lv.3 [" ++ labelColor ++ ']' ++
-             "Effect - " ++ CHARACTERS@character.effect_name
-        s5 = effectText
-    }
+    ;; popup
 
-    loop {
-        await :o.over.on [obj=obj.pub]
-        spawn Popup(popupText)
-        await :o.over.off [obj=obj.pub]
+    do {
+        set pub = [
+            id    = me.pub.id,
+            layer = me.pub.id,
+            rect  = rect,
+        ]
+
+        spawn Object(task, 1)
+
+        val text = [ s1, s2, s3, s4, s5 ] where {
+            s1 = '[' ++ CHARACTERS@char.color ++ ']' ++
+                 CHARACTERS@char.name ++ "[idle] - cost: [gold]" ++ cost
+            s2 = "[idle]Classes: " ++ table.concat(formattedClasses, "[idle], ")
+            s3 = CHARACTERS@char.description
+            s4 = '[' ++ headerColor ++ ']' ++
+                 "Lv.3 [" ++ labelColor ++ ']' ++
+                 "Effect - " ++ CHARACTERS@char.effect_name
+            s5 = effectText
+        }
+
+        loop {
+            await :o.over.on [me=task]
+            spawn Popup(text)
+            await :o.over.off [me=task]
+        }
     }
 }
 
-val task PartyColumnCell (slot, character) {
-    val id = "party." ++ slot
+;; PATTERN #4 : Lifespan Hierarchies : Cell > Icon
+;;  - Cell (handles drag) owns Icon (handles draw and is reused elsewhere)
+;;  - (same for Object)
+;; PATTERN #5 : Signaling Mechanisms : :slot -> up pool
+;;  - cell drag signals pool with colliding ids
+;; PATTERN #1 : Finite State Machines : drag n' drop
+;;  - click -> motion -> release
+
+val task Party_Cell (slot, char) {
     var cur = slot
 
     val h = 0.08
-    val rct = [ '%',
-        x = 0.95,
-        y = 0.1 + (cur * h),
-        w = 0.03,
-        h = 0.03 * ASPECT_RATIO,
+    set pub = [
+        id       = nil,     ;; see below
+        char     = char,
+        dragging = false,
+        rect = [ '%',
+            x = 0.95,
+            y = 0.1 + (cur * h),
+            w = 0.03,
+            h = 0.03 * ASPECT_RATIO,
+        ],
     ]
+    set pub.id = pico.layer.empty [ dim=pub.rect ]
 
-    pin obj = spawn Object(id, nil, rct, 1)
+    spawn Object(task, 1)
 
-    pico.layer.empty [ mode='~', key=id, target=rct ]
-
-    spawn CharacterIcon(id, r, character, 1, false) where {
+    ;; v->f(...) is same as f(v, ...)
+    ;; spawn Char_Icon(task, r, 1, false)
+    spawn task->Char_Icon(r, 1, false) where {
         r = [ '%', x=0.5, y=0.5, w=1, h=1 ]
     }
 
     par {
         loop on :draw {
-            pico.output.draw.layer(id)
+            pico.output.draw.layer(pub.id, pub.rect)
         }
     } with {
         loop e on :slot until (it@1==cur) || (it@2==cur) {
@@ -153,34 +188,55 @@ val task PartyColumnCell (slot, character) {
                 (e@2 == cur) => e@1
             }
             set cur = to
-            set rct.y = 0.1 + (to * h)
-            pico.set.layer(id)
-            pico.set.scene [ target=rct ]
-            pico.set.layer :world
+            if (!pub.dragging) {
+                set pub.rect.y = (0.1 + (to * h))
+            }
         }
     } with {
-        loop on :o.click.dn [id=id] {                
+        loop on :o.click.dn [me=task] {
+            set pub.dragging = true
             watching :mouse.button.up {
                 loop on :mouse.motion {
                     val mouse = pico.get.mouse '%'
+                    set pub.rect.y = mouse.y
+
                     ifs {
-                        (mouse.y >= (rct.y + 0.08)) && (cur < #G.party) =>
-                            emit @(:parent) :slot [cur, cur+1]
-                        (mouse.y <= (rct.y - 0.08)) && (cur > 1) =>
-                            emit @(:parent) :slot [cur, cur-1]
+                        ((mouse.y >= ((0.1 + (cur * h)) + 0.08)) && (cur < #G.party)) => {
+                            val to = (cur + 1)
+
+                            val tmp = G.party@cur
+                            set G.party@cur = G.party@to
+                            set G.party@to = tmp
+
+                            emit @(:parent) :slot [cur, to]
+                            set cur = to
+                        }
+                        ((mouse.y <= ((0.1 + (cur * h)) - 0.08)) && (cur > 1)) => {
+                            val to = (cur - 1)
+
+                            val tmp = G.party@cur
+                            set G.party@cur = G.party@to
+                            set G.party@to = tmp
+
+                            emit @(:parent) :slot [cur, to]
+                            set cur = to
+                        }
                     }
                 }
             }
+
+            set pub.dragging = false
+            set pub.rect.y = (0.1 + (cur * h))
         }
     }
 }
 
-val func class_banners (id, rect, character) {
-    val charClasses = CHARACTERS@character.classes
+val func class_banners (me) {
+    val charClasses = CHARACTERS@(me.pub.char).classes
     val charClassesCount = #charClasses
-    val cardAspectRatio = rect.w / rect.h
+    val cardAspectRatio = me.pub.rect.w / me.pub.rect.h
 
-    pico.set.layer(id)
+    pico.set.layer(me.pub.id)
 
     ;; TODO: color the class icon to COLORS.hover.fg
     loop i, class in charClasses {
@@ -204,56 +260,46 @@ val func class_banners (id, rect, character) {
     pico.set.layer(:world)
 }
 
-val task Card (slot, character) {
-    val id = "card." ++ slot
+;; PATTERN #4 : Lifespan Hierarchies : Card > Object,Spring,Char_Icon
+;;  - Card encapsulates its constituents, which are restricted to its lifespan.
 
+val task Card (slot, char) {
     val dim = [ '%', w=0.16, h=0.2*ASPECT_RATIO ]
     val rat = dim.w / dim.h
-    val rct = [ '%', x=slot*0.16, y=0.3, w=dim.w, h=dim.h ]
 
-    pin obj = spawn Object(id, nil, rct, 1)
-    pin spr = spawn Spring(1.3)
-
-    pico.layer.empty [ mode='~', key=id, dim=dim, target=rct ]
+    set pub = [
+        id   = nil,     ;; see below
+        rect = [ '%', x=slot*0.16, y=0.3, w=dim.w, h=dim.h ],
+        char = char,
+    ]
+    set pub.id = pico.layer.empty [ target=pub.rect ]
     
-    ;; clearing id layer before drawing on top
-	pico.set.layer(id)
-	pico.output.clear()
-	pico.set.layer(:world)
+    spawn Object(task, 1)
+    spawn Spring.Object(task, 1.3)
 
     spawn {
         loop on :draw {
-            set rct.w = dim.w * spr.pub.scale
-            set rct.h = dim.h * spr.pub.scale
-            if obj.pub.over {
+            if pub.over {
                 pico.set.pencil [ color=COLORS.idle.bg ] ;; TODO: verify color
-                pico.output.draw.rect(rct)
+                pico.output.draw.rect(pub.spring.rect)
             }
-            pico.output.draw.layer(id, rct)
+            pico.output.draw.layer(pub.id, pub.spring.rect)
         }
     }
 
-    spawn CharacterIcon(id, r, character, 1, true) where {
+    val cost = G.cost@char
+
+    spawn task->Char_Icon(r, cost, true) where {
         r = [ '%', x=0.5, y=0.2, h=(0.2 * rat * ASPECT_RATIO), w=0.2 ]
     }
-    class_banners(id, rct, character)
+    task->class_banners()
 
-    spawn {
-        loop {
-            if obj.pub.over {
-                emit @spr :start
-                pico.output.sound(SOUNDS.hover)
-            }
-            await :o.over.on [id=id]
-        }
-    }
-
-    await :o.click.dn [id=id]
+    await :o.click.dn [me=task] until ((G.gold>=cost) && (#G.party<10))
     pico.output.sound(SOUNDS.pop)
-    id
+    char
 }
 
-val func roll_cards () {
+val func roll () {
     ;; TODO: port tier_weights / weighted_pick from the Lua roll logic
     return [
         :swordsman,
@@ -262,44 +308,82 @@ val func roll_cards () {
     ]
 }
 
+;; PATTERN #4 : Lifespan Hierarchies : Shop > Widgets (go,roll,cards,party)
+;;  - Shop owns all widgets which nest complex behavior, safely aborting them
+;;    on termination, regardless of their state.
+;; PATTERN #7 : Dynamic Collections : TODO
+
 val task Shop () {
+    ;; GO
     spawn Button(:go, 2, rect, "Go!") where {
         rect = ['%', x=0.88, y=0.9, h=0.1]
     }
 
+    ;; PARTY
+    pin ps = tasks()
+    loop i, char in G.party {
+        spawn @ps Party_Cell(i, char)
+    }
+
+    ;; GOLD
     spawn {
         loop {
-            spawn RichTextButton(:reroll, 1, rct, lbl) where {
-                rct = ['%', x=0.28, y=0.06, h=0.05]
-                lbl = "[idle]Rerolls: [gold]" ++ G.rerolls
+            val runs = parse_rich_text("shop - gold: [gold]" ++ G.gold)
+            val positions, totalWidth = measure_runs(runs, 0.04 * (1 - PAD))
+            spawn {
+                loop on :draw {
+                    loop i, run in runs {
+                        val pos = positions@i
+                        pico.set.pencil [ color=run.color ]
+                        pico.output.draw.text.fix(run.text, [
+                            '%',
+                            x = 0.03 + pos.start,
+                            y = 0.06,
+                            h = 0.04 * (1 - PAD),
+                            anchor = "W"
+                        ])
+                    }
+                }
             }
-
-            pin cs = tasks()
-            loop i, character in roll_cards() {
-                spawn @cs Card(i, character)
-            }
-
-            await :o.click.dn [id=:reroll] until (G.rerolls > 0)
-            set G.rerolls = (G.rerolls - 1)
+            val e = await :gold
+            set G.gold = G.gold - e.v
+            assert(G.gold >= 0)
         }
     }
 
+    ;; CARDS / REROLL
     spawn {
         loop {
-            pin ps = tasks()
-            loop i, character in G.party {
-                spawn @ps PartyColumnCell(i, character)
+            spawn RichTextButton(:roll, 1, rct, lbl) where {
+                rct = ['%', x=0.34, y=0.06, h=0.04]
+                lbl = "[idle]Rerolls: [gold]" ++ G.rolls
             }
-            await(false)    ;; TODO: awakes on each card click?
+
+            pin cs = tasks()
+            loop i, char in roll() {
+                spawn @cs Card(i, char)
+            }
+
+            spawn {
+                loop char on :any cs {
+                    set G.party@+ = char
+                    spawn @ps Party_Cell(#ps+1, char)
+                    emit :gold [v=G.cost@char]
+                }
+            }
+
+            await :o.click.dn [id=:roll] until ((G.rolls>0) && (G.gold>=2))
+            set G.rolls = (G.rolls - 1)
+            emit :gold [v=2]
         }
     }
 
     par:any {
         await :o.click.dn [id=:go]
-        true
+        true    ;; Go!
     } with {
         await :key.dn [key=:Escape]
-        false
+        false   ;; ESC
     }
 }
 

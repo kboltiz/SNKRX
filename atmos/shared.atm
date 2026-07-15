@@ -3,11 +3,17 @@ set H = 360
 set ASPECT_RATIO = W/H
 
 set G = [
-    gold    = 0,
-    level   = 1,
-    party   = ["swordsman", "wizard", "swordsman", "wizard"],
-    rerolls = 3,
+    level = 1,
+    gold  = 3,
+    rolls = 3,
+    party = [:swordsman, :wizard, :swordsman, :wizard],
+    cost  = [
+        swordsman = 1,
+        wizard    = 1,
+    ],
 ]
+
+set SNAKE_POS = [x=0, y=0]
 
 set SOUNDS = [
     pop = "../assets/sounds/bamboo_hit_by_lord.ogg",
@@ -77,3 +83,9 @@ set TEXT_TAGS = [
     blue = COLORS.blue.base,
     red = COLORS.red.base
 ]
+
+;; moved from battle.atm for enemies and snake to use
+func angle_diff(a, b) {
+    val d = (b - a)
+    return(d - ((2*math.pi) * math.floor(((d + math.pi) / (2*math.pi)))))
+}

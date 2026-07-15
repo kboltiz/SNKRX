@@ -1,6 +1,10 @@
 val Shop   = require "arena.shop"
 val Battle = require "arena.battle"
 
+;; PATTERN #2 : Continuation Passing : battle loop
+;;  - completion of long-lasting Shop activates Battle
+;;  - completion of Battle re-activates the Shop in a loop
+
 task () {
     var ok = await Shop()
     loop {
