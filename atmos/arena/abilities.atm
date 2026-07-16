@@ -1,12 +1,28 @@
 ;; snake units now pull snake position from shared.atm 
 
-val task Swordsman(unit_pos) {
+val task Swordsman(unit_pos, enemy_pos) {
     print("swordsman_ability")
-    
-    await(false)
+
+    val AREA_SIZE = 0.1
+    val hit_area_rect = [ "%",
+        x = enemy_pos.x,
+        y = enemy_pos.y,
+        w = AREA_SIZE,
+        h = (AREA_SIZE * ASPECT_RATIO),
+    ]
+
+    ;; area_drawing
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=pico.color.alpha(COLORS.gold, 80) ]
+            pico.output.draw.rect(hit_area_rect)
+        }
+    }
+
+    await(0.3 * 1s)
 }
 
-val task Wizard(unit_pos) {
+val task Wizard(unit_pos, enemy_pos) {
     print("wizard_ability")
     
     await(false)

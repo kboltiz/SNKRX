@@ -213,8 +213,10 @@ val task SnakeUnit(index, character, trail, positions) {
             loop {
                 val ability = Abilities@character
                 await (ability.interval)
-                if enemy_in_range(pos) {
-                    spawn @castPool ability.caster(pos)
+                
+                val enemyPos = enemy_in_range(pos)
+                if enemyPos {
+                    spawn @castPool ability.caster(pos, enemyPos)
                 }
             }
         }
