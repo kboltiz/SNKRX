@@ -2,6 +2,11 @@
 
 val task Swordsman(unit_pos, enemy_pos) {
     print("swordsman_ability")
+    
+    val SWORDSMAN_DMG = 10
+    val SWORDSMAN_KNOCKBACK = 0.08
+
+    ;; TODO: rotation of hit area (layers?)
 
     val AREA_SIZE = 0.1
     val hit_area_rect = [ "%",
@@ -14,8 +19,16 @@ val task Swordsman(unit_pos, enemy_pos) {
     ;; area_drawing
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=pico.color.alpha(COLORS.gold, 80) ]
+            pico.set.pencil [ color=COLORS.gold ]
             pico.output.draw.rect(hit_area_rect)
+        }
+    }
+    
+    ;; hit detection
+    loop t, _ in ENEMIES {
+        if pico.vs.pos.rect([ "%",  x=t.pub.x, y=t.pub.y ], hit_area_rect) {
+            emit @t :damaged [ dmg=SWORDSMAN_DMG ]
+            emit @t :on_collided [ srcX=unit_pos.x, srcY=unit_pos.y, knockback=SWORDSMAN_KNOCKBACK ]
         }
     }
 
