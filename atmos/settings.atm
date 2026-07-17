@@ -1,5 +1,5 @@
 set SETTINGS = [
-    @(:opts.music) = [3, 10],
-    @(:opts.sfx)   = [3, 10],
-    @(:opts.shake) = true,
+    @:opts.music = [3, 10],
+    @:opts.sfx   = [3, 10],
+    @:opts.shake = true,
 ]

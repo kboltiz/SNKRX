@@ -208,7 +208,7 @@ val task Party_Cell (slot, char) {
                             set G.party@cur = G.party@to
                             set G.party@to = tmp
 
-                            emit @(:parent) :slot [cur, to]
+                            emit @:parent :slot [cur, to]
                             set cur = to
                         }
                         ((mouse.y <= ((0.1 + (cur * h)) - 0.08)) && (cur > 1)) => {
@@ -218,7 +218,7 @@ val task Party_Cell (slot, char) {
                             set G.party@cur = G.party@to
                             set G.party@to = tmp
 
-                            emit @(:parent) :slot [cur, to]
+                            emit @:parent :slot [cur, to]
                             set cur = to
                         }
                     }
