@@ -36,8 +36,8 @@ set COLORS = [
 
     ;; Character Colors (Base and Dark variants)
     blue = [
-        base = ['%', r=0.28, g=0.47, b=0.73],
-        text = ['%', r=0.20, g=0.35, b=0.55]
+        base = ['%', r=0.004, g=0.608, b=0.839],
+        text = ['%', r=0.003, g=0.453, b=0.632]
     ],
     yellow = [
         base = [ '%', r=0.98, g=0.81, b=0.00 ],
@@ -50,9 +50,9 @@ set COLORS = [
 ]
 
 set CLASSES = [
-	warrior = [color = :yellow],
-	mage = [color = :blue],
-	nuker = [color = :red]
+    warrior = [color = :yellow],
+    mage = [color = :blue],
+    nuker = [color = :red]
 ]
 
 set CHARACTERS = [

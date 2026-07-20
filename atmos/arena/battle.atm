@@ -97,15 +97,14 @@ val func bounce(r, nx, ny) {
     return(result)
 }
 
-val ABILITY_RANGE = 0.15
-val func enemy_in_range(pos) {
+val func enemy_in_range(range, pos) {
     var closest = false;
 
     loop t, _ in ENEMIES {
         val dx = (t.pub.x - pos.x)
         val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
         val dist = math.sqrt((dx*dx) + (dy*dy))
-        val is_in_range = dist < ABILITY_RANGE
+        val is_in_range = dist <= range
         
         set closest = (is_in_range && [ x=t.pub.x, y=t.pub.y ])
         
@@ -210,11 +209,12 @@ val task SnakeUnit(index, character, trail, positions) {
             ;; beyond one ability instance) is now possible
             
             pin castPool = tasks()
+            
+            val ability = Abilities@character
             loop {
-                val ability = Abilities@character
                 await (ability.interval)
                 
-                val enemyPos = enemy_in_range(pos)
+                val enemyPos = enemy_in_range(ability.range, pos)
                 if enemyPos {
                     spawn @castPool ability.caster(pos, enemyPos)
                 }
