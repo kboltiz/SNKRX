@@ -230,13 +230,20 @@ val task SnakeUnit(index, character, trail, positions) {
             
             val ability = Abilities@character
             loop {
-                await (ability.interval)
-                
-                val enemyPos = enemy_in_range(ability.range, pos)
-                if enemyPos {
-                    spawn @castPool ability.caster(pos, enemyPos)
-                    emit (:flash_unit)
+                ;; check every tick until something's in range
+                var enemy_pos = false
+                loop {
+                    set enemy_pos = enemy_in_range(ability.range, pos)
+                    until (enemy_pos)
+                    
+                    await (:clock)
                 }
+
+                spawn @castPool ability.caster(pos, enemy_pos)
+                emit (:flash_unit)
+
+                ;; cooldown before checking again
+                await (ability.interval)
             }
         }
     } with {

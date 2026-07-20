@@ -69,7 +69,7 @@ val task Wizard(unit_pos, enemy_pos) {
 }
 
 [
-    swordsman = [ caster = Swordsman, interval = 2 * 1s, range = 0.1 ],
-    wizard = [ caster = Wizard, interval = 5 * 1s, range = 0.4 ]
+    swordsman = [ caster = Swordsman, interval = 2 * 1s, range = 0.08 ],
+    wizard = [ caster = Wizard, interval = 5 * 1s, range = 0.1 ]
 ]
 
