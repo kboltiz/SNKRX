@@ -62,7 +62,8 @@ set CHARACTERS = [
         classes = [:warrior],
         description = "deals [yellow]10[idle] damage in an area, deals extra [yellow]1.65[idle] damage per unit hit",
         effect_name = "Cleave",
-        effect_description = "the swordsman's damage is doubled"
+        effect_description = "the swordsman's damage is doubled",
+        sound = "../assets/sounds/Heavy sword woosh 1.ogg"
     ],
     wizard = [
         name = "Wizard",
@@ -70,7 +71,8 @@ set CHARACTERS = [
         classes = [:mage, :nuker],
         description = "shoots a projectile that deals [yellow]15 AoE[idle] damage",
         effect_name = "Magic Missile",
-        effect_description = "the projectile chains 2 times"
+        effect_description = "the projectile chains 2 times",
+        sound = "../assets/sounds/Wind Bolt 20.ogg"
     ]
 ]
 

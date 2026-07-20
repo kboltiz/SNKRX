@@ -19,6 +19,8 @@ val task Swordsman(unit_pos, enemy_pos) {
         }
     }
     
+    pico.output.sound(CHARACTERS@('swordsman').sound)
+    
     val SWORDSMAN_DMG = 10
     val SWORDSMAN_KNOCKBACK = 0.08
 
@@ -54,6 +56,8 @@ val task Wizard(unit_pos, enemy_pos) {
         }
     }
     
+    pico.output.sound(CHARACTERS@('wizard').sound)
+
     ;; hit detection
     loop t, _ in ENEMIES {
         if pico.vs.pos.rect([ "%",  x=t.pub.x, y=t.pub.y ], hit_area_rect) {
