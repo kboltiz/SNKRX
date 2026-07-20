@@ -105,7 +105,7 @@ val func enemy_in_range(range, pos) {
         val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
         val dist = math.sqrt((dx*dx) + (dy*dy))
         val is_in_range = dist <= range
-        
+
         set closest = (is_in_range && [ x=t.pub.x, y=t.pub.y ])
         
         ;; when found, exit loop
@@ -190,12 +190,30 @@ val task SnakeUnit(index, character, trail, positions) {
             }
         }
     } with {
-        loop on :draw {
-            pico.set.pencil [ color=charColors.base ]
-            pico.output.draw.oval([ "%",
-                x=pos.x, y=pos.y,
-                w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
-            ])
+        loop {
+            par:any {
+                loop on :draw {
+                    pico.set.pencil [ color=charColors.base ]
+                    pico.output.draw.oval([ "%",
+                        x=pos.x, y=pos.y,
+                        w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
+                    ])
+                }
+            } with {
+                await (:flash_unit)
+            }
+
+            par:any {
+                loop on :draw {
+                    pico.set.pencil [ color=:white ]
+                    pico.output.draw.oval([ "%",
+                        x=pos.x, y=pos.y,
+                        w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
+                    ])
+                }
+            } with {
+                await(0.15 * 1s)
+            }
         }
     } with {
         ;; TODO: allow loop entry for next ability call
@@ -217,6 +235,7 @@ val task SnakeUnit(index, character, trail, positions) {
                 val enemyPos = enemy_in_range(ability.range, pos)
                 if enemyPos {
                     spawn @castPool ability.caster(pos, enemyPos)
+                    emit (:flash_unit)
                 }
             }
         }
@@ -234,6 +253,7 @@ val task SnakeUnit(index, character, trail, positions) {
                 val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
                 if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
                     emit @t :on_collided [ srcX=pos.x, srcY=pos.y, knockback=TOUCH_KNOCKBACK ]
+                    emit (:flash_unit)
                 }
             }
         }
