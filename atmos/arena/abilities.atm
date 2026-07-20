@@ -11,11 +11,20 @@ val task Swordsman(unit_pos, enemy_pos) {
         w = AREA_SIZE,
         h = (AREA_SIZE * ASPECT_RATIO),
     ]
+
+    pin spring = spawn Spring.Simple(0.8)
+    emit @spring :start
+
     ;; area_drawing
     spawn {
         loop on :draw {
             pico.set.pencil [ color=COLORS.yellow.base ]
-            pico.output.draw.rect(hit_area_rect)
+            pico.output.draw.rect([ "%",
+                x = hit_area_rect.x,
+                y = hit_area_rect.y,
+                w = hit_area_rect.w * spring.pub.scale,
+                h = hit_area_rect.h * spring.pub.scale,
+            ])
         }
     }
     
@@ -23,7 +32,6 @@ val task Swordsman(unit_pos, enemy_pos) {
     
     val SWORDSMAN_DMG = 10
     val SWORDSMAN_KNOCKBACK = 0.08
-
     ;; hit detection
     loop t, _ in ENEMIES {
         if pico.vs.pos.rect([ "%",  x=t.pub.x, y=t.pub.y ], hit_area_rect) {
@@ -48,11 +56,20 @@ val task Wizard(unit_pos, enemy_pos) {
         w = AREA_SIZE,
         h = (AREA_SIZE * ASPECT_RATIO),
     ]
+    
+    pin spring = spawn Spring.Simple(0.8)
+    emit @spring :start
+    
     ;; area_drawing
     spawn {
         loop on :draw {
             pico.set.pencil [ color=COLORS.blue.base ]
-            pico.output.draw.rect(hit_area_rect)
+            pico.output.draw.rect([ "%",
+                x = hit_area_rect.x,
+                y = hit_area_rect.y,
+                w = hit_area_rect.w * spring.pub.scale,
+                h = hit_area_rect.h * spring.pub.scale,
+            ])
         }
     }
     
@@ -70,6 +87,6 @@ val task Wizard(unit_pos, enemy_pos) {
 
 [
     swordsman = [ caster = Swordsman, interval = 2 * 1s, range = 0.08 ],
-    wizard = [ caster = Wizard, interval = 5 * 1s, range = 0.1 ]
+    wizard = [ caster = Wizard, interval = 5 * 1s, range = 0.13 ]
 ]
 
