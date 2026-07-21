@@ -35,7 +35,7 @@ task Object (me, target) {
             @:mouse.button.dn = :o.click.dn,
             @:mouse.button.up = :o.click.up,
         ]
-        loop e on :mouse.button until me.pub.over {
+        loop e on :mouse.button until (me.pub.over) {
             set me.pub.left   = e.left
             set me.pub.right  = e.right
             set me.pub.middle = e.middle

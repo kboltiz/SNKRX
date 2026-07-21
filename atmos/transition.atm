@@ -30,7 +30,7 @@ task Transition (msg, pos, Next, ...) {
     var pct = 0.0 ;; 0->1, delay, 1->0
     spawn {
         ;; 1 | 0 -> 1
-        watching while pct<1 {
+        watching while (pct<1) {
             loop us on :clock {
                 set pct = (pct + (SPEED * us))
             }
@@ -42,7 +42,7 @@ task Transition (msg, pos, Next, ...) {
         emit :2
 
         ;; 3 | 1 -> 0 (with Next already running)
-        watching while pct>0 {
+        watching while (pct>0) {
             loop us on :clock {
                 set pct = (pct - (SPEED * us))
             }

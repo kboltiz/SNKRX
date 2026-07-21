@@ -182,7 +182,7 @@ val task Party_Cell (slot, char) {
             pico.output.draw.layer(pub.id, pub.rect)
         }
     } with {
-        loop e on :slot until (it@1==cur) || (it@2==cur) {
+        loop e on :slot until ((it@1==cur) || (it@2==cur)) {
             val to = ifs {
                 (e@1 == cur) => e@2
                 (e@2 == cur) => e@1
