@@ -115,44 +115,80 @@ val func enemy_in_range(range, pos) {
     closest;
 }
 
-val HP_BAR_LEFT = 0.02
-val HP_BAR_W = 0.05
-val HP_BAR_H = 0.03
-val HP_BAR_GAP = 0.01
-val HP_BAR_Y = 0.95
-val HP_BAR_BORDER = 0.004
-
 val task StatBars(me, index) {
-    val leftEdge = (HP_BAR_LEFT + ((index - 1) * (HP_BAR_W + HP_BAR_GAP)))
+    ;; bars laid out left-to-right by spawn index: start 0.02 from
+    ;; the screen edge, each subsequent bar shifted right by its width (0.05)
+    ;; plus a small gap (0.01)
+    val leftEdge = (0.02 + ((index - 1) * (0.05 + 0.01)))
 
-    val trackW = (HP_BAR_W - (HP_BAR_BORDER * 2))
-    val trackH = (HP_BAR_H - (HP_BAR_BORDER * 2))
-    val trackLeft = (leftEdge + HP_BAR_BORDER)
+    ;; trackW/trackH: the hollow inner area, inset from the 0.05 x 0.03
+    ;; outer frame by a 0.004 border on all sides
+    val trackW = (0.05 - (0.004 * 2))
+    val trackH = (0.03 - (0.004 * 2 * ASPECT_RATIO))
+    val trackLeft = (leftEdge + 0.004)
 
-    var fillW = trackW
-
-    par {
-        loop {
-            await :clock
-            val pct = (me.pub.hp / me.pub.maxHp)
-            set fillW = (trackW * pct)
-        }
-    } with {
-        loop on :draw {
-            pico.set.pencil [ color=COLORS.blue.base ]
-            pico.output.draw.rect([ "%", x=leftEdge, y=HP_BAR_Y, w=HP_BAR_W, h=HP_BAR_H, anchor="W" ])
-
-            pico.set.pencil [ color=:black ]
-            pico.output.draw.rect([ "%", x=trackLeft, y=HP_BAR_Y, w=trackW, h=trackH, anchor="W" ])
-
-            if fillW > 0 {
+    spawn {
+        var fillW = trackW
+        par {
+            loop {
+                await :clock
+                set fillW = (trackW * (me.pub.hp / me.pub.maxHp))
+            }
+        } with {
+            loop on :draw {
+                ;; outer frame, positioned 0.95 down the screen
                 pico.set.pencil [ color=COLORS.blue.base ]
-                pico.output.draw.rect([ "%", x=trackLeft, y=HP_BAR_Y, w=fillW, h=trackH, anchor="W" ])
+                pico.output.draw.rect([ "%", x=leftEdge, y=0.95, w=0.05, h=0.03, anchor="W" ])
+                pico.set.pencil [ color=:black ]
+                pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
+
+                if me.pub.hp <= 0 {
+                    pico.set.pencil [ color=COLORS.idle.bg ]
+                    pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
+                } else {
+                    if fillW > 0 {
+                        pico.set.pencil [ color=COLORS.blue.base ]
+                        pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=fillW, h=trackH, anchor="W" ])
+                    }
+                }
             }
         }
     }
 
-    ;; TODO: cooldown bar goes below this
+    spawn {
+        ;; start with full bar
+        var cdFillW = trackW * 1
+        par {
+            loop {
+                val data = await :ability_fired
+                var elapsed = 0
+                set cdFillW = 0
+
+                loop {
+                    val us = await :clock
+                    set elapsed = (elapsed + us)
+
+                    set cdFillW = (trackW * math.min((elapsed / data@1), 1))
+                    until ((elapsed / data@1) >= 1)
+                }
+            }
+        } with {
+            loop on :draw {
+                if cdFillW > 0 {
+                    ;; cooldown bar sits just below the hp bar: hp bar's bottom
+                    ;; edge (0.95 + half of 0.03) + a small gap (0.005) + half
+                    ;; the cooldown bar's own height (0.02) to center it there
+                    pico.set.pencil [ color=COLORS.blue.base ]
+                    pico.output.draw.rect([ 
+                        "%", x=trackLeft, y=(0.95 + (0.03 / 2) + 0.005 + (0.02 / 2)), 
+                        w=cdFillW, h=(0.026 - (0.004 * 2 * ASPECT_RATIO)), anchor="W" 
+                    ])
+                }
+            }
+        }
+    }
+
+    await(false)
 }
 
 val task SnakeUnit(index, character, trail, positions) {
@@ -163,7 +199,7 @@ val task SnakeUnit(index, character, trail, positions) {
     set pub = [ hp = 100, maxHp = 100 ]
     
     ;; might move index to pub later, since order of units can change
-    spawn task->StatBars(index)
+    pin statbar = spawn task->StatBars(index)
 
     par {
         if (index == 1) {
@@ -292,6 +328,8 @@ val task SnakeUnit(index, character, trail, positions) {
 
                 spawn @castPool ability.caster(pos, enemy_pos)
                 emit (:flash_unit)
+                
+                emit @statbar :ability_fired [ ability.interval ]
 
                 ;; cooldown before checking again
                 await (ability.interval)
