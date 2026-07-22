@@ -115,7 +115,7 @@ val func enemy_in_range(range, pos) {
     closest;
 }
 
-val task StatBars(me, index) {
+val task StatBars(me, index, charColors) {
     ;; bars laid out left-to-right by spawn index: start 0.02 from
     ;; the screen edge, each subsequent bar shifted right by its width (0.05)
     ;; plus a small gap (0.01)
@@ -137,7 +137,7 @@ val task StatBars(me, index) {
         } with {
             loop on :draw {
                 ;; outer frame, positioned 0.95 down the screen
-                pico.set.pencil [ color=COLORS.blue.base ]
+                pico.set.pencil [ color=charColors.base ]
                 pico.output.draw.rect([ "%", x=leftEdge, y=0.95, w=0.05, h=0.03, anchor="W" ])
                 pico.set.pencil [ color=:black ]
                 pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
@@ -147,7 +147,7 @@ val task StatBars(me, index) {
                     pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
                 } else {
                     if fillW > 0 {
-                        pico.set.pencil [ color=COLORS.blue.base ]
+                        pico.set.pencil [ color=charColors.base ]
                         pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=fillW, h=trackH, anchor="W" ])
                     }
                 }
@@ -178,7 +178,7 @@ val task StatBars(me, index) {
                     ;; cooldown bar sits just below the hp bar: hp bar's bottom
                     ;; edge (0.95 + half of 0.03) + a small gap (0.005) + half
                     ;; the cooldown bar's own height (0.02) to center it there
-                    pico.set.pencil [ color=COLORS.blue.base ]
+                    pico.set.pencil [ color=charColors.base ]
                     pico.output.draw.rect([ 
                         "%", x=trackLeft, y=(0.95 + (0.03 / 2) + 0.005 + (0.02 / 2)), 
                         w=cdFillW, h=(0.026 - (0.004 * 2 * ASPECT_RATIO)), anchor="W" 
@@ -199,7 +199,7 @@ val task SnakeUnit(index, character, trail, positions) {
     set pub = [ hp = 100, maxHp = 100 ]
     
     ;; might move index to pub later, since order of units can change
-    pin statbar = spawn task->StatBars(index)
+    pin statbar = spawn task->StatBars(index, charColors)
 
     par {
         if (index == 1) {
