@@ -3,27 +3,35 @@
 val task Swordsman(unit_pos, enemy_pos) {
     print("swordsman_ability")
     
-    val SWORDSMAN_DMG = 10
-    val SWORDSMAN_KNOCKBACK = 0.08
-
     ;; TODO: rotation of hit area (layers?)
-
-    val AREA_SIZE = 0.1
+    val AREA_SIZE = 0.14   ;; bigger than wizard's
     val hit_area_rect = [ "%",
-        x = enemy_pos.x,
-        y = enemy_pos.y,
+        x = unit_pos.x,
+        y = unit_pos.y,
         w = AREA_SIZE,
         h = (AREA_SIZE * ASPECT_RATIO),
     ]
 
+    pin spring = spawn Spring.Simple(0.8)
+    emit @spring :start
+
     ;; area_drawing
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=COLORS.gold ]
-            pico.output.draw.rect(hit_area_rect)
+            pico.set.pencil [ color=COLORS.yellow.base ]
+            pico.output.draw.rect([ "%",
+                x = hit_area_rect.x,
+                y = hit_area_rect.y,
+                w = hit_area_rect.w * spring.pub.scale,
+                h = hit_area_rect.h * spring.pub.scale,
+            ])
         }
     }
     
+    pico.output.sound(CHARACTERS@('swordsman').sound)
+    
+    val SWORDSMAN_DMG = 10
+    val SWORDSMAN_KNOCKBACK = 0.08
     ;; hit detection
     loop t, _ in ENEMIES {
         if pico.vs.pos.rect([ "%",  x=t.pub.x, y=t.pub.y ], hit_area_rect) {
@@ -31,18 +39,54 @@ val task Swordsman(unit_pos, enemy_pos) {
             emit @t :on_collided [ srcX=unit_pos.x, srcY=unit_pos.y, knockback=SWORDSMAN_KNOCKBACK ]
         }
     }
-
+    
     await(0.3 * 1s)
 }
 
 val task Wizard(unit_pos, enemy_pos) {
     print("wizard_ability")
     
-    await(false)
+    val WIZARD_DMG = 10
+    val WIZARD_KNOCKBACK = 0.08
+    ;; TODO: rotation of hit area (layers?)
+    val AREA_SIZE = 0.1
+    val hit_area_rect = [ "%",
+        x = enemy_pos.x,
+        y = enemy_pos.y,
+        w = AREA_SIZE,
+        h = (AREA_SIZE * ASPECT_RATIO),
+    ]
+    
+    pin spring = spawn Spring.Simple(0.8)
+    emit @spring :start
+    
+    ;; area_drawing
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=COLORS.blue.base ]
+            pico.output.draw.rect([ "%",
+                x = hit_area_rect.x,
+                y = hit_area_rect.y,
+                w = hit_area_rect.w * spring.pub.scale,
+                h = hit_area_rect.h * spring.pub.scale,
+            ])
+        }
+    }
+    
+    pico.output.sound(CHARACTERS@('wizard').sound)
+
+    ;; hit detection
+    loop t, _ in ENEMIES {
+        if pico.vs.pos.rect([ "%",  x=t.pub.x, y=t.pub.y ], hit_area_rect) {
+            emit @t :damaged [ dmg=WIZARD_DMG ]
+            emit @t :on_collided [ srcX=unit_pos.x, srcY=unit_pos.y, knockback=WIZARD_KNOCKBACK ]
+        }
+    }
+    await(0.3 * 1s)
 }
 
 [
-    swordsman = [ caster = Swordsman, interval = 2 * 1s ],
-    wizard = [ caster = Wizard, interval = 5 * 1s ]
+    swordsman = [ caster = Swordsman, interval = 2 * 1s, range = 0.08 ],
+    wizard = [ caster = Wizard, interval = 5 * 1s, range = 0.13 ]
 ]
 
