@@ -15,6 +15,7 @@ set G = [
 
 set SNAKE_POS = [x=0, y=0]
 set ENEMIES = []
+set UNITS = []
 
 set SOUNDS = [
     pop = "../assets/sounds/bamboo_hit_by_lord.ogg",

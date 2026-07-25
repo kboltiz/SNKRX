@@ -199,19 +199,22 @@ val task StatBars(me, index, charColors) {
     await(false)
 }
 
-val task SnakeUnit(index, character, trail, positions) {
+val task SnakeUnit(spawnIndex, character, trail, positions) {
     val charColorGroup = CHARACTERS@character.color
     val charColors = COLORS@charColorGroup
 
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
-    set pub = [ hp = 100, maxHp = 100 ]
-    
-    ;; might move index to pub later, since order of units can change
-    pin statbar = spawn task->StatBars(index, charColors)
+    set pub = [ hp = 100, maxHp = 100, index = spawnIndex ]
+
+    ;; same pattern as ENEMIES
+    set UNITS@(task) = true
+    pin statbar = spawn task->StatBars(spawnIndex, charColors)
 
     par {
-        if (index == 1) {
-            loop {
+        loop {
+            ;; checked every tick now instead of once at spawn, so a
+            ;; surviving unit can take over head duties if index 1 dies
+            if (pub.index == 1) {
                 val us = await :clock
                 val dt = us/1s;
 
@@ -269,17 +272,16 @@ val task SnakeUnit(index, character, trail, positions) {
                 loop fi, s in sampled {
                     set positions@fi = s
                 }
-            }
-        } else {
-            loop {
+            } else {
                 await :clock
-                val s = positions@(index - 1)
+                val s = positions@(pub.index - 1)
                 if s {
                     set pos.x = s.x
                     set pos.y = s.y
                     set pos.r = s.r
                 }
             }
+            until (pub.hp <= 0)
         }
     } with {
         loop {
@@ -309,6 +311,8 @@ val task SnakeUnit(index, character, trail, positions) {
             } with {
                 await(0.15 * 1s)
             }
+            
+            until (pub.hp <= 0)
         }
     } with {
         ;; TODO: allow loop entry for next ability call
@@ -325,6 +329,7 @@ val task SnakeUnit(index, character, trail, positions) {
             
             val ability = Abilities@character
             loop {
+            	until (pub.hp <= 0)
                 ;; check every tick until something's in range
                 var enemy_pos = false
                 loop {
@@ -348,8 +353,6 @@ val task SnakeUnit(index, character, trail, positions) {
         val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
         val TOUCH_KNOCKBACK = 0.05
 
-        ;; TODO snake unit destroy and rechain on death
-
         loop {
             await :clock
             loop t, _ in ENEMIES {
@@ -359,12 +362,28 @@ val task SnakeUnit(index, character, trail, positions) {
                     emit @t :on_collided [ srcX=pos.x, srcY=pos.y, knockback=TOUCH_KNOCKBACK ]
                     emit (:flash_unit)
                     
-                    set pub.hp = math.max(pub.hp - 2, 0)
+                    set pub.hp = math.max(pub.hp - 50, 0)
                     emit (:take_damage)
+                }
+            }
+            until (pub.hp <= 0)
+        }
+    } with {
+        loop on :take_damage {
+            ;; death shift logic
+            if pub.hp <= 0 {
+                ;; shift every unit that was behind us up by one slot
+                loop u in UNITS {
+                    if (u.pub.index > pub.index) {
+                        set u.pub.index = (u.pub.index - 1)
+                    }
                 }
             }
         }
     }
+    
+    ;; remove from alive units
+    set UNITS@(task) = nil
 }
 
 val task Snake() {
