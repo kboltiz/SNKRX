@@ -15,10 +15,12 @@ val task Swordsman(unit_pos, enemy_pos) {
     pin spring = spawn Spring.Simple(0.8)
     emit @spring :start
 
+    val hitColor = pico.color.alpha(COLORS.yellow.base, 150)
+
     ;; area_drawing
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=COLORS.yellow.base ]
+            pico.set.pencil [ color=hitColor ]
             pico.output.draw.rect([ "%",
                 x = hit_area_rect.x,
                 y = hit_area_rect.y,
@@ -60,10 +62,12 @@ val task Wizard(unit_pos, enemy_pos) {
     pin spring = spawn Spring.Simple(0.8)
     emit @spring :start
     
+     val hitColor = pico.color.alpha(COLORS.blue.base, 150)
+
     ;; area_drawing
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=COLORS.blue.base ]
+            pico.set.pencil [ color=hitColor ]
             pico.output.draw.rect([ "%",
                 x = hit_area_rect.x,
                 y = hit_area_rect.y,
