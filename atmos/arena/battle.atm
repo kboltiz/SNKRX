@@ -116,17 +116,22 @@ val func enemy_in_range(range, pos) {
 }
 
 val task StatBars(me, index, charColors) {
-    ;; bars laid out left-to-right by spawn index: start 0.02 from
-    ;; the screen edge, each subsequent bar shifted right by its width (0.05)
-    ;; plus a small gap (0.01)
-    val leftEdge = (0.02 + ((index - 1) * (0.05 + 0.01)))
+    val barW = 0.05
+    val barH = 0.03
+    val barGap = 0.01
+    val barY = 0.95
+    val border = 0.004
+    val cdH = 0.02
+    val cdGapY = 0.005
 
-    ;; trackW/trackH: the hollow inner area, inset from the 0.05 x 0.03
-    ;; outer frame by a 0.004 border on all sides
-    val trackW = (0.05 - (0.004 * 2))
-    val trackH = (0.03 - (0.004 * 2 * ASPECT_RATIO))
-    val trackLeft = (leftEdge + 0.004)
+    ;; bars laid out left-to-right by spawn index
+    val leftEdge = (0.02 + ((index - 1) * (barW + barGap)))
+    ;; trackW/trackH: the hollow inner area, inset from the outer
+    val trackW = (barW - (border * 2))
+    val trackH = (barH - (border * 2 * ASPECT_RATIO))
+    val trackLeft = (leftEdge + border)
 
+    ;; healthbar
     spawn {
         var fillW = trackW
         par {
@@ -136,25 +141,32 @@ val task StatBars(me, index, charColors) {
             }
         } with {
             loop on :draw {
-                ;; outer frame, positioned 0.95 down the screen
-                pico.set.pencil [ color=charColors.base ]
-                pico.output.draw.rect([ "%", x=leftEdge, y=0.95, w=0.05, h=0.03, anchor="W" ])
-                pico.set.pencil [ color=:black ]
-                pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
+                val liveColor = (if (me.pub.hp <= 0) => COLORS.idle.bg => charColors.base)
+                val fillWidth = (if (me.pub.hp <= 0) => trackW => fillW)
 
-                if me.pub.hp <= 0 {
-                    pico.set.pencil [ color=COLORS.idle.bg ]
-                    pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
-                } else {
-                    if fillW > 0 {
-                        pico.set.pencil [ color=charColors.base ]
-                        pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=fillW, h=trackH, anchor="W" ])
-                    }
+                ;; outer frame
+                pico.set.pencil [ color=liveColor ]
+                pico.output.draw.rect([ "%", x=leftEdge, y=barY, w=barW, h=barH, anchor="W" ])
+
+                ;; hollow track
+                pico.set.pencil [ color=:black ]
+                pico.output.draw.rect([ "%", x=trackLeft, y=barY, w=trackW, h=trackH, anchor="W" ])
+
+                ;; inner meter
+                ;; edgecase, rect seems to inflate at exactly width = 0
+                if fillWidth > 0 {
+                    pico.set.pencil [ color=liveColor ]
+                    pico.output.draw.rect([ "%", x=trackLeft, y=barY, w=fillWidth, h=trackH, anchor="W" ])
                 }
             }
         }
     }
 
+    ;; cooldown bar sits just below the hp bar
+    val cdY = (barY + (barH / 2) + cdGapY + (cdH / 2))
+    val cdTrackH = (cdH - (border * 2 * ASPECT_RATIO))
+    
+    ;; cooldown bar
     spawn {
         ;; start with full bar
         var cdFillW = trackW * 1
@@ -174,15 +186,11 @@ val task StatBars(me, index, charColors) {
             }
         } with {
             loop on :draw {
+                ;; edgecase, rect seems to inflate at exactly width = 0
                 if cdFillW > 0 {
-                    ;; cooldown bar sits just below the hp bar: hp bar's bottom
-                    ;; edge (0.95 + half of 0.03) + a small gap (0.005) + half
-                    ;; the cooldown bar's own height (0.02) to center it there
-                    pico.set.pencil [ color=charColors.base ]
-                    pico.output.draw.rect([ 
-                        "%", x=trackLeft, y=(0.95 + (0.03 / 2) + 0.005 + (0.02 / 2)), 
-                        w=cdFillW, h=(0.026 - (0.004 * 2 * ASPECT_RATIO)), anchor="W" 
-                    ])
+                    val liveColor = (if (me.pub.hp <= 0) => COLORS.idle.bg => charColors.base)
+                    pico.set.pencil [ color=liveColor ]
+                    pico.output.draw.rect([ "%", x=trackLeft, y=cdY, w=cdFillW, h=cdTrackH, anchor="W" ])
                 }
             }
         }
