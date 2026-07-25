@@ -115,7 +115,7 @@ val func enemy_in_range(range, pos) {
     closest;
 }
 
-val task StatBars(me, index, charColors) {
+val task StatBars(me, index) {
     val barW = 0.05
     val barH = 0.03
     val barGap = 0.01
@@ -141,7 +141,7 @@ val task StatBars(me, index, charColors) {
             }
         } with {
             loop on :draw {
-                val liveColor = (if (me.pub.hp <= 0) => COLORS.idle.bg => charColors.base)
+                val liveColor = (if (me.pub.hp <= 0) => COLORS.idle.bg => me.pub.colors.base)
                 val fillWidth = (if (me.pub.hp <= 0) => trackW => fillW)
 
                 ;; outer frame
@@ -188,7 +188,7 @@ val task StatBars(me, index, charColors) {
             loop on :draw {
                 ;; edgecase, rect seems to inflate at exactly width = 0
                 if cdFillW > 0 {
-                    val liveColor = (if (me.pub.hp <= 0) => COLORS.idle.bg => charColors.base)
+                    val liveColor = (if (me.pub.hp <= 0) => COLORS.idle.bg => me.pub.colors.base)
                     pico.set.pencil [ color=liveColor ]
                     pico.output.draw.rect([ "%", x=trackLeft, y=cdY, w=cdFillW, h=cdTrackH, anchor="W" ])
                 }
@@ -204,11 +204,10 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
     val charColors = COLORS@charColorGroup
 
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
-    set pub = [ hp = 100, maxHp = 100, index = spawnIndex ]
+    set pub = [ hp = 100, maxHp = 100, index = spawnIndex, colors = charColors ]
 
     ;; same pattern as ENEMIES
     set UNITS@(task) = true
-    pin statbar = spawn task->StatBars(spawnIndex, charColors)
 
     ;; movement, no exit condition of its own;
     ;; cleaned up automatically on task cleanup (PATTERN #4)
@@ -383,6 +382,8 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
     
     ;; remove from alive units
     set UNITS@(task) = nil
+    
+    task
 }
 
 val task Snake() {
@@ -391,7 +392,8 @@ val task Snake() {
     pin units = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @units SnakeUnit(i, character, trail, positions)
+        val snake = spawn @units SnakeUnit(i, character, trail, positions)
+        spawn @units snake->StatBars(i)
     }
 
     await(false)
