@@ -318,35 +318,33 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
     }
 
     ;; ability loop
-    if (Abilities@character) {
+    spawn {
         ;; abilities can either yield till
         ;; completion OR snake unit existence
 
         ;; Sentry unit's turrets (that stays alive
         ;; beyond one ability instance) is now possible
-
-        spawn {
-            pin castPool = tasks()
-            
-            val ability = Abilities@character
-            loop {
-                ;; check every tick until something's in range
-                var enemy_pos = false
-                loop {
-                    set enemy_pos = enemy_in_range(ability.range, pos)
-                    until (enemy_pos)
-                    
-                    await (:clock)
-                }
-
-                spawn @castPool ability.caster(pos, enemy_pos)
-                emit (:flash_unit)
-                
-                emit @statbar :ability_fired [ ability.interval ]
-
-                ;; cooldown before checking again
-                await (ability.interval)
+        
+        pin castPool = tasks()
+        
+        val ability = Abilities@character
+        if !ability => return;
+        
+        loop {
+            ;; check every tick until something's in range
+            var enemy_pos = false
+            loop on :clock {
+                set enemy_pos = enemy_in_range(ability.range, pos)
+                until (enemy_pos)
             }
+
+            spawn @castPool ability.caster(pos, enemy_pos)
+            emit (:flash_unit)
+            
+            emit @statbar :ability_fired [ ability.interval ]
+
+            ;; cooldown before checking again
+            await (ability.interval)
         }
     }
     
@@ -378,9 +376,9 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
 
                 ;; death emit
                 if pub.hp <= 0 {
-                	;; remove from alive units
-    				set UNITS@(task) = nil
-                	emit @(:global) :unit_death [ index=pub.index ]
+                    ;; remove from alive units
+                    set UNITS@(task) = nil
+                    emit @(:global) :unit_death [ index=pub.index ]
                 }
             }
         }
@@ -426,10 +424,10 @@ task Battle () {
         await :unit_death
 
         var anyAlive = false
-		loop u, _ in UNITS {
-			set anyAlive = (u && true)
-			until (anyAlive)
-		}
+        loop u, _ in UNITS {
+            set anyAlive = (u && true)
+            until (anyAlive)
+        }
         
         until (anyAlive == false)
     }
