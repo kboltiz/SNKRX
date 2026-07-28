@@ -349,6 +349,16 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
             }
         }
     }
+    
+    ;; death shift logic
+    spawn {
+        loop {
+            val d = await :unit_death
+            if (d.index < pub.index) {
+                set pub.index = (pub.index - 1)
+            }
+        }
+    }
 
     ;; enemy collision
     val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
@@ -366,14 +376,9 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
                 set pub.hp = math.max(pub.hp - 50, 0)
                 emit (:take_damage)
 
-                ;; death shift logic — folded in here since this is the
+                ;; death emit
                 if pub.hp <= 0 {
-                    ;; shift every unit that was behind us up by one slot
-                    loop u in UNITS {
-                        if (u.pub.index > pub.index) {
-                            set u.pub.index = (u.pub.index - 1)
-                        }
-                    }
+                	emit @(:parent) :unit_death [ index=pub.index ]
                 }
             }
         }
