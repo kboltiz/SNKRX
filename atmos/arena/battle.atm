@@ -378,15 +378,14 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
 
                 ;; death emit
                 if pub.hp <= 0 {
-                	emit @(:parent) :unit_death [ index=pub.index ]
+                	;; remove from alive units
+    				set UNITS@(task) = nil
+                	emit @(:global) :unit_death [ index=pub.index ]
                 }
             }
         }
         until (pub.hp <= 0)
     }
-    
-    ;; remove from alive units
-    set UNITS@(task) = nil
     
     task
 }
@@ -421,7 +420,19 @@ task Battle () {
     spawn Snake()
     spawn Seeker(0.15,0.5)
 
-    await(:level_end)
+    ;; end the level once the last unit has died
+    ;; TODO also check if waves are over and #ENEMIES is 0 
+    loop {
+        await :unit_death
+
+        var anyAlive = false
+		loop u, _ in UNITS {
+			set anyAlive = (u && true)
+			until (anyAlive)
+		}
+        
+        until (anyAlive == false)
+    }
 }
 
 Battle
