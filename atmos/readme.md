@@ -355,3 +355,139 @@ The transition knows nothing about which activity comes next. It receives it as 
 In the original Lua code, the arena run button holds a direct reference to `BuyScreen` and carries the continuation through three levels of callbacks before the screen actually changes. Each button is responsible for knowing what comes after it.
 
 In Atmos, the buttons know nothing about what follows them. The menu task is the single parent that describes the full flow. It awaits the first button to be clicked, then decides the next screen in one place. The transition itself is decoupled from the activity it leads into. It receives the next activity as an argument rather than encoding it internally.
+
+# Snake Unit State Management
+
+In SNKRX, a snake unit's identity, lifetime, position in the party, and spawn behavior are each tracked through boolean flags that act as state machines. In Atmos, these state machines disappear into control flow and structural position.
+
+## Lua + LOVE2D
+
+Death is a boolean that switches state from alive to dead [(player.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/player.lua#L1521):
+
+```lua
+function Player:hit(damage)
+    if self.dead then return end      -- Guard: reject if dead
+    if self.hp <= 0 then
+        self.dead = true              -- State transition: alive → dead
+        if self.leader then self:recalculate_followers()
+        else self.parent:recalculate_followers() end
+    end
+end
+```
+
+Once `self.dead` is set, the object remains in its group and continues receiving `:update(dt)` every frame. Every method that must not run after death needs its own guard: `hit` returns early, cooldown callbacks check the flag, and then the follower list must be rebuilt. Furthermore, during state transition the dying unit must manually repair the follower structure.
+
+Head identity is a boolean that switches state from follower to leader on promotion [(player.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/player.lua#L873):
+
+```lua
+if self.leader then                    -- State: leader
+    self.t:every(0.01, function()
+        table.insert(self.previous_positions, 1, {x = self.x, y = self.y, r = self.r})
+    end)
+else                                   -- State: follower
+    local target_distance = 10.4 * self.follower_index
+    -- walk back through history...
+end
+
+-- On leader death:
+new_leader.leader = true               -- State transition: follower → leader
+new_leader.followers = self.followers
+```
+
+The `leader` flag controls which branch of movement logic runs. The transition from follower to leader is explicit: the dying head manually sets the flag on its successor and transfers the follower list. Three variables (`leader`, `followers`, `parent`) must be kept consistent across the transition.
+
+Reindexing is a state update that cascades across every unit [(player.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/player.lua#L1754):
+
+```lua
+function Player:recalculate_followers()
+    if self.dead then
+        local new_leader = table.remove(self.followers, 1)
+        new_leader.leader = true
+        for i, follower in ipairs(self.followers) do
+            follower.parent = new_leader
+            follower.follower_index = i -- Rewrite state on every survivor
+        end
+    else
+        -- find dead, remove, renumber...
+        for i, follower in ipairs(self.followers) do
+            follower.follower_index = i -- Rewrite state on every survivor
+        end
+    end
+end
+```
+
+Each unit's `follower_index` is state that must be rewritten by the dying unit. The state transition on one unit (death) cascades into state updates on every unit behind it. The dying unit must also branch on whether it was the head to decide which repair to run.
+
+Spawn detection is a boolean that switches state once but is checked forever after:
+
+```lua
+if not self.following then              -- State: not yet following
+    spawn1:play{...}
+    self.following = true               -- State transition: now following
+end
+```
+
+The `following` flag starts `false`, triggers once, and remains `true` for the rest of the unit's life. This is a one-shot state transition checked every frame.
+
+## Atmos + Pico
+
+In Atmos, death is the exit condition of the unit's body loop. No state variable, no transition to track [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L368):
+
+```lua
+loop {
+    await :clock
+    loop t, _ in ENEMIES {
+        ;; collision, damage...
+        if hp <= 0 {
+            set UNITS@(task) = nil
+            emit @(:parent) (:died)
+            emit @(:global) :unit_death [ index=index ]
+        }
+    }
+    until (hp <= 0)
+}
+```
+
+When `until` fires, `SnakeUnit` terminates. Movement, drawing, the ability loop, the death-shift listener, the cast pool and any pinned spring were all spawned inside the unit task, so they are aborted with it. Nothing checks a flag, because nothing is left running to check one.
+
+Head identity is a position checked every tick, not a stored state [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L221):
+
+```lua
+if (index == 1) {
+    ;; mouse input, wall bounce, trail write
+} else {
+    await :clock
+    val s = positions@(index - 1)
+    if s { set pos.x = s.x; set pos.y = s.y; set pos.r = s.r }
+}
+```
+
+Every unit runs the same movement task, and the branch is re-evaluated on every tick. There is no promotion step. When index 1 disappears and the unit at index 2 decrements to 1, it takes the head branch on its next tick. No flag is transferred, no follower list is moved.
+
+Reindexing is self-adjusting. Each unit maintains only its own index [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L354):
+
+```lua
+spawn {
+    loop {
+        val d = await :unit_death
+        if (d.index < index) { set index = (index - 1) }
+    }
+}
+```
+
+The dying unit emits its index globally and terminates. Everyone behind it shifts down by one; everyone in front ignores the event. No unit touches another unit's state. There is no master list and no branch for "who died".
+
+Spawn detection needs no flag. The follower checks whether position data exists:
+
+```lua
+val s = positions@(index - 1)
+if s { set pos.x = s.x; set pos.y = s.y }
+```
+
+Before the head's first trail pass, the position slot is empty and the follower holds its spawn position. Afterwards, it has data. There is no flag to set, check, or remember.
+
+## Analysis
+
+In the original Lua code, each unit carries state variables that act as ad-hoc state machines. `dead` switches from alive to dead and is checked by every method. `leader` switches from follower to leader through an explicit promotion step. `follower_index` is state rewritten across every surviving unit when one dies. `following` is a one-shot transition checked forever.
+
+In Atmos, none of these state machines remain as variables. The alive to dead transition is the loop's exit condition. The leader and follower distinction is a position check re-evaluated each tick. Reindexing is a self-applied decrement on a broadcast. Spawn detection is a question about whether data exists yet. Each Lua state variable was a manual encoding of something Atmos expresses directly: a loop exit, a branch condition, an event response, a data presence check.
