@@ -116,6 +116,8 @@ val func enemy_in_range(range, pos) {
 }
 
 val task StatBars(me, index) {
+    set me.pub.statbar = task
+
     val barW = 0.05
     val barH = 0.03
     val barGap = 0.01
@@ -341,7 +343,7 @@ val task SnakeUnit(spawnIndex, character, trail, positions) {
             spawn @castPool ability.caster(pos, enemy_pos)
             emit (:flash_unit)
             
-            emit @statbar :ability_fired [ ability.interval ]
+            emit @(pub.statbar) :ability_fired [ ability.interval ]
 
             ;; cooldown before checking again
             await (ability.interval)
