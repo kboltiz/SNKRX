@@ -491,3 +491,41 @@ Before the head's first trail pass, the position slot is empty and the follower 
 In the original Lua code, each unit carries state variables that act as ad-hoc state machines. `dead` switches from alive to dead and is checked by every method. `leader` switches from follower to leader through an explicit promotion step. `follower_index` is state rewritten across every surviving unit when one dies. `following` is a one-shot transition checked forever.
 
 In Atmos, none of these state machines remain as variables. The alive to dead transition is the loop's exit condition. The leader and follower distinction is a position check re-evaluated each tick. Reindexing is a self-applied decrement on a broadcast. Spawn detection is a question about whether data exists yet. Each Lua state variable was a manual encoding of something Atmos expresses directly: a loop exit, a branch condition, an event response, a data presence check.
+
+
+# Snake Unit Status Signalling
+
+In SNKRX, a unit's healthbar reads its fields directly and the hit flash is shared state between combat and rendering. In Atmos, both are replaced by events and control flow, and the bar and unit are separated into sibling tasks under a shared parent.
+
+## Lua + LOVE2D
+
+Status reporting is a direct field read. The unit draws its own healthbar inline from its own fields every frame [(player.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/player.lua):
+
+```lua
+function Player:draw()
+    -- ...
+    if self.character_hp then
+        local r, g, b = unpack(hp_color)
+        local hp_w = 24 * self.hp / self.max_hp
+        graphics.rectangle(self.x - 12, self.y - 16, hp_w, 4, 2, 2, fg[0])
+    end
+end
+```
+
+There is no separate healthbar object. The bar is part of the unit's draw method, reading `self.hp` directly. The bar's lifetime is the unit's lifetime. This works because :draw runs even after unit death until the Player object is cleaned up.
+
+Hit flash is a boolean state machine: normal -> flashing -> normal. Combat writes the state, rendering reads it [(player.lua)](https://github.com/a327ex/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/player.lua#L1525):
+
+```lua
+-- In Player:hit:
+self.hfx:use('hit', 0.25, 200, 10)
+
+-- In draw:
+graphics.rectangle(self.x, self.y, ..., (self.hfx.hit.f or self.hfx.shoot.f) and fg[0] or self.color)
+```
+
+The flash is triggered in `hit` by calling `self.hfx:use('hit', ...)`, which sets internal flags on the effect object. The draw method checks those flags every frame to decide the unit's color. The unit's rendering depends on state that combat writes, and any new reason to flash requires another writer of that state.
+
+## Atmos + Pico
+
+In the atmos counterpart, `Slot` owns both the unit and its bar as siblings, so the unit pushes events to `@(:parent)` and it is understood by the statbar to be its own local state [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L395):
