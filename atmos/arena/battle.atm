@@ -211,6 +211,7 @@ val task SnakeUnit(index, character, trail, positions, colors) {
 
     ;; same pattern as ENEMIES
     set UNITS@(task) = true
+    defer { set UNITS@(task) = nil }
 
     ;; movement, no exit condition of its own;
     ;; cleaned up automatically on task cleanup (PATTERN #4)
