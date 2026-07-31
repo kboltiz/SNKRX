@@ -179,7 +179,7 @@ val task StatBars(index, colors) {
                         val cdFillW = (trackW * math.min((elapsed / data@1), 1))
                         if cdFillW > 0 {
                             pico.set.pencil [ color=colors.base ]
-                            pico.output.draw.rect([ "%", x=trackLeft, y=cdY, w=w, h=cdTrackH, anchor="W" ])
+                            pico.output.draw.rect([ "%", x=trackLeft, y=cdY, w=cdFillW, h=cdTrackH, anchor="W" ])
                         }
                     }
                 } with {
