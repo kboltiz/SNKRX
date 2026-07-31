@@ -387,6 +387,9 @@ val task SnakeUnit(index, character, trail, positions, colors) {
                     emit @(:global) :unit_death [ index=index ]
                 }
             }
+            ;; a second enemy touching this tick would emit :unit_death
+            ;; again and shift every trailing unit twice
+            until (hp <= 0)
         }
         until (hp <= 0)
     }
