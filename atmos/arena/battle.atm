@@ -330,24 +330,26 @@ val task SnakeUnit(index, character, trail, positions, colors) {
         
         pin castPool = tasks()
         
+        ;; not return(): this block is transparent, so a return would
+        ;; terminate SnakeUnit itself
         val ability = Abilities@character
-        if !ability => return;
-        
-        loop {
-            ;; check every tick until something's in range
-            var enemy_pos = false
-            loop on :clock {
-                set enemy_pos = enemy_in_range(ability.range, pos)
-                until (enemy_pos)
+        if ability {
+            loop {
+                ;; check every tick until something's in range
+                var enemy_pos = false
+                loop on :clock {
+                    set enemy_pos = enemy_in_range(ability.range, pos)
+                    until (enemy_pos)
+                }
+
+                spawn @castPool ability.caster(pos, enemy_pos)
+                emit (:flash_unit)
+
+                emit @(:parent) :ability_fired [ ability.interval ]
+
+                ;; cooldown before checking again
+                await (ability.interval)
             }
-
-            spawn @castPool ability.caster(pos, enemy_pos)
-            emit (:flash_unit)
-            
-            emit @(:parent) :ability_fired [ ability.interval ]
-
-            ;; cooldown before checking again
-            await (ability.interval)
         }
     }
     
