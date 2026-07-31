@@ -3,6 +3,10 @@ val SEEKER_SIZE = 0.025
 val SEEKER_TURN_RATE = 3
 val SEEKER_HEALTH = 20
 
+;; slows by this much per second, ending up ~e.knockback from where it was hit
+val KNOCKBACK_DECAY = 14
+val KNOCKBACK_STOP = 0.005
+
 ;; seeker is the most basic type of enemy
 ;; bosses will build on top of this seeker behavior
 
@@ -19,18 +23,38 @@ val task Seeker(startX, startY) {
 
     spawn {
         loop {
-            val us = await :clock
-            val dt = us/1s
-            val dx = (SNAKE_POS.x - pub.x)
-            val dy = ((SNAKE_POS.y - pub.y) / ASPECT_RATIO)
-            val desired = math.atan(dy, dx)
+            ;; seeking
+            val e = watching :on_collided {
+                loop {
+                    val us = await :clock
+                    val dt = us/1s
+                    val dx = (SNAKE_POS.x - pub.x)
+                    val dy = ((SNAKE_POS.y - pub.y) / ASPECT_RATIO)
+                    val desired = math.atan(dy, dx)
 
-            val diff = angle_diff(pub.r, desired)
-            val maxTurn = (SEEKER_TURN_RATE * dt)
-            val turn = math.max(math.min(diff, maxTurn), -maxTurn)
-            set pub.r = (pub.r + turn)
-            set pub.x = (pub.x + (math.cos(pub.r) * SEEKER_SPEED * dt))
-            set pub.y = (pub.y + (math.sin(pub.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
+                    val diff = angle_diff(pub.r, desired)
+                    val maxTurn = (SEEKER_TURN_RATE * dt)
+                    val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+                    set pub.r = (pub.r + turn)
+                    set pub.x = (pub.x + (math.cos(pub.r) * SEEKER_SPEED * dt))
+                    set pub.y = (pub.y + (math.sin(pub.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
+                }
+            }
+
+            ;; knocked back, sliding away from the hit until it stops
+            val ang = math.atan(
+                ((pub.y - e.srcY) / ASPECT_RATIO),
+                (pub.x - e.srcX)
+            )
+            var speed = (e.knockback * KNOCKBACK_DECAY)
+            loop {
+                val us = await :clock
+                val dt = us/1s
+                set pub.x = (pub.x + (math.cos(ang) * speed * dt))
+                set pub.y = (pub.y + (math.sin(ang) * speed * dt * ASPECT_RATIO))
+                set speed = (speed - (speed * KNOCKBACK_DECAY * dt))
+                until (speed < KNOCKBACK_STOP)
+            }
         }
     }
 
@@ -45,21 +69,9 @@ val task Seeker(startX, startY) {
         }
     }
 
-    ;; collision detection done by snake units
-    spawn {
-    	;; TODO: maintain velocity var and then "push" away
-        loop e on :on_collided {
-            val ang = math.atan(
-                ((pub.y - e.srcY) / ASPECT_RATIO),
-                (pub.x - e.srcX)
-            )
-            set pub.x = (pub.x + (math.cos(ang) * e.knockback))
-            set pub.y = (pub.y + (math.sin(ang) * e.knockback * ASPECT_RATIO))
-        }
-    }
-
-    loop e on :damaged until (health <= 0) {
+    loop e on :damaged {
         set health = (health - e.dmg)
+        until (health <= 0)
     }
 }
 Seeker
