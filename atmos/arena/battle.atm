@@ -285,31 +285,28 @@ val task SnakeUnit(index, character, trail, positions, colors) {
     ;; flash on hit, spring pop, spawned as a child same as movement
     spawn {
         loop {
-            par:any {
+            watching :flash_unit {
                 loop on :draw {
                     pico.set.pencil [ color=colors.base ]
-                    pico.output.draw.oval([ "%",
+                    pico.output.draw.oval [ "%",
                         x=pos.x, y=pos.y,
                         w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
-                    ])
+                    ]
                 }
-            } with {
-                await (:flash_unit)
             }
             
             pin spring = spawn Spring.Simple(1.8)
             emit @spring :start
 
-            par:any {
+            watching (0.15*1s) {
                 loop on :draw {
                     pico.set.pencil [ color=:white ]
-                    pico.output.draw.oval([ "%",
+                    pico.output.draw.oval [ "%",
                         x=pos.x, y=pos.y,
-                        w=UNIT_SIZE * spring.pub.scale, h=(UNIT_SIZE * ASPECT_RATIO) * spring.pub.scale,
-                    ])
+                        w=UNIT_SIZE * spring.pub.scale,
+                        h=(UNIT_SIZE * ASPECT_RATIO) * spring.pub.scale,
+                    ]
                 }
-            } with {
-                await(0.15 * 1s)
             }
         }
     }
@@ -337,9 +334,9 @@ val task SnakeUnit(index, character, trail, positions, colors) {
                 }
 
                 spawn @castPool ability.caster(pos, enemy_pos)
-                emit (:flash_unit)
+                emit :flash_unit
 
-                emit @(:parent) :ability_fired [ ability.interval ]
+                emit @:parent :ability_fired [ ability.interval ]
 
                 ;; cooldown before checking again
                 await (ability.interval)
