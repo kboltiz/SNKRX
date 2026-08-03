@@ -15,7 +15,6 @@ set G = [
 
 ;; arena centre, matches the trail seed in battle.atm
 set SNAKE_POS = [x=0.5, y=0.5]
-set UNITS = []
 
 set SOUNDS = [
     pop = "../assets/sounds/bamboo_hit_by_lord.ogg",

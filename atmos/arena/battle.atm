@@ -203,9 +203,6 @@ val task SnakeUnit(index, character, trail, positions, colors) {
     ;; hp shared through events instead of pub
     var hp, maxHp = (100, 100)
 
-    set UNITS@(task) = true
-    defer { set UNITS@(task) = nil }
-
     ;; movement, no exit condition of its own;
     ;; cleaned up automatically on task cleanup (PATTERN #4)
     spawn {
@@ -372,7 +369,6 @@ val task SnakeUnit(index, character, trail, positions, colors) {
                 ;; death emit
                 if hp <= 0 {
                     ;; remove from alive units
-                    set UNITS@(task) = nil
                     ;; index shifts down with the party, so it still points
                     ;; at this unit's own slot
                     table.remove(G.party, index)
@@ -430,22 +426,12 @@ task Battle () {
     pin enemies = tasks()
     set ENEMIES = enemies
 
-    spawn Snake()
+    pin snake = spawn Snake()
     spawn @ENEMIES Seeker(0.15,0.5)
 
-    ;; end the level once the last unit has died
-    ;; TODO also check if waves are over and #ENEMIES is 0 
-    loop {
-        await :unit_death
-
-        var anyAlive = false
-        loop u, _ in UNITS {
-            set anyAlive = (u && true)
-            until (anyAlive)
-        }
-        
-        until (anyAlive == false)
-    }
+    ;; Snake ends when its last slot does
+    ;; TODO also check if waves are over and #ENEMIES is 0
+    await(snake)
 }
 
 Battle
