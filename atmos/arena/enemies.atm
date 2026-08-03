@@ -16,11 +16,6 @@ val task Seeker(startX, startY) {
     var health = SEEKER_HEALTH
     set pub = [ x=startX, y=startY, r=0 ]
 
-    ;; add to enemy pool, defer so it also runs when aborted
-    val me = task
-    set ENEMIES@me = true
-    defer { set ENEMIES@me = nil }
-
     spawn {
         loop {
             ;; seeking

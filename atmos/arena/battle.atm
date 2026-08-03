@@ -202,7 +202,6 @@ val task SnakeUnit(index, character, trail, positions, colors) {
     ;; hp shared through events instead of pub
     var hp, maxHp = (100, 100)
 
-    ;; same pattern as ENEMIES
     set UNITS@(task) = true
     defer { set UNITS@(task) = nil }
 
