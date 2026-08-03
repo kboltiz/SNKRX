@@ -15,7 +15,6 @@ set G = [
 
 ;; arena centre, matches the trail seed in battle.atm
 set SNAKE_POS = [x=0.5, y=0.5]
-set ENEMIES = []
 set UNITS = []
 
 set SOUNDS = [

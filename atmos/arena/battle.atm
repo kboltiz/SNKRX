@@ -420,8 +420,11 @@ task Battle () {
         }
     }
 
+    pin enemies = tasks()
+    set ENEMIES = enemies
+
     spawn Snake()
-    spawn Seeker(0.15,0.5)
+    spawn @ENEMIES Seeker(0.15,0.5)
 
     ;; end the level once the last unit has died
     ;; TODO also check if waves are over and #ENEMIES is 0 
