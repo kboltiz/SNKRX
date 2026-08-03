@@ -115,95 +115,111 @@ val func enemy_in_range(range, pos) {
     closest;
 }
 
-val task StatBars(me, index, charColors) {
-    ;; bars laid out left-to-right by spawn index: start 0.02 from
-    ;; the screen edge, each subsequent bar shifted right by its width (0.05)
-    ;; plus a small gap (0.01)
-    val leftEdge = (0.02 + ((index - 1) * (0.05 + 0.01)))
+val task StatBars(index, colors) {
+    val barW = 0.05
+    val barH = 0.03
+    val barGap = 0.01
+    val barY = 0.95
+    val border = 0.004
+    val cdH = 0.02
+    val cdGapY = 0.005
 
-    ;; trackW/trackH: the hollow inner area, inset from the 0.05 x 0.03
-    ;; outer frame by a 0.004 border on all sides
-    val trackW = (0.05 - (0.004 * 2))
-    val trackH = (0.03 - (0.004 * 2 * ASPECT_RATIO))
-    val trackLeft = (leftEdge + 0.004)
+    ;; bars laid out left-to-right by spawn index
+    val leftEdge = (0.02 + ((index - 1) * (barW + barGap)))
+    ;; trackW/trackH: the hollow inner area, inset from the outer
+    val trackW = (barW - (border * 2))
+    val trackH = (barH - (border * 2 * ASPECT_RATIO))
+    val trackLeft = (leftEdge + border)
+
+    var hp, maxHp = (100, 100)
 
     spawn {
-        var fillW = trackW
+        loop {
+            val d = await :hp
+            set hp = d.hp
+            set maxHp = d.max
+        }    
+    }
+
+    par :any {
         par {
-            loop {
-                await :clock
-                set fillW = (trackW * (me.pub.hp / me.pub.maxHp))
+            ;; healthbar
+            loop on :draw {
+                ;; greyed out healthbars moved to the end of statbars
+                
+                ;; outer frame
+                pico.set.pencil [ color=colors.base ]
+                pico.output.draw.rect([ "%", x=leftEdge, y=barY, w=barW, h=barH, anchor="W" ])
+
+                ;; hollow track
+                pico.set.pencil [ color=:black ]
+                pico.output.draw.rect([ "%", x=trackLeft, y=barY, w=trackW, h=trackH, anchor="W" ])
+
+                val fillWidth = (trackW * (hp / maxHp))
+                ;; inner meter
+                ;; edgecase, rect seems to inflate at exactly width = 0
+                if fillWidth > 0 {
+                    pico.set.pencil [ color=colors.base ]
+                    pico.output.draw.rect([ "%", x=trackLeft, y=barY, w=fillWidth, h=trackH, anchor="W" ])
+                }
             }
         } with {
-            loop on :draw {
-                ;; outer frame, positioned 0.95 down the screen
-                pico.set.pencil [ color=charColors.base ]
-                pico.output.draw.rect([ "%", x=leftEdge, y=0.95, w=0.05, h=0.03, anchor="W" ])
-                pico.set.pencil [ color=:black ]
-                pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
+            ;; cooldown bar sits just below the hp bar
+            val cdY = (barY + (barH / 2) + cdGapY + (cdH / 2))
+            val cdTrackH = (cdH - (border * 2 * ASPECT_RATIO))
+        
+            ;; cooldown bar
+            loop {
+                val data = await :ability_fired
+                var elapsed = 0
 
-                if me.pub.hp <= 0 {
-                    pico.set.pencil [ color=COLORS.idle.bg ]
-                    pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=trackW, h=trackH, anchor="W" ])
-                } else {
-                    if fillW > 0 {
-                        pico.set.pencil [ color=charColors.base ]
-                        pico.output.draw.rect([ "%", x=trackLeft, y=0.95, w=fillW, h=trackH, anchor="W" ])
+                par :any {
+                    ;; edgecase, rect seems to inflate at exactly width = 0
+                    loop on :draw {
+                        val cdFillW = (trackW * math.min((elapsed / data@1), 1))
+                        if cdFillW > 0 {
+                            pico.set.pencil [ color=colors.base ]
+                            pico.output.draw.rect([ "%", x=trackLeft, y=cdY, w=cdFillW, h=cdTrackH, anchor="W" ])
+                        }
+                    }
+                } with {
+                    loop {
+                        val us = await :clock
+                        set elapsed = (elapsed + us)
+                        until (elapsed >= data@1)
                     }
                 }
             }
         }
+    } with {
+        await :died
     }
 
-    spawn {
-        ;; start with full bar
-        var cdFillW = trackW * 1
-        par {
-            loop {
-                val data = await :ability_fired
-                var elapsed = 0
-                set cdFillW = 0
-
-                loop {
-                    val us = await :clock
-                    set elapsed = (elapsed + us)
-
-                    set cdFillW = (trackW * math.min((elapsed / data@1), 1))
-                    until ((elapsed / data@1) >= 1)
-                }
-            }
-        } with {
-            loop on :draw {
-                if cdFillW > 0 {
-                    ;; cooldown bar sits just below the hp bar: hp bar's bottom
-                    ;; edge (0.95 + half of 0.03) + a small gap (0.005) + half
-                    ;; the cooldown bar's own height (0.02) to center it there
-                    pico.set.pencil [ color=charColors.base ]
-                    pico.output.draw.rect([ 
-                        "%", x=trackLeft, y=(0.95 + (0.03 / 2) + 0.005 + (0.02 / 2)), 
-                        w=cdFillW, h=(0.026 - (0.004 * 2 * ASPECT_RATIO)), anchor="W" 
-                    ])
-                }
-            }
-        }
+    ;; draw empty frame after unit dies
+    loop on :draw {
+        pico.set.pencil [ color=COLORS.idle.bg ]
+        pico.output.draw.rect([ "%", x=leftEdge, y=barY, w=barW, h=barH, anchor="W" ])
+        pico.set.pencil [ color=:black ]
+        pico.output.draw.rect([ "%", x=trackLeft, y=barY, w=trackW, h=trackH, anchor="W" ])
     }
-
-    await(false)
 }
 
-val task SnakeUnit(index, character, trail, positions) {
-    val charColorGroup = CHARACTERS@character.color
-    val charColors = COLORS@charColorGroup
-
+val task SnakeUnit(index, character, trail, positions, colors) {
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
-    set pub = [ hp = 100, maxHp = 100 ]
-    
-    ;; might move index to pub later, since order of units can change
-    pin statbar = spawn task->StatBars(index, charColors)
+    ;; hp shared through events instead of pub
+    var hp, maxHp = (100, 100)
 
-    par {
-        if (index == 1) {
-            loop {
+    ;; same pattern as ENEMIES
+    set UNITS@(task) = true
+    defer { set UNITS@(task) = nil }
+
+    ;; movement, no exit condition of its own;
+    ;; cleaned up automatically on task cleanup (PATTERN #4)
+    spawn {
+        loop {
+            ;; checked every tick now instead of once at spawn, so a
+            ;; surviving unit can take over head duties if index 1 dies
+            if (index == 1) {
                 val us = await :clock
                 val dt = us/1s;
 
@@ -261,9 +277,7 @@ val task SnakeUnit(index, character, trail, positions) {
                 loop fi, s in sampled {
                     set positions@fi = s
                 }
-            }
-        } else {
-            loop {
+            } else {
                 await :clock
                 val s = positions@(index - 1)
                 if s {
@@ -273,11 +287,14 @@ val task SnakeUnit(index, character, trail, positions) {
                 }
             }
         }
-    } with {
+    }
+
+    ;; flash on hit, spring pop, spawned as a child same as movement
+    spawn {
         loop {
             par:any {
                 loop on :draw {
-                    pico.set.pencil [ color=charColors.base ]
+                    pico.set.pencil [ color=colors.base ]
                     pico.output.draw.oval([ "%",
                         x=pos.x, y=pos.y,
                         w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
@@ -302,70 +319,104 @@ val task SnakeUnit(index, character, trail, positions) {
                 await(0.15 * 1s)
             }
         }
-    } with {
-        ;; TODO: allow loop entry for next ability call
-        ;; only if enemies are in range
-    
-        if (Abilities@character) {
-            ;; abilities can either yield till 
-            ;; completion OR snake unit existence
-            
-            ;; Sentry unit's turrets (that stays alive
-            ;; beyond one ability instance) is now possible
-            
-            pin castPool = tasks()
-            
-            val ability = Abilities@character
+    }
+
+    ;; ability loop
+    spawn {
+        ;; abilities can either yield till
+        ;; completion OR snake unit existence
+
+        ;; Sentry unit's turrets (that stays alive
+        ;; beyond one ability instance) is now possible
+        
+        pin castPool = tasks()
+        
+        ;; not return(): this block is transparent, so a return would
+        ;; terminate SnakeUnit itself
+        val ability = Abilities@character
+        if ability {
             loop {
                 ;; check every tick until something's in range
                 var enemy_pos = false
-                loop {
+                loop on :clock {
                     set enemy_pos = enemy_in_range(ability.range, pos)
                     until (enemy_pos)
-                    
-                    await (:clock)
                 }
 
                 spawn @castPool ability.caster(pos, enemy_pos)
                 emit (:flash_unit)
-                
-                emit @statbar :ability_fired [ ability.interval ]
+
+                emit @(:parent) :ability_fired [ ability.interval ]
 
                 ;; cooldown before checking again
                 await (ability.interval)
             }
         }
-    } with {
-        ;; enemy collision
-        val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
-        val TOUCH_KNOCKBACK = 0.05
-
-        ;; TODO snake unit destroy and rechain on death
-
+    }
+    
+    ;; death shift logic
+    spawn {
         loop {
-            await :clock
-            loop t, _ in ENEMIES {
-                val dx = (t.pub.x - pos.x)
-                val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
-                if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
-                    emit @t :on_collided [ srcX=pos.x, srcY=pos.y, knockback=TOUCH_KNOCKBACK ]
-                    emit (:flash_unit)
-                    
-                    set pub.hp = math.max(pub.hp - 2, 0)
-                    emit (:take_damage)
-                }
+            val d = await :unit_death
+            if (d.index < index) {
+                set index = (index - 1)
             }
         }
     }
+
+    ;; enemy collision
+    val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
+    val TOUCH_KNOCKBACK = 0.05
+
+    loop {
+        await :clock
+        loop t, _ in ENEMIES {
+            val dx = (t.pub.x - pos.x)
+            val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
+            if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
+                emit @t :on_collided [ srcX=pos.x, srcY=pos.y, knockback=TOUCH_KNOCKBACK ]
+                emit (:flash_unit)
+
+                set hp = math.max(hp - 50, 0)
+                emit @(:parent) :hp [ hp=hp, max=maxHp ]
+
+                ;; death emit
+                if hp <= 0 {
+                    ;; remove from alive units
+                    set UNITS@(task) = nil
+                    ;; index shifts down with the party, so it still points
+                    ;; at this unit's own slot
+                    table.remove(G.party, index)
+                    emit @(:parent) (:died)
+                    emit @(:global) :unit_death [ index=index ]
+                }
+            }
+            ;; a second enemy touching this tick would emit :unit_death
+            ;; again and shift every trailing unit twice
+            until (hp <= 0)
+        }
+        until (hp <= 0)
+    }
+    
+    task
+}
+
+val task Slot(index, character, trail, positions) {
+    val colors = COLORS@(CHARACTERS@character.color)
+    
+    spawn StatBars(index, colors)
+    await SnakeUnit(index, character, trail, positions, colors)
+    
+    await(false)
 }
 
 val task Snake() {
     var trail = [[ x=0.5, y=0.5, r=0 ]]
     val positions = []
-    pin units = tasks()
+    pin party = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @units SnakeUnit(i, character, trail, positions)
+        spawn @party Slot(i, character, trail, positions)
     }
 
     await(false)
@@ -388,7 +439,19 @@ task Battle () {
     spawn Snake()
     spawn Seeker(0.15,0.5)
 
-    await(:level_end)
+    ;; end the level once the last unit has died
+    ;; TODO also check if waves are over and #ENEMIES is 0 
+    loop {
+        await :unit_death
+
+        var anyAlive = false
+        loop u, _ in UNITS {
+            set anyAlive = (u && true)
+            until (anyAlive)
+        }
+        
+        until (anyAlive == false)
+    }
 }
 
 Battle
