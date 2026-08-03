@@ -98,7 +98,7 @@ val func bounce(r, nx, ny) {
 }
 
 val func enemy_in_range(range, pos) {
-    loop t, _ in ENEMIES {
+    loop _, t in ENEMIES {
         val dx = (t.pub.x - pos.x)
         val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
         val dist = math.sqrt((dx*dx) + (dy*dy))
@@ -358,7 +358,7 @@ val task SnakeUnit(index, character, trail, positions, colors) {
     val TOUCH_KNOCKBACK = 0.05
 
     loop on :clock {
-        loop t, _ in ENEMIES {
+        loop _, t in ENEMIES {
             val dx = (t.pub.x - pos.x)
             val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
             if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
