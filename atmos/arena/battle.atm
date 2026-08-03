@@ -98,21 +98,14 @@ val func bounce(r, nx, ny) {
 }
 
 val func enemy_in_range(range, pos) {
-    var closest = false;
-
     loop t, _ in ENEMIES {
         val dx = (t.pub.x - pos.x)
         val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
         val dist = math.sqrt((dx*dx) + (dy*dy))
-        val is_in_range = dist <= range
-
-        set closest = (is_in_range && [ x=t.pub.x, y=t.pub.y ])
         
         ;; when found, exit loop
-        until (is_in_range)
+        until (dist<=range, [ x=t.pub.x, y=t.pub.y ])
     }
-    
-    closest;
 }
 
 val task StatBars(index, colors) {
