@@ -361,17 +361,16 @@ val task SnakeUnit(index, character, trail, positions, colors) {
     val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
     val TOUCH_KNOCKBACK = 0.05
 
-    loop {
-        await :clock
+    loop on :clock {
         loop t, _ in ENEMIES {
             val dx = (t.pub.x - pos.x)
             val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
             if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
                 emit @t :on_collided [ srcX=pos.x, srcY=pos.y, knockback=TOUCH_KNOCKBACK ]
-                emit (:flash_unit)
+                emit :flash_unit
 
                 set hp = math.max(hp - 50, 0)
-                emit @(:parent) :hp [ hp=hp, max=maxHp ]
+                emit @:parent :hp [ hp=hp, max=maxHp ]
 
                 ;; death emit
                 if hp <= 0 {
@@ -380,18 +379,13 @@ val task SnakeUnit(index, character, trail, positions, colors) {
                     ;; index shifts down with the party, so it still points
                     ;; at this unit's own slot
                     table.remove(G.party, index)
-                    emit @(:parent) (:died)
-                    emit @(:global) :unit_death [ index=index ]
+                    emit @:parent :died
+                    emit @:global :unit_death [ index=index ]
+                    return(task)
                 }
             }
-            ;; a second enemy touching this tick would emit :unit_death
-            ;; again and shift every trailing unit twice
-            until (hp <= 0)
         }
-        until (hp <= 0)
     }
-    
-    task
 }
 
 val task Slot(index, character, trail, positions) {
