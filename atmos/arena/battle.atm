@@ -368,12 +368,11 @@ val task SnakeUnit(index, character, trail, positions, colors) {
 
                 ;; death emit
                 if hp <= 0 {
-                    ;; remove from alive units
                     ;; index shifts down with the party, so it still points
                     ;; at this unit's own slot
                     table.remove(G.party, index)
                     emit @:global :unit_death [ index=index ]
-                    return(task)
+                    return()
                 }
             }
         }
