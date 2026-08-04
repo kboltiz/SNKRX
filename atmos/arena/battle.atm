@@ -102,8 +102,6 @@ val func enemy_in_range(range, pos) {
         val dx = (t.pub.x - pos.x)
         val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
         val dist = math.sqrt((dx*dx) + (dy*dy))
-        
-        ;; when found, exit loop
         until (dist<=range, [ x=t.pub.x, y=t.pub.y ])
     }
 }
@@ -310,34 +308,31 @@ val task SnakeUnit(index, character, trail, positions, colors) {
 
     ;; ability loop
     spawn {
+        val ability = Abilities@character
+        if !ability {
+            return()    ;; TODO: atmos has no simple way to spawn only on condition
+        }
+
         ;; abilities can either yield till
         ;; completion OR snake unit existence
 
         ;; Sentry unit's turrets (that stays alive
         ;; beyond one ability instance) is now possible
-        
+
         pin castPool = tasks()
         
         ;; not return(): this block is transparent, so a return would
         ;; terminate SnakeUnit itself
-        val ability = Abilities@character
-        if ability {
-            loop {
-                ;; check every tick until something's in range
-                var enemy_pos = false
-                loop on :clock {
-                    set enemy_pos = enemy_in_range(ability.range, pos)
-                    until (enemy_pos)
-                }
-
-                spawn @castPool ability.caster(pos, enemy_pos)
-                emit :flash_unit
-
-                emit @:parent :ability_fired [ ability.interval ]
-
-                ;; cooldown before checking again
-                await (ability.interval)
+        ;; cooldown before checking again (TODO: ok on startup?)
+        loop on (ability.interval) {
+            ;; check every tick until something's in range
+            val enemy_pos = loop on :clock {
+                until (enemy_in_range(ability.range, pos))
             }
+
+            spawn @castPool ability.caster(pos, enemy_pos)
+            emit :flash_unit
+            emit @:parent :ability_fired [ ability.interval ]
         }
     }
     
