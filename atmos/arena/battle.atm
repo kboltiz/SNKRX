@@ -16,6 +16,26 @@ val ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
 
 val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
 
+;; waves per level, ported from SNKRX's level_to_max_waves
+val LEVEL_WAVES = [
+    2, 3, 4,
+    3, 4, 4, 5,
+    5, 5, 5, 5, 7,
+    6, 6, 7, 7, 8, 10,
+    8, 8, 10, 12, 14, 16, 25,
+]
+
+val WAVE_DELAY = 1s           ;; breather between clearing a wave and the next spawn
+val CLUSTER_RADIUS = 0.08     ;; how tightly a horde packs around its spawn point
+;; keeps a horde off the snake's face; the arena is thin, so a larger
+;; clearance leaves only its far ends available
+val CENTRE_MIN_DIST = 0.15
+val CENTRE_TRIES = 16         ;; bounded, so a cornered snake can still be spawned around
+
+val func level_waves(level) { LEVEL_WAVES@(math.min(level, #LEVEL_WAVES)) }
+;; enemies in a wave, ported from SNKRX: 8 + (wave-1)*2
+val func wave_enemies(wave) { (8 + ((wave - 1) * 2)) }
+
 val func clamp_away_from_wall(r, isVertical) {
     var result = r
     if isVertical {
@@ -95,6 +115,36 @@ val func bounce(r, nx, ny) {
         set result = math.pi - result
     }
     return(result)
+}
+
+;; one point per wave, inset so the whole cluster still fits in the arena
+;; and retried while it lands too close to the snake's head
+val func cluster_centre() {
+    val insetX = CLUSTER_RADIUS
+    val insetY = (CLUSTER_RADIUS * ASPECT_RATIO)
+
+    var pos = [ x=0.5, y=0.5 ]
+    loop _ in CENTRE_TRIES {
+        set pos = [
+            x = ((ARENA_LEFT + insetX) + (math.random() * (ARENA_W - (2 * insetX)))),
+            y = ((ARENA_TOP + insetY) + (math.random() * (ARENA_H - (2 * insetY)))),
+        ]
+        val dx = (pos.x - SNAKE_POS.x)
+        val dy = ((pos.y - SNAKE_POS.y) / ASPECT_RATIO)
+        until (math.sqrt((dx*dx) + (dy*dy)) >= CENTRE_MIN_DIST)
+    }
+    return(pos)
+}
+
+;; a spot in the cluster: uniform angle and radius, so the horde reads as
+;; a clump denser in the middle rather than a ring
+val func cluster_pos(centre) {
+    val ang = (math.random() * 2 * math.pi)
+    val dist = (math.random() * CLUSTER_RADIUS)
+    return [
+        x = (centre.x + (math.cos(ang) * dist)),
+        y = (centre.y + (math.sin(ang) * dist * ASPECT_RATIO)),
+    ]
 }
 
 val func enemy_in_range(range, pos) {
@@ -403,6 +453,13 @@ val task Snake() {
     }
 }
 
+;; PATTERN #2 : Continuation Passing : wave -> wave -> result
+;;  - a wave's spawn is followed by awaiting its own extinction, so the
+;;    next wave is simply the next iteration
+;; PATTERN #4 : Lifespan Hierarchies : Battle > Snake,enemies
+;;  - returning from Battle aborts the snake and every surviving enemy,
+;;    whatever state they are in
+
 task Battle () {
     print("Battle Started!")
 
@@ -420,12 +477,28 @@ task Battle () {
     pin enemies = tasks()
     set ENEMIES = enemies
 
+    val maxWaves = level_waves(G.level)
     pin snake = spawn Snake()
-    spawn @ENEMIES Seeker(0.15,0.5)
 
-    ;; Snake ends when its last slot does
-    ;; TODO also check if waves are over and #ENEMIES is 0
-    await(snake)
+    par :any {
+        ;; Snake ends when its last slot does: the whole party is down
+        await(snake)
+        false
+    } with {
+        loop i in maxWaves {
+            await(WAVE_DELAY)
+
+            val centre = cluster_centre()
+            loop _ in wave_enemies(i) {
+                val p = cluster_pos(centre)
+                spawn @ENEMIES Seeker(p.x, p.y)
+            }
+
+            ;; the pool empties only once every enemy of this wave is dead
+            await :all ENEMIES
+        }
+        true
+    }
 }
 
 Battle
