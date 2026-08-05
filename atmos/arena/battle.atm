@@ -32,6 +32,10 @@ val CLUSTER_RADIUS = 0.08     ;; how tightly a horde packs around its spawn poin
 val CENTRE_MIN_DIST = 0.15
 val CENTRE_TRIES = 16         ;; bounded, so a cornered snake can still be spawned around
 
+val WAVE_TEXT_X = 0.03        ;; top-left corner, above the arena
+val WAVE_TEXT_Y = 0.06
+val WAVE_TEXT_H = 0.04
+
 val func level_waves(level) { LEVEL_WAVES@(math.min(level, #LEVEL_WAVES)) }
 ;; enemies in a wave, ported from SNKRX: 8 + (wave-1)*2
 val func wave_enemies(wave) { (8 + ((wave - 1) * 2)) }
@@ -453,6 +457,33 @@ val task Snake() {
     }
 }
 
+;; PATTERN #5 : Signaling Mechanisms : :wave -> counter
+;;  - the counter re-measures its rich text on a wave change instead of
+;;    once per frame
+val task Wave_Text (wave, maxWaves) {
+    loop {
+        val runs = parse_rich_text("WAVE: [yellow]" ++ wave.n ++ "/" ++ maxWaves)
+        val positions, _ = measure_runs(runs, WAVE_TEXT_H)
+
+        spawn {
+            loop on :draw {
+                loop i, run in runs {
+                    val pos = positions@i
+                    pico.set.pencil [ color=run.color ]
+                    pico.output.draw.text.fix(run.text, [ '%',
+                        x = (WAVE_TEXT_X + pos.start),
+                        y = WAVE_TEXT_Y,
+                        h = WAVE_TEXT_H,
+                        anchor = "W",
+                    ])
+                }
+            }
+        }
+
+        await :wave
+    }
+}
+
 ;; PATTERN #2 : Continuation Passing : wave -> wave -> result
 ;;  - a wave's spawn is followed by awaiting its own extinction, so the
 ;;    next wave is simply the next iteration
@@ -478,6 +509,10 @@ task Battle () {
     set ENEMIES = enemies
 
     val maxWaves = level_waves(G.level)
+    ;; boxed, so the counter reads the current wave without owning it
+    val wave = [ n=1 ]
+    spawn Wave_Text(wave, maxWaves)
+
     pin snake = spawn Snake()
 
     par :any {
@@ -486,6 +521,9 @@ task Battle () {
         false
     } with {
         loop i in maxWaves {
+            set wave.n = i
+            emit :wave
+
             await(WAVE_DELAY)
 
             val centre = cluster_centre()
