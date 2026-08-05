@@ -9,7 +9,18 @@ task () {
     var ok = await Shop()
     loop {
         while(ok)
-        await Transition("level 1/X", [x=0.9,y=0.9], Battle)
+
+        val msg = "level " ++ G.level ++ "/" ++ MAX_LEVEL
+        val survived = await Transition(msg, [x=0.9,y=0.9], Battle)
+
+        ;; survivors carry their party into the next level, a wipe (or a
+        ;; finished run) starts over from level 1
+        if survived && (G.level < MAX_LEVEL) {
+            set G.level = (G.level + 1)
+        } else {
+            set G = new_run()
+        }
+
         set ok = await Transition("..", [x=0.5,y=0.5], Shop)
     }
 }

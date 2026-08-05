@@ -5,16 +5,22 @@ set ASPECT_RATIO = W/H
 ;; last level of a run
 set MAX_LEVEL = 25
 
-set G = [
-    level = 1,
-    gold  = 3,
-    rolls = 3,
-    party = [:swordsman, :wizard, :swordsman, :wizard],
-    cost  = [
-        swordsman = 1,
-        wizard    = 1,
-    ],
-]
+;; a run's whole state, rebuilt on a wipe so a fresh start lives in one
+;; place instead of being undone field by field
+func new_run () {
+    return [
+        level = 1,
+        gold  = 3,
+        rolls = 3,
+        party = [:swordsman, :wizard, :swordsman, :wizard],
+        cost  = [
+            swordsman = 1,
+            wizard    = 1,
+        ],
+    ]
+}
+
+set G = new_run()
 
 ;; arena centre, matches the trail seed in battle.atm
 set SNAKE_POS = [x=0.5, y=0.5]
