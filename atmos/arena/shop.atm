@@ -2,6 +2,10 @@ val PAD = 0.03
 val POPUP_PAD = 0.1
 val LINE_H = 0.03
 
+;; run progress, centred along the bottom edge
+val LEVEL_Y = 0.94
+val LEVEL_H = 0.04
+
 ;;;
 ;; TODO : fsantanna : unreviewed
 ;;;
@@ -323,6 +327,17 @@ val task Shop () {
     pin ps = tasks()
     loop i, char in G.party {
         spawn @ps Party_Cell(i, char)
+    }
+
+    ;; LEVEL
+    spawn {
+        val label = "Lvl." ++ G.level
+        loop on :draw {
+            pico.set.pencil [ color=COLORS.idle.fg ]
+            pico.output.draw.text.fix(label, [ '%',
+                x = 0.5, y = LEVEL_Y, h = LEVEL_H,
+            ])
+        }
     }
 
     ;; GOLD

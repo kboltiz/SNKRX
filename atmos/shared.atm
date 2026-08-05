@@ -2,6 +2,9 @@ set W = 640
 set H = 360
 set ASPECT_RATIO = W/H
 
+;; last level of a run
+set MAX_LEVEL = 25
+
 set G = [
     level = 1,
     gold  = 3,
