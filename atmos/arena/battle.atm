@@ -412,7 +412,7 @@ val task SnakeUnit(index, character, trail, positions, colors) {
                 emit @t :on_collided [ srcX=pos.x, srcY=pos.y, knockback=TOUCH_KNOCKBACK ]
                 emit :flash_unit
 
-                set hp = math.max(hp - 50, 0)
+                set hp = math.max(hp - 5, 0)
                 emit @:parent :hp [ hp=hp, max=maxHp ]
 
                 ;; death emit
