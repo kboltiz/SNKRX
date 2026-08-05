@@ -457,6 +457,31 @@ val task Snake() {
     }
 }
 
+val OVERLAY_DELAY = 0.5s    ;; swallows the click that was in flight when the run ended
+
+;; PATTERN #1 : Finite State Machines : overlay -> input -> done
+;;  - awaited inside Battle, so the arena is only torn down once the
+;;    player acknowledges the outcome
+;; TODO: draw over a frozen screenshot of the arena, like Transition does,
+;;       instead of covering it
+val task Outcome (msg, clr) {
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=:black ]
+            pico.output.draw.rect [ '%', x=0.5, y=0.5, w=1, h=1 ]
+
+            pico.set.pencil [ color=clr ]
+            pico.output.draw.text.fix(msg, [ '%', x=0.5, y=0.45, h=0.08 ])
+
+            pico.set.pencil [ color=COLORS.idle.fg ]
+            pico.output.draw.text.fix("click to continue", [ '%', x=0.5, y=0.58, h=0.035 ])
+        }
+    }
+
+    await(OVERLAY_DELAY)
+    await :mouse.button.dn
+}
+
 ;; PATTERN #5 : Signaling Mechanisms : :wave -> counter
 ;;  - the counter re-measures its rich text on a wave change instead of
 ;;    once per frame
@@ -518,6 +543,7 @@ task Battle () {
     par :any {
         ;; Snake ends when its last slot does: the whole party is down
         await(snake)
+        await Outcome("you died", COLORS.red.base)
         false
     } with {
         loop i in maxWaves {
@@ -534,6 +560,11 @@ task Battle () {
 
             ;; the pool empties only once every enemy of this wave is dead
             await :all ENEMIES
+        }
+
+        ;; the last level of a run has nothing to continue into
+        if (G.level >= MAX_LEVEL) {
+            await Outcome("you win!", COLORS.yellow.base)
         }
         true
     }
