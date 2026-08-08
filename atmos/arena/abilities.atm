@@ -37,8 +37,11 @@ val task Swordsman(unit_pos, enemy_pos) {
     ;; hit detection
     loop _, t in ENEMIES {
         if pico.vs.pos.rect([ "%",  x=t.pub.x, y=t.pub.y ], hit_area_rect) {
-            emit @t :damaged [ dmg=SWORDSMAN_DMG ]
-            emit @t :on_collided [ srcX=unit_pos.x, srcY=unit_pos.y, knockback=SWORDSMAN_KNOCKBACK ]
+            emit @t :hit [
+                dmg=SWORDSMAN_DMG,
+                srcX=unit_pos.x, srcY=unit_pos.y,
+                knockback=SWORDSMAN_KNOCKBACK,
+            ]
         }
     }
     
@@ -82,8 +85,11 @@ val task Wizard(unit_pos, enemy_pos) {
     ;; hit detection
     loop _, t in ENEMIES {
         if pico.vs.pos.rect([ "%",  x=t.pub.x, y=t.pub.y ], hit_area_rect) {
-            emit @t :damaged [ dmg=WIZARD_DMG ]
-            emit @t :on_collided [ srcX=unit_pos.x, srcY=unit_pos.y, knockback=WIZARD_KNOCKBACK ]
+            emit @t :hit [
+                dmg=WIZARD_DMG,
+                srcX=unit_pos.x, srcY=unit_pos.y,
+                knockback=WIZARD_KNOCKBACK,
+            ]
         }
     }
     await(0.3 * 1s)

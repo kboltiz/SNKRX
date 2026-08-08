@@ -19,7 +19,7 @@ val task Seeker(startX, startY) {
     spawn {
         loop {
             ;; seeking
-            val e = watching :on_collided {
+            val e = watching :hit {
                 loop {
                     val us = await :clock
                     val dt = us/1s
@@ -64,7 +64,9 @@ val task Seeker(startX, startY) {
         }
     }
 
-    loop e on :damaged {
+    ;; same event as the knockback above: a hit carries both what it deals
+    ;; and where it came from
+    loop e on :hit {
         set health = (health - e.dmg)
         until (health <= 0)
     }
