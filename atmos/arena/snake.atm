@@ -1,0 +1,425 @@
+val Abilities = require "arena.abilities"
+
+val SPACING = 0.03
+
+val TRAIL_MAX = 256
+
+val HEAD_SPEED = 0.4
+
+val TURN_RATE = 4
+
+val UNIT_SIZE = 0.03
+
+val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
+
+val func clamp_away_from_wall(r, isVertical) {
+    var result = r
+    if isVertical {
+        ;; angle measured from the vertical (wall-parallel) axis
+        val fromVertical = angle_diff(math.pi/2, r)
+        if math.abs(fromVertical) < MIN_BOUNCE_ANGLE {
+            val sign = ((fromVertical >= 0) && 1) || -1
+            set result = (math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
+        } else {
+            val fromNegVertical = angle_diff(-math.pi/2, r)
+            if math.abs(fromNegVertical) < MIN_BOUNCE_ANGLE {
+                val sign = ((fromNegVertical >= 0) && 1) || -1
+                set result = (-math.pi/2) - (sign * MIN_BOUNCE_ANGLE)
+            }
+        }
+    } else {
+        val fromHorizontal = angle_diff(0, r)
+        if math.abs(fromHorizontal) < MIN_BOUNCE_ANGLE {
+            val sign = ((fromHorizontal >= 0) && 1) || -1
+            set result = sign * MIN_BOUNCE_ANGLE
+        } else {
+            val fromPi = angle_diff(math.pi, r)
+            if math.abs(fromPi) < MIN_BOUNCE_ANGLE {
+                val sign = ((fromPi >= 0) && 1) || -1
+                set result = math.pi - (sign * MIN_BOUNCE_ANGLE)
+            }
+        }
+    }
+    return(result)
+}
+
+;; single backward pass over the trail, satisfying every follower's
+;; target distance in one walk instead of one walk per follower
+val func sample_all_trail(trail, followerCount) {
+    val results = []
+    var distanceSum = 0
+    var i = #trail
+    var prev = trail@i
+    var nextIdx = 1
+
+    loop {
+        set i = (i - 1)
+        until(i < 1)
+
+        val point = trail@i
+        val dx = (point.x - prev.x)
+        val dy = ((point.y - prev.y) / ASPECT_RATIO)
+        set distanceSum = (distanceSum + math.sqrt((dx*dx) + (dy*dy)))
+
+        loop {
+            until((nextIdx > (followerCount - 1)) || (distanceSum < (SPACING * nextIdx)))
+            set results@nextIdx = point
+            set nextIdx = (nextIdx + 1)
+        }
+        if nextIdx > (followerCount - 1) {
+            return(results)
+        }
+
+        set prev = point
+    }
+
+    ;; ran out of trail before satisfying everyone: fill remainder with oldest point
+    loop {
+        until(nextIdx > (followerCount - 1))
+        set results@nextIdx = prev
+        set nextIdx = (nextIdx + 1)
+    }
+    return(results)
+}
+
+val func bounce(r, nx, ny) {
+    var result = r
+    if nx == 0 {
+        set result = (2 * math.pi) - result
+    }
+    if ny == 0 {
+        set result = math.pi - result
+    }
+    return(result)
+}
+
+val func enemy_in_range(range, pos) {
+    loop _, t in ENEMIES {
+        val dx = (t.pub.x - pos.x)
+        val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
+        val dist = math.sqrt((dx*dx) + (dy*dy))
+        until (dist<=range, [ x=t.pub.x, y=t.pub.y ])
+    }
+}
+
+val barW = 0.05
+
+val barH = 0.03
+
+val barGap = 0.01
+
+val barY = 0.95
+
+val border = 0.004
+
+val cdH = 0.02
+
+val cdGapY = 0.005
+
+;; bars laid out left-to-right by spawn index
+val func bar_left(index) { (0.02 + ((index - 1) * (barW + barGap))) }
+
+;; trackW/trackH: the hollow inner area, inset from the outer
+val trackW = (barW - (border * 2))
+
+val trackH = (barH - (border * 2 * ASPECT_RATIO))
+
+;; frame left behind once a unit is gone
+val task DeadBar(index) {
+    val leftEdge = bar_left(index)
+    loop on :draw {
+        pico.set.pencil [ color=COLORS.idle.bg ]
+        pico.output.draw.rect [ "%", x=leftEdge, y=barY, w=barW, h=barH, anchor="W" ]
+        pico.set.pencil [ color=:black ]
+        pico.output.draw.rect [ "%", x=(leftEdge + border), y=barY, w=trackW, h=trackH, anchor="W" ]
+    }
+}
+
+val task StatBars(index, colors) {
+    val leftEdge = bar_left(index)
+    val trackLeft = (leftEdge + border)
+
+    var hp, maxHp = (100, 100)
+
+    spawn {
+        loop {
+            val d = await :hp
+            set hp = d.hp
+            set maxHp = d.max
+        }    
+    }
+
+    par {
+        ;; healthbar
+        loop on :draw {
+            ;; greyed out healthbars moved to the end of statbars
+
+            ;; outer frame
+            pico.set.pencil [ color=colors.base ]
+            pico.output.draw.rect [ "%", x=leftEdge, y=barY, w=barW, h=barH, anchor="W" ]
+
+            ;; hollow track
+            pico.set.pencil [ color=:black ]
+            pico.output.draw.rect [ "%", x=trackLeft, y=barY, w=trackW, h=trackH, anchor="W" ]
+
+            val fillWidth = (trackW * (hp / maxHp))
+            ;; inner meter
+            ;; edgecase, rect seems to inflate at exactly width = 0
+            if fillWidth > 0 {
+                pico.set.pencil [ color=colors.base ]
+                pico.output.draw.rect [ "%", x=trackLeft, y=barY, w=fillWidth, h=trackH, anchor="W" ]
+            }
+        }
+    } with {
+        ;; cooldown bar sits just below the hp bar
+        val cdY = (barY + (barH / 2) + cdGapY + (cdH / 2))
+        val cdTrackH = (cdH - (border * 2 * ASPECT_RATIO))
+
+        ;; cooldown bar
+        loop {
+            val data = await :ability_fired
+            var elapsed = 0
+
+            par :any {
+                ;; edgecase, rect seems to inflate at exactly width = 0
+                loop on :draw {
+                    val cdFillW = (trackW * math.min((elapsed / data@1), 1))
+                    if cdFillW > 0 {
+                        pico.set.pencil [ color=colors.base ]
+                        pico.output.draw.rect [ "%", x=trackLeft, y=cdY, w=cdFillW, h=cdTrackH, anchor="W" ]
+                    }
+                }
+            } with {
+                loop {
+                    val us = await :clock
+                    set elapsed = (elapsed + us)
+                    until (elapsed >= data@1)
+                }
+            }
+        }
+    }
+}
+
+;; two indices, deliberately: `slot` is where this unit's bars live at the
+;; bottom of the screen and never moves, `index` is its position in the
+;; party and shifts towards the head as units ahead of it die
+val task SnakeUnit(index, character, trail, positions) {
+    val slot = index
+    val colors = COLORS@(CHARACTERS@character.color)
+    var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
+    ;; hp shared through events instead of pub
+    var hp, maxHp = (100, 100)
+
+    spawn StatBars(slot, colors)
+
+    ;; movement, no exit condition of its own;
+    ;; cleaned up automatically on task cleanup (PATTERN #4)
+    spawn {
+        ;; follower until every unit ahead is gone (PATTERN #1)
+        if index > 1 {
+            par :any {
+                ;; a death ahead of this unit shifts it one slot forward
+                loop e on :unit_death {
+                    if (e.index < index) {
+                        set index = (index - 1)
+                    }
+                    until (index == 1)
+                }
+            } with {
+                loop on :clock {
+                    ;; the head samples one point per follower every tick,
+                    ;; so this slot is always filled by the time it is read
+                    val s = positions@(index - 1)
+                    assert(s)
+                    set pos.x = s.x
+                    set pos.y = s.y
+                    set pos.r = s.r
+                }
+            }
+        }
+
+        ;; index is 1 from here on: this unit inherited the head
+        loop {
+            val us = await :clock
+            val dt = us/1s;
+
+            val m = pico.get.mouse('%')
+            val dxVisual = (m.x - pos.x)
+            val dyVisual = ((m.y - pos.y) / ASPECT_RATIO)
+            val desired = math.atan(dyVisual, dxVisual)
+
+            val diff = angle_diff(pos.r, desired)
+            val maxTurn = (TURN_RATE * dt)
+            val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+
+            set pos.r = (pos.r + turn)
+
+            ;; direction without collision
+            var nextX = (pos.x + (math.cos(pos.r) * HEAD_SPEED * dt))
+            var nextY = (pos.y + (math.sin(pos.r) * HEAD_SPEED * dt * ASPECT_RATIO))
+
+            val hitVertical = (nextX < ARENA_LEFT) || (nextX > ARENA_RIGHT)
+            val hitHorizontal = (nextY < ARENA_TOP) || (nextY > ARENA_BOTTOM)
+
+            ;; corner hit
+            if hitVertical && hitHorizontal {
+                set pos.r = (pos.r + math.pi)
+            } else {
+                if hitVertical {
+                    set pos.r = bounce(pos.r, 1, 0)
+                    set pos.r = clamp_away_from_wall(pos.r, true)
+                }
+                if hitHorizontal {
+                    set pos.r = bounce(pos.r, 0, 1)
+                    set pos.r = clamp_away_from_wall(pos.r, false)
+                }
+            }
+                
+            if (hitVertical || hitHorizontal) {
+                emit(:flash_unit)
+            }
+
+            set nextX = math.max(math.min(nextX, ARENA_RIGHT), ARENA_LEFT)
+            set nextY = math.max(math.min(nextY, ARENA_BOTTOM), ARENA_TOP)
+
+            set pos.x = nextX
+            set pos.y = nextY
+
+            set SNAKE_POS.x = pos.x
+            set SNAKE_POS.y = pos.y
+
+            set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
+            if (#trail > TRAIL_MAX) {
+                table.remove(trail, 1)
+            }
+
+            val sampled = sample_all_trail(trail, #G.party)
+            loop fi, s in sampled {
+                set positions@fi = s
+            }
+        }
+    }
+
+    ;; flash on hit, spring pop, spawned as a child same as movement
+    ;; the unit is drawn in one place; the state machine below only says
+    ;; what colour and scale to draw it at (PATTERN #1)
+    spawn {
+        var clr = colors.base
+        var scale = 1
+
+        spawn {
+            loop on :draw {
+                pico.set.pencil [ color=clr ]
+                pico.output.draw.oval [ "%",
+                    x=pos.x, y=pos.y,
+                    w=(UNIT_SIZE * scale),
+                    h=(UNIT_SIZE * ASPECT_RATIO * scale),
+                ]
+            }
+        }
+
+        loop {
+            await :flash_unit
+
+            pin spring = spawn Spring.Simple(1.8)
+            emit @spring :start
+
+            set clr = :white
+            watching (0.15*1s) {
+                loop on :clock {
+                    set scale = spring.pub.scale
+                }
+            }
+            set clr = colors.base
+            set scale = 1
+        }
+    }
+
+    ;; ability loop
+    spawn {
+        val ability = Abilities@character
+        if !ability {
+            return()    ;; TODO: atmos has no simple way to spawn only on condition
+        }
+
+        ;; abilities can either yield till
+        ;; completion OR snake unit existence
+
+        ;; Sentry unit's turrets (that stays alive
+        ;; beyond one ability instance) is now possible
+
+        pin castPool = tasks()
+        
+        ;; not return(): this block is transparent, so a return would
+        ;; terminate SnakeUnit itself
+        ;; cooldown before checking again (TODO: ok on startup?)
+        loop on (ability.interval) {
+            ;; check every tick until something's in range
+            val enemy_pos = loop on :clock {
+                until (enemy_in_range(ability.range, pos))
+            }
+
+            spawn @castPool ability.caster(pos, enemy_pos)
+            emit :flash_unit
+            ;; bare: the bars are a child of this unit, not a sibling
+            emit :ability_fired [ ability.interval ]
+        }
+    }
+
+    ;; enemy collision
+    val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
+    val TOUCH_KNOCKBACK = 0.05
+
+    loop on :clock {
+        loop _, t in ENEMIES {
+            val dx = (t.pub.x - pos.x)
+            val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
+            if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
+                ;; dmg=0: running into a unit only shoves the enemy back,
+                ;; the unit is the one that takes the damage
+                emit @t :hit [
+                    dmg=0,
+                    srcX=pos.x, srcY=pos.y,
+                    knockback=TOUCH_KNOCKBACK,
+                ]
+                emit :flash_unit
+
+                set hp = math.max(hp - 5, 0)
+                emit :hp [ hp=hp, max=maxHp ]
+
+                if hp <= 0 {
+                    ;; index tracked the party, so it still points at this
+                    ;; unit's own entry
+                    table.remove(G.party, index)
+                    ;; dies with both: the frame Snake leaves behind goes at
+                    ;; `slot`, the shift it relays is by party `index`
+                    return([ slot=slot, index=index ])
+                }
+            }
+        }
+    }
+}
+
+;; PATTERN #5 : Signaling Mechanisms : :any party -> :unit_death -> party
+;;  - a pool hands its termination to a single awaiting task, so Snake is
+;;    the one that learns of a death and relays it to every survivor
+val task Snake() {
+    var trail = [[ x=0.5, y=0.5, r=0 ]]
+    val positions = []
+    val count = #G.party
+
+    pin party = tasks()
+    loop i, character in G.party {
+        print("Spawning "++character++ " " ++ i)
+        spawn @party SnakeUnit(i, character, trail, positions)
+    }
+
+    pin graves = tasks()
+    loop _ in count {
+        val d = await :any party
+        spawn @graves DeadBar(d.slot)
+        emit @party :unit_death [ index=d.index ]
+    }
+}
+
+Snake

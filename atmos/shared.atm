@@ -22,6 +22,14 @@ func new_run () {
 
 set G = new_run()
 
+;; arena bounds, shared by the snake (walls) and the battle (spawns)
+set ARENA_W = 0.8
+set ARENA_H = 0.4 * ASPECT_RATIO
+set ARENA_LEFT = 0.5 - (ARENA_W / 2)
+set ARENA_RIGHT = 0.5 + (ARENA_W / 2)
+set ARENA_TOP = 0.5 - (ARENA_H / 2)
+set ARENA_BOTTOM = 0.5 + (ARENA_H / 2)
+
 ;; arena centre, matches the trail seed in battle.atm
 set SNAKE_POS = [x=0.5, y=0.5]
 
