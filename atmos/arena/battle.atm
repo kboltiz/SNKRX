@@ -250,83 +250,102 @@ val task StatBars(index, colors) {
     }
 }
 
-val task SnakeUnit(index, character, trail, positions, colors) {
+;; two indices, deliberately: `slot` is where this unit's bars live at the
+;; bottom of the screen and never moves, `index` is its position in the
+;; party and shifts towards the head as units ahead of it die
+val task SnakeUnit(index, character, trail, positions) {
+    val slot = index
+    val colors = COLORS@(CHARACTERS@character.color)
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
     ;; hp shared through events instead of pub
     var hp, maxHp = (100, 100)
 
+    spawn StatBars(slot, colors)
+
     ;; movement, no exit condition of its own;
     ;; cleaned up automatically on task cleanup (PATTERN #4)
     spawn {
-        loop {
-            ;; checked every tick now instead of once at spawn, so a
-            ;; surviving unit can take over head duties if index 1 dies
-            if (index == 1) {
-                val us = await :clock
-                val dt = us/1s;
-
-                val m = pico.get.mouse('%')
-                val dxVisual = (m.x - pos.x)
-                val dyVisual = ((m.y - pos.y) / ASPECT_RATIO)
-                val desired = math.atan(dyVisual, dxVisual)
-
-                val diff = angle_diff(pos.r, desired)
-                val maxTurn = (TURN_RATE * dt)
-                val turn = math.max(math.min(diff, maxTurn), -maxTurn)
-
-                set pos.r = (pos.r + turn)
-
-                ;; direction without collision
-                var nextX = (pos.x + (math.cos(pos.r) * HEAD_SPEED * dt))
-                var nextY = (pos.y + (math.sin(pos.r) * HEAD_SPEED * dt * ASPECT_RATIO))
-
-                val hitVertical = (nextX < ARENA_LEFT) || (nextX > ARENA_RIGHT)
-                val hitHorizontal = (nextY < ARENA_TOP) || (nextY > ARENA_BOTTOM)
-
-                ;; corner hit
-                if hitVertical && hitHorizontal {
-                    set pos.r = (pos.r + math.pi)
-                } else {
-                    if hitVertical {
-                        set pos.r = bounce(pos.r, 1, 0)
-                        set pos.r = clamp_away_from_wall(pos.r, true)
+        ;; follower until every unit ahead is gone (PATTERN #1)
+        if index > 1 {
+            par :any {
+                ;; a death ahead of this unit shifts it one slot forward
+                loop e on :unit_death {
+                    if (e.index < index) {
+                        set index = (index - 1)
                     }
-                    if hitHorizontal {
-                        set pos.r = bounce(pos.r, 0, 1)
-                        set pos.r = clamp_away_from_wall(pos.r, false)
-                    }
+                    until (index == 1)
                 }
-                
-                if (hitVertical || hitHorizontal) {
-                    emit(:flash_unit)
-                }
-
-                set nextX = math.max(math.min(nextX, ARENA_RIGHT), ARENA_LEFT)
-                set nextY = math.max(math.min(nextY, ARENA_BOTTOM), ARENA_TOP)
-
-                set pos.x = nextX
-                set pos.y = nextY
-
-                set SNAKE_POS.x = pos.x
-                set SNAKE_POS.y = pos.y
-
-                set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
-                if (#trail > TRAIL_MAX) {
-                    table.remove(trail, 1)
-                }
-
-                val sampled = sample_all_trail(trail, #G.party)
-                loop fi, s in sampled {
-                    set positions@fi = s
-                }
-            } else {
-                await :clock
-                val s = positions@(index - 1)
-                if s {
+            } with {
+                loop on :clock {
+                    ;; the head samples one point per follower every tick,
+                    ;; so this slot is always filled by the time it is read
+                    val s = positions@(index - 1)
+                    assert(s)
                     set pos.x = s.x
                     set pos.y = s.y
                     set pos.r = s.r
                 }
+            }
+        }
+
+        ;; index is 1 from here on: this unit inherited the head
+        loop {
+            val us = await :clock
+            val dt = us/1s;
+
+            val m = pico.get.mouse('%')
+            val dxVisual = (m.x - pos.x)
+            val dyVisual = ((m.y - pos.y) / ASPECT_RATIO)
+            val desired = math.atan(dyVisual, dxVisual)
+
+            val diff = angle_diff(pos.r, desired)
+            val maxTurn = (TURN_RATE * dt)
+            val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+
+            set pos.r = (pos.r + turn)
+
+            ;; direction without collision
+            var nextX = (pos.x + (math.cos(pos.r) * HEAD_SPEED * dt))
+            var nextY = (pos.y + (math.sin(pos.r) * HEAD_SPEED * dt * ASPECT_RATIO))
+
+            val hitVertical = (nextX < ARENA_LEFT) || (nextX > ARENA_RIGHT)
+            val hitHorizontal = (nextY < ARENA_TOP) || (nextY > ARENA_BOTTOM)
+
+            ;; corner hit
+            if hitVertical && hitHorizontal {
+                set pos.r = (pos.r + math.pi)
+            } else {
+                if hitVertical {
+                    set pos.r = bounce(pos.r, 1, 0)
+                    set pos.r = clamp_away_from_wall(pos.r, true)
+                }
+                if hitHorizontal {
+                    set pos.r = bounce(pos.r, 0, 1)
+                    set pos.r = clamp_away_from_wall(pos.r, false)
+                }
+            }
+                
+            if (hitVertical || hitHorizontal) {
+                emit(:flash_unit)
+            }
+
+            set nextX = math.max(math.min(nextX, ARENA_RIGHT), ARENA_LEFT)
+            set nextY = math.max(math.min(nextY, ARENA_BOTTOM), ARENA_TOP)
+
+            set pos.x = nextX
+            set pos.y = nextY
+
+            set SNAKE_POS.x = pos.x
+            set SNAKE_POS.y = pos.y
+
+            set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
+            if (#trail > TRAIL_MAX) {
+                table.remove(trail, 1)
+            }
+
+            val sampled = sample_all_trail(trail, #G.party)
+            loop fi, s in sampled {
+                set positions@fi = s
             }
         }
     }
@@ -386,17 +405,8 @@ val task SnakeUnit(index, character, trail, positions, colors) {
 
             spawn @castPool ability.caster(pos, enemy_pos)
             emit :flash_unit
-            emit @:parent :ability_fired [ ability.interval ]
-        }
-    }
-    
-    ;; death shift logic
-    spawn {
-        loop {
-            val d = await :unit_death
-            if (d.index < index) {
-                set index = (index - 1)
-            }
+            ;; bare: the bars are a child of this unit, not a sibling
+            emit :ability_fired [ ability.interval ]
         }
     }
 
@@ -413,31 +423,24 @@ val task SnakeUnit(index, character, trail, positions, colors) {
                 emit :flash_unit
 
                 set hp = math.max(hp - 5, 0)
-                emit @:parent :hp [ hp=hp, max=maxHp ]
+                emit :hp [ hp=hp, max=maxHp ]
 
-                ;; death emit
                 if hp <= 0 {
-                    ;; index shifts down with the party, so it still points
-                    ;; at this unit's own slot
+                    ;; index tracked the party, so it still points at this
+                    ;; unit's own entry
                     table.remove(G.party, index)
-                    emit @:global :unit_death [ index=index ]
-                    return()
+                    ;; dies with both: the frame Snake leaves behind goes at
+                    ;; `slot`, the shift it relays is by party `index`
+                    return([ slot=slot, index=index ])
                 }
             }
         }
     }
 }
 
-val task Slot(index, character, trail, positions) {
-    val colors = COLORS@(CHARACTERS@character.color)
-    
-    spawn StatBars(index, colors)
-    await SnakeUnit(index, character, trail, positions, colors)
-
-    ;; ends with its unit, so the bars go with it
-    index
-}
-
+;; PATTERN #5 : Signaling Mechanisms : :any party -> :unit_death -> party
+;;  - a pool hands its termination to a single awaiting task, so Snake is
+;;    the one that learns of a death and relays it to every survivor
 val task Snake() {
     var trail = [[ x=0.5, y=0.5, r=0 ]]
     val positions = []
@@ -446,14 +449,14 @@ val task Snake() {
     pin party = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @party Slot(i, character, trail, positions)
+        spawn @party SnakeUnit(i, character, trail, positions)
     }
 
-    ;; each slot returns its index when its unit dies
     pin graves = tasks()
     loop _ in count {
-        val i = await :any party
-        spawn @graves DeadBar(i)
+        val d = await :any party
+        spawn @graves DeadBar(d.slot)
+        emit @party :unit_death [ index=d.index ]
     }
 }
 
