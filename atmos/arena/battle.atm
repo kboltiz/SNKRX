@@ -351,31 +351,37 @@ val task SnakeUnit(index, character, trail, positions) {
     }
 
     ;; flash on hit, spring pop, spawned as a child same as movement
+    ;; the unit is drawn in one place; the state machine below only says
+    ;; what colour and scale to draw it at (PATTERN #1)
     spawn {
-        loop {
-            watching :flash_unit {
-                loop on :draw {
-                    pico.set.pencil [ color=colors.base ]
-                    pico.output.draw.oval [ "%",
-                        x=pos.x, y=pos.y,
-                        w=UNIT_SIZE, h=(UNIT_SIZE * ASPECT_RATIO),
-                    ]
-                }
+        var clr = colors.base
+        var scale = 1
+
+        spawn {
+            loop on :draw {
+                pico.set.pencil [ color=clr ]
+                pico.output.draw.oval [ "%",
+                    x=pos.x, y=pos.y,
+                    w=(UNIT_SIZE * scale),
+                    h=(UNIT_SIZE * ASPECT_RATIO * scale),
+                ]
             }
-            
+        }
+
+        loop {
+            await :flash_unit
+
             pin spring = spawn Spring.Simple(1.8)
             emit @spring :start
 
+            set clr = :white
             watching (0.15*1s) {
-                loop on :draw {
-                    pico.set.pencil [ color=:white ]
-                    pico.output.draw.oval [ "%",
-                        x=pos.x, y=pos.y,
-                        w=UNIT_SIZE * spring.pub.scale,
-                        h=(UNIT_SIZE * ASPECT_RATIO) * spring.pub.scale,
-                    ]
+                loop on :clock {
+                    set scale = spring.pub.scale
                 }
             }
+            set clr = colors.base
+            set scale = 1
         }
     }
 
