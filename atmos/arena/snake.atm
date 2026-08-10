@@ -1,13 +1,9 @@
 val Abilities = require "arena.abilities"
 
 val SPACING = 0.03
-
 val TRAIL_MAX = 256
-
 val HEAD_SPEED = 0.4
-
 val TURN_RATE = 4
-
 val UNIT_SIZE = 0.03
 
 val MIN_BOUNCE_ANGLE = math.pi / 6   ;; 30 degrees off the wall (to prevent wall hugging)
@@ -200,10 +196,9 @@ val task StatBars(index, colors) {
     }
 }
 
-;; two indices, deliberately: `slot` is where this unit's bars live at the
-;; bottom of the screen and never moves, `index` is its position in the
-;; party and shifts towards the head as units ahead of it die
-val task SnakeUnit(index, character, trail, positions) {
+;; slot is where this unit's bars sit and never moves, while index is its
+;; place in the snake, which moves up as the units ahead of it die
+val task SnakeUnit(index, character, trail, positions, party) {
     val slot = index
     val colors = COLORS@(CHARACTERS@character.color)
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
@@ -218,9 +213,10 @@ val task SnakeUnit(index, character, trail, positions) {
         ;; follower until every unit ahead is gone (PATTERN #1)
         if index > 1 {
             par :any {
-                ;; a death ahead of this unit shifts it one slot forward
-                loop e on :unit_death {
-                    if (e.index < index) {
+                ;; a unit dies with its index: anything ahead of this one
+                ;; moves it a place forward
+                loop i on :any party {
+                    if (i < index) {
                         set index = (index - 1)
                     }
                     until (index == 1)
@@ -388,21 +384,16 @@ val task SnakeUnit(index, character, trail, positions) {
                 emit :hp [ hp=hp, max=maxHp ]
 
                 if hp <= 0 {
-                    ;; index tracked the party, so it still points at this
-                    ;; unit's own entry
                     table.remove(G.party, index)
-                    ;; dies with both: the frame Snake leaves behind goes at
-                    ;; `slot`, the shift it relays is by party `index`
-                    return([ slot=slot, index=index ])
+                    ;; dies with its index, which is what tells Snake which
+                    ;; bar slot it vacated
+                    return(index)
                 }
             }
         }
     }
 }
 
-;; PATTERN #5 : Signaling Mechanisms : :any party -> :unit_death -> party
-;;  - a pool hands its termination to a single awaiting task, so Snake is
-;;    the one that learns of a death and relays it to every survivor
 val task Snake() {
     var trail = [[ x=0.5, y=0.5, r=0 ]]
     val positions = []
@@ -411,14 +402,21 @@ val task Snake() {
     pin party = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @party SnakeUnit(i, character, trail, positions)
+        spawn @party SnakeUnit(i, character, trail, positions, party)
+    }
+
+    ;; bars never move, so the slots still standing, in order: a unit that
+    ;; dies at party index i vacates the i-th of them
+    val slots = []
+    loop i in count {
+        set slots@i = i
     }
 
     pin graves = tasks()
     loop _ in count {
-        val d = await :any party
-        spawn @graves DeadBar(d.slot)
-        emit @party :unit_death [ index=d.index ]
+        val i = await :any party
+        spawn @graves DeadBar(slots@i)
+        table.remove(slots, i)
     }
 }
 
