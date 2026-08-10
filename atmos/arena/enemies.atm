@@ -50,6 +50,44 @@ val func separation(pos) {
     return(sx, sy)
 }
 
+;; how far the snake is, in x-units
+val func snake_dist(pos) {
+    val dx = (SNAKE_POS.x - pos.x)
+    val dy = ((SNAKE_POS.y - pos.y) / ASPECT_RATIO)
+    return(math.sqrt((dx*dx) + (dy*dy)))
+}
+
+val func snake_angle(pos) {
+    return(math.atan(((SNAKE_POS.y - pos.y) / ASPECT_RATIO), (SNAKE_POS.x - pos.x)))
+}
+
+;; one tick of the chase: turn towards the snake, pushed off the neighbours
+;; and nudged by this one's own drift, then step forward
+val func seek_step(pos, drift, dt, speed) {
+    val chase = snake_angle(pos)
+
+    set drift.n = math.max(math.min(
+        (drift.n + (((math.random() - 0.5) * 2) * WANDER_RATE * dt)),
+        WANDER_MAX), -WANDER_MAX)
+
+    val sx, sy = separation(pos)
+    val desired = math.atan(
+        (math.sin(chase) + (sy * SEPARATION_WEIGHT)),
+        (math.cos(chase) + (sx * SEPARATION_WEIGHT))
+    ) + drift.n
+
+    val diff = angle_diff(pos.r, desired)
+    val maxTurn = (SEEKER_TURN_RATE * dt)
+    val turn = math.max(math.min(diff, maxTurn), -maxTurn)
+    set pos.r = (pos.r + turn)
+    set pos.x = (pos.x + (math.cos(pos.r) * speed * dt))
+    set pos.y = (pos.y + (math.sin(pos.r) * speed * dt * ASPECT_RATIO))
+
+    ;; no reflection while seeking: it is already steering back towards the
+    ;; snake, which is inside the arena
+    clamp_to_arena(pos)
+}
+
 ;; slows by this much per second, ending up ~e.knockback from where it was hit
 val KNOCKBACK_DECAY = 14
 val KNOCKBACK_STOP = 0.005
@@ -64,39 +102,14 @@ val task Seeker(startX, startY) {
     set pub = [ x=startX, y=startY, r=0 ]
 
     ;; its own drift, so identical seekers do not travel identical paths
-    var wander = 0
+    val drift = [ n=0 ]
 
     spawn {
         loop {
             ;; seeking
             val e = watching :hit {
-                loop {
-                    val us = await :clock
-                    val dt = us/1s
-                    val dx = (SNAKE_POS.x - pub.x)
-                    val dy = ((SNAKE_POS.y - pub.y) / ASPECT_RATIO)
-                    val chase = math.atan(dy, dx)
-
-                    set wander = math.max(math.min(
-                        (wander + (((math.random() - 0.5) * 2) * WANDER_RATE * dt)),
-                        WANDER_MAX), -WANDER_MAX)
-
-                    val sx, sy = separation(pub)
-                    val desired = math.atan(
-                        (math.sin(chase) + (sy * SEPARATION_WEIGHT)),
-                        (math.cos(chase) + (sx * SEPARATION_WEIGHT))
-                    ) + wander
-
-                    val diff = angle_diff(pub.r, desired)
-                    val maxTurn = (SEEKER_TURN_RATE * dt)
-                    val turn = math.max(math.min(diff, maxTurn), -maxTurn)
-                    set pub.r = (pub.r + turn)
-                    set pub.x = (pub.x + (math.cos(pub.r) * SEEKER_SPEED * dt))
-                    set pub.y = (pub.y + (math.sin(pub.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
-
-                    ;; no reflection while seeking: it is already steering
-                    ;; back towards the snake, which is inside the arena
-                    clamp_to_arena(pub)
+                loop us on :clock {
+                    seek_step(pub, drift, us/1s, SEEKER_SPEED)
                 }
             }
 
