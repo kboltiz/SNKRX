@@ -1,4 +1,4 @@
-val Seeker = require "arena.enemies"
+val Enemies = require "arena.enemies"
 val Snake  = require "arena.snake"
 
 ;; waves per level, ported from SNKRX's level_to_max_waves
@@ -153,8 +153,10 @@ task Battle () {
             val centre = cluster_centre()
             loop _ in wave_enemies(i) {
                 val p = cluster_pos(centre)
-                spawn @ENEMIES Seeker(p.x, p.y)
+                spawn @ENEMIES Enemies.seeker(p.x, p.y)
             }
+            ;; one mini-boss rides along with the clump
+            spawn @ENEMIES Enemies.headbutter(centre.x, centre.y)
 
             ;; the pool empties only once every enemy of this wave is dead
             await :all ENEMIES

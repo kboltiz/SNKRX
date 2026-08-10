@@ -159,4 +159,102 @@ val task Seeker(startX, startY) {
         until (health <= 0)
     }
 }
-Seeker
+
+;; headbutter, the first mini-boss: it chases like a seeker, but once it gets
+;; close it plants itself, winds up in plain sight, and rams
+;; values ported from SNKRX: 76px range, 2s wind-up, 0.75s charge, 10s between
+val HEADBUTT_RANGE = 0.12
+val HEADBUTT_WINDUP = 2s
+val HEADBUTT_CHARGE = 750ms
+val HEADBUTT_COOLDOWN = 10s
+val HEADBUTT_SPEED = (SEEKER_SPEED * 4.5)   ;; a ram, not a walk
+val HEADBUTT_AIM_RATE = 1.5                 ;; slow enough to be dodged
+
+val HEADBUTTER_HEALTH = 120
+val HEADBUTTER_W = 0.028                    ;; the 18x7 rectangle SNKRX draws
+val HEADBUTTER_H = 0.019
+
+;; PATTERN #1 : Finite State Machines : chase -> wind up -> ram -> recover
+;;  - each phase is a plain sequential await, so the state is the line the
+;;    task is sitting on rather than a flag to be tested
+val task Headbutter(startX, startY) {
+    var health = HEADBUTTER_HEALTH
+    set pub = [ x=startX, y=startY, r=0 ]
+
+    val drift = [ n=0 ]
+    var windup = 0      ;; 0..1 while winding up, 0 the rest of the time
+
+    spawn {
+        loop {
+            ;; chase, until the snake is close enough to be worth ramming
+            par :any {
+                loop on :clock {
+                    until (snake_dist(pub) <= HEADBUTT_RANGE)
+                }
+            } with {
+                loop us on :clock {
+                    seek_step(pub, drift, us/1s, SEEKER_SPEED)
+                }
+            }
+
+            ;; plant and turn to face the snake, telegraphing the whole time
+            watching (HEADBUTT_WINDUP) {
+                loop us on :clock {
+                    val dt = us/1s
+                    set windup = math.min((windup + (dt / (HEADBUTT_WINDUP/1s))), 1)
+
+                    val diff = angle_diff(pub.r, snake_angle(pub))
+                    val maxTurn = (HEADBUTT_AIM_RATE * dt)
+                    set pub.r = (pub.r + math.max(math.min(diff, maxTurn), -maxTurn))
+                }
+            }
+            set windup = 0
+
+            ;; commit: the ram holds its heading, so it can be side-stepped
+            val ram = pub.r
+            watching (HEADBUTT_CHARGE) {
+                loop us on :clock {
+                    val dt = us/1s
+                    set pub.x = (pub.x + (math.cos(ram) * HEADBUTT_SPEED * dt))
+                    set pub.y = (pub.y + (math.sin(ram) * HEADBUTT_SPEED * dt * ASPECT_RATIO))
+                    val hitV, hitH = clamp_to_arena(pub)
+                    ;; a wall ends the charge early
+                    until (hitV || hitH)
+                }
+            }
+
+            ;; back to chasing while it recovers
+            par :any {
+                await(HEADBUTT_COOLDOWN)
+            } with {
+                loop us on :clock {
+                    seek_step(pub, drift, us/1s, SEEKER_SPEED)
+                }
+            }
+        }
+    }
+
+    spawn {
+        loop on :draw {
+            ;; whitens as the wind-up completes, so the ram is readable
+            pico.set.pencil [ color=['%',
+                r = (COLORS.orange.base.r + ((1 - COLORS.orange.base.r) * windup)),
+                g = (COLORS.orange.base.g + ((1 - COLORS.orange.base.g) * windup)),
+                b = (COLORS.orange.base.b + ((1 - COLORS.orange.base.b) * windup)),
+            ] ]
+            pico.output.draw.rect([ "%",
+                x=pub.x, y=pub.y,
+                w=HEADBUTTER_W, h=(HEADBUTTER_H * ASPECT_RATIO),
+                r=pub.r,
+            ])
+        }
+    }
+
+    ;; no knockback phase: a boss shrugs off the shove and only takes the damage
+    loop e on :hit {
+        set health = (health - e.dmg)
+        until (health <= 0)
+    }
+}
+
+[ seeker = Seeker, headbutter = Headbutter ]
