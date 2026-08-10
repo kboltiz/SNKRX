@@ -3,6 +3,53 @@ val SEEKER_SIZE = 0.025
 val SEEKER_TURN_RATE = 3
 val SEEKER_HEALTH = 20
 
+;; steering, ported from SNKRX: seekers chase, drift, and push off each other,
+;; which is what turns a spawned clump into a swarm instead of a rigid block
+val SEPARATION_DIST = SEEKER_SIZE   ;; a body width, SNKRX separates at 16px
+val SEPARATION_WEIGHT = 1.5         ;; how hard neighbours push against the chase
+val WANDER_RATE = 3                 ;; how fast the drift wanders, in rad/s
+val WANDER_MAX = 0.6                ;; how far it can pull off the chase
+
+;; the arena walls are solid: pull a seeker back inside and report which of
+;; them it ran into, so a knockback can bounce off instead of pressing through
+val func clamp_to_arena(pos) {
+    var hitV, hitH = (false, false)
+    if pos.x < ARENA_LEFT {
+        set pos.x = ARENA_LEFT
+        set hitV = true
+    }
+    if pos.x > ARENA_RIGHT {
+        set pos.x = ARENA_RIGHT
+        set hitV = true
+    }
+    if pos.y < ARENA_TOP {
+        set pos.y = ARENA_TOP
+        set hitH = true
+    }
+    if pos.y > ARENA_BOTTOM {
+        set pos.y = ARENA_BOTTOM
+        set hitH = true
+    }
+    return(hitV, hitH)
+}
+
+;; sum of the pushes away from every neighbour that is too close, each one
+;; stronger the nearer it is (self scores 0 distance and is skipped)
+val func separation(pos) {
+    var sx, sy = (0, 0)
+    loop _, t in ENEMIES {
+        val dx = (pos.x - t.pub.x)
+        val dy = ((pos.y - t.pub.y) / ASPECT_RATIO)
+        val d = math.sqrt((dx*dx) + (dy*dy))
+        if (d > 0) && (d < SEPARATION_DIST) {
+            val push = ((SEPARATION_DIST - d) / SEPARATION_DIST)
+            set sx = (sx + ((dx / d) * push))
+            set sy = (sy + ((dy / d) * push))
+        }
+    }
+    return(sx, sy)
+}
+
 ;; slows by this much per second, ending up ~e.knockback from where it was hit
 val KNOCKBACK_DECAY = 14
 val KNOCKBACK_STOP = 0.005
@@ -16,6 +63,9 @@ val task Seeker(startX, startY) {
     var health = SEEKER_HEALTH
     set pub = [ x=startX, y=startY, r=0 ]
 
+    ;; its own drift, so identical seekers do not travel identical paths
+    var wander = 0
+
     spawn {
         loop {
             ;; seeking
@@ -25,7 +75,17 @@ val task Seeker(startX, startY) {
                     val dt = us/1s
                     val dx = (SNAKE_POS.x - pub.x)
                     val dy = ((SNAKE_POS.y - pub.y) / ASPECT_RATIO)
-                    val desired = math.atan(dy, dx)
+                    val chase = math.atan(dy, dx)
+
+                    set wander = math.max(math.min(
+                        (wander + (((math.random() - 0.5) * 2) * WANDER_RATE * dt)),
+                        WANDER_MAX), -WANDER_MAX)
+
+                    val sx, sy = separation(pub)
+                    val desired = math.atan(
+                        (math.sin(chase) + (sy * SEPARATION_WEIGHT)),
+                        (math.cos(chase) + (sx * SEPARATION_WEIGHT))
+                    ) + wander
 
                     val diff = angle_diff(pub.r, desired)
                     val maxTurn = (SEEKER_TURN_RATE * dt)
@@ -33,6 +93,10 @@ val task Seeker(startX, startY) {
                     set pub.r = (pub.r + turn)
                     set pub.x = (pub.x + (math.cos(pub.r) * SEEKER_SPEED * dt))
                     set pub.y = (pub.y + (math.sin(pub.r) * SEEKER_SPEED * dt * ASPECT_RATIO))
+
+                    ;; no reflection while seeking: it is already steering
+                    ;; back towards the snake, which is inside the arena
+                    clamp_to_arena(pub)
                 }
             }
 
@@ -41,12 +105,23 @@ val task Seeker(startX, startY) {
                 ((pub.y - e.srcY) / ASPECT_RATIO),
                 (pub.x - e.srcX)
             )
+            var slide = ang
             var speed = (e.knockback * KNOCKBACK_DECAY)
             loop {
                 val us = await :clock
                 val dt = us/1s
-                set pub.x = (pub.x + (math.cos(ang) * speed * dt))
-                set pub.y = (pub.y + (math.sin(ang) * speed * dt * ASPECT_RATIO))
+                set pub.x = (pub.x + (math.cos(slide) * speed * dt))
+                set pub.y = (pub.y + (math.sin(slide) * speed * dt * ASPECT_RATIO))
+
+                ;; shoved into a wall: bounce off it and keep sliding
+                val hitV, hitH = clamp_to_arena(pub)
+                if hitV {
+                    set slide = (math.pi - slide)
+                }
+                if hitH {
+                    set slide = -slide
+                }
+
                 set speed = (speed - (speed * KNOCKBACK_DECAY * dt))
                 until (speed < KNOCKBACK_STOP)
             }
