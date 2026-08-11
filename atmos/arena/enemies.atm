@@ -171,8 +171,15 @@ val HEADBUTT_SPEED = (SEEKER_SPEED * 4.5)   ;; a ram, not a walk
 val HEADBUTT_AIM_RATE = 1.5                 ;; slow enough to be dodged
 
 val HEADBUTTER_HEALTH = 120
-val HEADBUTTER_W = 0.028                    ;; the 18x7 rectangle SNKRX draws
-val HEADBUTTER_H = 0.019
+val HEADBUTTER_W = 0.0375                   ;; the 18x7 rectangle SNKRX draws
+val HEADBUTTER_H = 0.026
+
+;; turn towards the snake at a fixed rate, without moving
+val func aim_step(pos, dt, rate) {
+    val diff = angle_diff(pos.r, snake_angle(pos))
+    val maxTurn = (rate * dt)
+    set pos.r = (pos.r + math.max(math.min(diff, maxTurn), -maxTurn))
+}
 
 ;; PATTERN #1 : Finite State Machines : chase -> wind up -> ram -> recover
 ;;  - each phase is a plain sequential await, so the state is the line the
@@ -202,10 +209,7 @@ val task Headbutter(startX, startY) {
                 loop us on :clock {
                     val dt = us/1s
                     set windup = math.min((windup + (dt / (HEADBUTT_WINDUP/1s))), 1)
-
-                    val diff = angle_diff(pub.r, snake_angle(pub))
-                    val maxTurn = (HEADBUTT_AIM_RATE * dt)
-                    set pub.r = (pub.r + math.max(math.min(diff, maxTurn), -maxTurn))
+                    aim_step(pub, dt, HEADBUTT_AIM_RATE)
                 }
             }
             set windup = 0
@@ -257,4 +261,108 @@ val task Headbutter(startX, startY) {
     }
 }
 
-[ seeker = Seeker, headbutter = Headbutter ]
+;; PATTERN #7 : Dynamic Collections : shots outlive whoever fired them
+;;  - spawned into a pool owned by the battle, not by the shooter, so killing
+;;    the shooter leaves its shots in the air
+;;  - it carries the values it was fired with: nothing here reads the shooter
+val PROJECTILE_SPEED = 0.29     ;; SNKRX fires at 140px/s across a 480 wide world
+val PROJECTILE_W = 0.0208       ;; its 10x4 rectangle, half the boss
+val PROJECTILE_H = 0.0148
+val PROJECTILE_LIFE = 6s        ;; a stray shot cannot linger forever
+
+val task Projectile(startX, startY, r, dmg) {
+    set pub = [ x=startX, y=startY, r=r, dmg=dmg ]
+
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=COLORS.fg.base ]
+            pico.output.draw.rect([ "%",
+                x=pub.x, y=pub.y,
+                w=PROJECTILE_W, h=(PROJECTILE_H * ASPECT_RATIO),
+                r=pub.r,
+            ])
+        }
+    }
+
+    ;; whichever comes first: a wall, a unit soaking it up, or old age
+    par :any {
+        loop us on :clock {
+            val dt = us/1s
+            set pub.x = (pub.x + (math.cos(pub.r) * PROJECTILE_SPEED * dt))
+            set pub.y = (pub.y + (math.sin(pub.r) * PROJECTILE_SPEED * dt * ASPECT_RATIO))
+            val hitV, hitH = clamp_to_arena(pub)
+            until (hitV || hitH)
+        }
+    } with {
+        await :absorbed
+    } with {
+        await(PROJECTILE_LIFE)
+    }
+}
+
+;; shooter, the second mini-boss: it chases only until it settles, then it is
+;; a turret that tracks the snake and fires bursts at it
+;; ported from SNKRX: settles after 2-4s, bursts of 3 about 0.15s apart,
+;; every 4-6s, and it never moves again once planted
+val SHOOTER_SETTLE = 3s
+val SHOOTER_BURST_GAP = 5s
+val SHOOTER_SHOTS = 3
+val SHOOTER_SHOT_GAP = 150ms
+val SHOOTER_AIM_RATE = 1.2      ;; slow tracking, so strafing beats it
+val SHOOTER_DMG = 10
+
+val SHOOTER_HEALTH = 120
+val SHOOTER_W = 0.0375                      ;; same 18x7 boss rectangle
+val SHOOTER_H = 0.026
+
+val task Shooter(startX, startY, shots) {
+    var health = SHOOTER_HEALTH
+    set pub = [ x=startX, y=startY, r=0 ]
+
+    val drift = [ n=0 ]
+
+    spawn {
+        ;; walks in with the clump, then plants itself for good
+        par :any {
+            await(SHOOTER_SETTLE)
+        } with {
+            loop us on :clock {
+                seek_step(pub, drift, us/1s, SEEKER_SPEED)
+            }
+        }
+
+        ;; tracking runs on its own from here, so it keeps aiming between bursts
+        spawn {
+            loop us on :clock {
+                aim_step(pub, us/1s, SHOOTER_AIM_RATE)
+            }
+        }
+
+        loop {
+            await(SHOOTER_BURST_GAP)
+            loop _ in SHOOTER_SHOTS {
+                ;; into the battle's pool: this outlives the shooter
+                spawn @shots Projectile(pub.x, pub.y, pub.r, SHOOTER_DMG)
+                await(SHOOTER_SHOT_GAP)
+            }
+        }
+    }
+
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=COLORS.fg.base ]
+            pico.output.draw.rect([ "%",
+                x=pub.x, y=pub.y,
+                w=SHOOTER_W, h=(SHOOTER_H * ASPECT_RATIO),
+                r=pub.r,
+            ])
+        }
+    }
+
+    loop e on :hit {
+        set health = (health - e.dmg)
+        until (health <= 0)
+    }
+}
+
+[ seeker = Seeker, headbutter = Headbutter, shooter = Shooter ]

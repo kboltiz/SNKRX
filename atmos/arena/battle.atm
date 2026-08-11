@@ -131,6 +131,13 @@ task Battle () {
     pin enemies = tasks()
     set ENEMIES = enemies
 
+    ;; shots belong to the battle, not to whoever fired them, so killing a
+    ;; shooter leaves its shots in the air; keeping them out of ENEMIES also
+    ;; keeps them out of the wave's death count, the seekers' separation and
+    ;; the snake's targeting
+    pin shots = tasks()
+    set SHOTS = shots
+
     val maxWaves = level_waves(G.level)
     ;; boxed, so the counter reads the current wave without owning it
     val wave = [ n=1 ]
@@ -155,8 +162,12 @@ task Battle () {
                 val p = cluster_pos(centre)
                 spawn @ENEMIES Enemies.seeker(p.x, p.y)
             }
-            ;; one mini-boss rides along with the clump
-            spawn @ENEMIES Enemies.headbutter(centre.x, centre.y)
+            ;; one mini-boss rides along with the clump, alternating
+            if (i % 2) == 1 {
+                spawn @ENEMIES Enemies.headbutter(centre.x, centre.y)
+            } else {
+                spawn @ENEMIES Enemies.shooter(centre.x, centre.y, SHOTS)
+            }
 
             ;; the pool empties only once every enemy of this wave is dead
             await :all ENEMIES
