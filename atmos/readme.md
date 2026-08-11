@@ -431,71 +431,74 @@ The `following` flag starts `false`, triggers once, and remains `true` for the r
 
 ## Atmos + Pico
 
-In Atmos, death is the exit condition of the unit's body loop. No state variable, no transition to track [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L368):
+In Atmos, death is the end of the unit's body. No state variable, no transition to track [(snake.atm)](TODO):
 
 ```lua
-loop {
-    await :clock
-    loop t, _ in ENEMIES {
-        ;; collision, damage...
-        if hp <= 0 {
-            set UNITS@(task) = nil
-            emit @(:parent) (:died)
-            emit @(:global) :unit_death [ index=index ]
+if hp <= 0 {
+    ;; index tracked the party, so it still points at this unit's own entry
+    table.remove(G.party, index)
+    return(index)
+}
+```
+
+When the unit returns, `SnakeUnit` terminates. Movement, drawing, the ability loop, its status bars, the cast pool and any pinned spring were all spawned inside the unit task, so they are aborted with it. Nothing checks a flag, because nothing is left running to check one. The value it dies with is its place in the party, which is all its parent needs to leave a spent bar behind in its slot.
+
+Head identity is a phase of the task, not a stored state nor a branch re-tested every tick [(snake.atm)](TODO):
+
+```lua
+if index > 1 {
+    par :any {
+        loop i on :any party {
+            ;; a unit ahead died: move up one place
+            until (index == 1)
+        }
+    } with {
+        loop on :clock {
+            ;; follow the unit ahead
         }
     }
-    until (hp <= 0)
 }
-```
 
-When `until` fires, `SnakeUnit` terminates. Movement, drawing, the ability loop, the death-shift listener, the cast pool and any pinned spring were all spawned inside the unit task, so they are aborted with it. Nothing checks a flag, because nothing is left running to check one.
-
-Head identity is a position checked every tick, not a stored state [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L221):
-
-```lua
-if (index == 1) {
+;; index is 1 from here on: this unit inherited the head
+loop {
     ;; mouse input, wall bounce, trail write
-} else {
-    await :clock
-    val s = positions@(index - 1)
-    if s { set pos.x = s.x; set pos.y = s.y; set pos.r = s.r }
 }
 ```
 
-Every unit runs the same movement task, and the branch is re-evaluated on every tick. There is no promotion step. When index 1 disappears and the unit at index 2 decrements to 1, it takes the head branch on its next tick. No flag is transferred, no follower list is moved.
+A unit that starts behind runs the race above: shifting on one side, following on the other. The moment its index reaches 1 the race ends, and control falls through to the head loop below it. Promotion is the task advancing a line. No flag is transferred, no follower list is moved, and past that point nothing asks whether this unit is the head, because a task that reached the head loop cannot be anything else.
 
-Reindexing is self-adjusting. Each unit maintains only its own index [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L354):
+Reindexing rides on the pool that holds the party. Each unit adjusts only its own index [(snake.atm)](TODO):
 
 ```lua
-spawn {
-    loop {
-        val d = await :unit_death
-        if (d.index < index) { set index = (index - 1) }
+loop i on :any party {
+    if (i < index) {
+        set index = (index - 1)
     }
+    until (index == 1)
 }
 ```
 
-The dying unit emits its index globally and terminates. Everyone behind it shifts down by one; everyone in front ignores the event. No unit touches another unit's state. There is no master list and no branch for "who died".
+`await :any party` wakes on any member of the pool terminating, and yields the value it died with: the index it occupied. Units behind it shift down by one, units in front ignore it. The dying unit writes to no one; it ends, and the pool reports it. There is no master list and no branch for "who died".
 
-Spawn detection needs no flag. The follower checks whether position data exists:
+Ordering needs no flag either. The head samples one trail point per follower every tick, and the head is always the earliest-spawned survivor, so it has written the slot before any follower reads it:
 
 ```lua
 val s = positions@(index - 1)
-if s { set pos.x = s.x; set pos.y = s.y }
+assert(s)
 ```
 
-Before the head's first trail pass, the position slot is empty and the follower holds its spawn position. Afterwards, it has data. There is no flag to set, check, or remember.
+The assert states that invariant instead of defending against it. An `if` here would quietly paper over a real ordering bug; the assert says the slot is expected to be there, and would fail loudly if the spawn order ever stopped guaranteeing it.
 
 ## Analysis
 
 In the original Lua code, each unit carries state variables that act as ad-hoc state machines. `dead` switches from alive to dead and is checked by every method. `leader` switches from follower to leader through an explicit promotion step. `follower_index` is state rewritten across every surviving unit when one dies. `following` is a one-shot transition checked forever.
 
-In Atmos, none of these state machines remain as variables. The alive to dead transition is the loop's exit condition. The leader and follower distinction is a position check re-evaluated each tick. Reindexing is a self-applied decrement on a broadcast. Spawn detection is a question about whether data exists yet. Each Lua state variable was a manual encoding of something Atmos expresses directly: a loop exit, a branch condition, an event response, a data presence check.
+In Atmos, none of these state machines remain as variables. The alive to dead transition is where the task body ends. The leader and follower distinction is which phase of the task is running, so promotion is the task falling through to its next statement. Reindexing is a self-applied decrement on a pool termination. Spawn ordering is an invariant of who was spawned first, asserted rather than tested. Each Lua state variable was a manual encoding of something Atmos expresses directly: a return, a program position, an event response, a structural guarantee.
 
 
 # Snake Unit Status Signalling
 
-In SNKRX, a unit's healthbar reads its fields directly and the hit flash is shared state between combat and rendering. In Atmos, both are replaced by events and control flow, and the bar and unit are separated into sibling tasks under a shared parent.
+In SNKRX, a unit's healthbar reads its fields directly and the hit flash is shared state between combat and rendering. In Atmos, both are replaced by events and control flow: the bar is a task owned by the unit, and the flash is a state machine that only feeds the drawing.
 
 ## Lua + LOVE2D
 
@@ -528,4 +531,56 @@ The flash is triggered in `hit` by calling `self.hfx:use('hit', ...)`, which set
 
 ## Atmos + Pico
 
-In the atmos counterpart, `Slot` owns both the unit and its bar as siblings, so the unit pushes events to `@(:parent)` and it is understood by the statbar to be its own local state [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/8182b34914285ad45efcdadc836deaed76cdab8e/atmos/arena/battle.atm#L395):
+In the atmos counterpart the bar is a task the unit owns, spawned with the slot it was laid out in [(snake.atm)](TODO):
+
+```lua
+val task SnakeUnit(index, character, trail, positions, party) {
+    val slot = index
+    spawn StatBars(slot, colors)
+    ;; ...
+```
+
+Reporting damage is then an emit to the unit's own subtree, which is where the bar lives:
+
+```lua
+set hp = math.max(hp - 5, 0)
+emit :hp [ hp=hp, max=maxHp ]
+```
+
+`StatBars` keeps its own `hp` and redraws from it. The unit never reaches into the bar and the bar never reads the unit, so neither can be found holding a stale copy of the other's fields. Because the bar is a child, it also dies exactly when the unit does, with no cleanup step: what outlives the unit is a separate `DeadBar` that its parent spawns in the slot the unit vacated, which is why the bar's slot is fixed at birth while the unit's party index shifts underneath it.
+
+The hit flash is a state machine, but only one side of it draws [(snake.atm)](TODO):
+
+```lua
+var clr = colors.base
+var scale = 1
+
+spawn {
+    loop on :draw {
+        pico.set.pencil [ color=clr ]
+        pico.output.draw.oval [ "%",
+            x=pos.x, y=pos.y,
+            w=(UNIT_SIZE * scale),
+            h=(UNIT_SIZE * ASPECT_RATIO * scale),
+        ]
+    }
+}
+
+loop {
+    await :flash_unit
+
+    pin spring = spawn Spring.Simple(1.8)
+    emit @spring :start
+
+    set clr = :white
+    watching (0.15*1s) {
+        loop on :clock {
+            set scale = spring.pub.scale
+        }
+    }
+    set clr = colors.base
+    set scale = 1
+}
+```
+
+The unit is drawn in exactly one place. The loop underneath it says what a flash *is* — white, springing, for 0.15s, then back — by setting two locals and letting the spring run for as long as the `watching` allows. Anything that wants a flash emits `:flash_unit`: a hit, an ability firing, a bounce off the wall. None of them know the colour, the duration, or that a spring is involved, and adding a fourth reason to flash adds no new writer of drawing state.
