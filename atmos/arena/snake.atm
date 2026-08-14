@@ -120,29 +120,27 @@ val trackW = (barW - (border * 2))
 
 val trackH = (barH - (border * 2 * ASPECT_RATIO))
 
-;; frame left behind once a unit is gone
-val task DeadBar(index) {
-    val leftEdge = bar_left(index)
-    loop on :draw {
-        pico.set.pencil [ color=COLORS.idle.bg ]
-        pico.output.draw.rect [ "%", x=leftEdge, y=barY, w=barW, h=barH, anchor="W" ]
-        pico.set.pencil [ color=:black ]
-        pico.output.draw.rect [ "%", x=(leftEdge + border), y=barY, w=trackW, h=trackH, anchor="W" ]
-    }
-}
+val func char_colors(character) { COLORS@(CHARACTERS@character.color) }
 
-val task StatBars(index, colors) {
-    val leftEdge = bar_left(index)
+;; PATTERN #1 : Finite State Machines : live bars -> spent frame
+;;  - outlives the unit it reports on, so it can watch it die and carry on
+;;    drawing; the slot it was given never moves, which is what keeps the
+;;    frame it leaves behind lined up with the bars either side of it
+val task StatBars(slot, character, unit) {
+    val colors = char_colors(character)
+    val leftEdge = bar_left(slot)
     val trackLeft = (leftEdge + border)
+
+    watching (unit) {
 
     var hp, maxHp = (100, 100)
 
     spawn {
         loop {
-            val d = await :hp
+            val d = await :hp [slot=slot]
             set hp = d.hp
             set maxHp = d.max
-        }    
+        }
     }
 
     par {
@@ -173,13 +171,13 @@ val task StatBars(index, colors) {
 
         ;; cooldown bar
         loop {
-            val data = await :ability_fired
+            val data = await :ability_fired [slot=slot]
             var elapsed = 0
 
             par :any {
                 ;; edgecase, rect seems to inflate at exactly width = 0
                 loop on :draw {
-                    val cdFillW = (trackW * math.min((elapsed / data@1), 1))
+                    val cdFillW = (trackW * math.min((elapsed / data.interval), 1))
                     if cdFillW > 0 {
                         pico.set.pencil [ color=colors.base ]
                         pico.output.draw.rect [ "%", x=trackLeft, y=cdY, w=cdFillW, h=cdTrackH, anchor="W" ]
@@ -189,23 +187,31 @@ val task StatBars(index, colors) {
                 loop {
                     val us = await :clock
                     set elapsed = (elapsed + us)
-                    until (elapsed >= data@1)
+                    until (elapsed >= data.interval)
                 }
             }
         }
+    }
+
+    }
+
+    ;; the unit is gone: its slot keeps the spent frame for the rest of the run
+    loop on :draw {
+        pico.set.pencil [ color=COLORS.idle.bg ]
+        pico.output.draw.rect [ "%", x=leftEdge, y=barY, w=barW, h=barH, anchor="W" ]
+        pico.set.pencil [ color=:black ]
+        pico.output.draw.rect [ "%", x=trackLeft, y=barY, w=trackW, h=trackH, anchor="W" ]
     }
 }
 
 ;; slot is where this unit's bars sit and never moves, while index is its
 ;; place in the snake, which moves up as the units ahead of it die
-val task SnakeUnit(index, character, trail, positions, party) {
+val task SnakeUnit(index, character, trail, positions, party, bars) {
     val slot = index
-    val colors = COLORS@(CHARACTERS@character.color)
+    val colors = char_colors(character)
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
     ;; hp shared through events instead of pub
     var hp, maxHp = (100, 100)
-
-    spawn StatBars(slot, colors)
 
     ;; movement, no exit condition of its own;
     ;; cleaned up automatically on task cleanup (PATTERN #4)
@@ -357,8 +363,8 @@ val task SnakeUnit(index, character, trail, positions, party) {
 
             spawn @castPool ability.caster(pos, enemy_pos)
             emit :flash_unit
-            ;; bare: the bars are a child of this unit, not a sibling
-            emit :ability_fired [ ability.interval ]
+            ;; the bars live beside this unit now, so the slot addresses them
+            emit @bars :ability_fired [ slot=slot, interval=ability.interval ]
         }
     }
 
@@ -399,7 +405,7 @@ val task SnakeUnit(index, character, trail, positions, party) {
         if taken > 0 {
             emit :flash_unit
             set hp = math.max(hp - taken, 0)
-            emit :hp [ hp=hp, max=maxHp ]
+            emit @bars :hp [ slot=slot, hp=hp, max=maxHp ]
 
             if hp <= 0 {
                 table.remove(G.party, index)
@@ -414,27 +420,24 @@ val task SnakeUnit(index, character, trail, positions, party) {
 val task Snake() {
     var trail = [[ x=0.5, y=0.5, r=0 ]]
     val positions = []
-    val count = #G.party
+
+    ;; the bars sit beside the units rather than inside them: each one
+    ;; watches its unit die and then keeps its slot, so nothing here
+    ;; bookkeeps the dead. The pool exists first so the units can report to it
+    pin bars = tasks()
 
     pin party = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @party SnakeUnit(i, character, trail, positions, party)
+        spawn @party SnakeUnit(i, character, trail, positions, party, bars)
     }
 
-    ;; bars never move, so the slots still standing, in order: a unit that
-    ;; dies at party index i vacates the i-th of them
-    val slots = []
-    loop i in count {
-        set slots@i = i
+    loop i, unit in party {
+        spawn @bars StatBars(i, G.party@i, unit)
     }
 
-    pin graves = tasks()
-    loop _ in count {
-        val i = await :any party
-        spawn @graves DeadBar(slots@i)
-        table.remove(slots, i)
-    }
+    ;; the party pool empties when the last unit is down
+    await :all party
 }
 
 Snake
