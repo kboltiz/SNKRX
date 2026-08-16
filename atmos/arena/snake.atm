@@ -169,9 +169,18 @@ val task StatBars(slot, character, unit) {
         val cdY = (barY + (barH / 2) + cdGapY + (cdH / 2))
         val cdTrackH = (cdH - (border * 2 * ASPECT_RATIO))
 
-        ;; cooldown bar
+        ;; cooldown bar: full means ready, so it stands full from the start,
+        ;; empties on a cast and fills back up over the interval
         loop {
-            val data = await :ability_fired [slot=slot]
+            val data = watching :ability_fired [slot=slot] {
+                loop on :draw {
+                    pico.set.pencil [ color=colors.base ]
+                    pico.output.draw.rect [ "%",
+                        x=trackLeft, y=cdY, w=trackW, h=cdTrackH, anchor="W",
+                    ]
+                }
+            }
+
             var elapsed = 0
 
             par :any {
