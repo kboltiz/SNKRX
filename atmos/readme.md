@@ -441,7 +441,7 @@ if hp <= 0 {
 }
 ```
 
-When the unit returns, `SnakeUnit` terminates. Movement, drawing, the ability loop, its status bars, the cast pool and any pinned spring were all spawned inside the unit task, so they are aborted with it. Nothing checks a flag, because nothing is left running to check one. The value it dies with is its place in the party, which is all its parent needs to leave a spent bar behind in its slot.
+When the unit returns, `SnakeUnit` terminates. Movement, drawing, the ability loop, the cast pool and any pinned spring were all spawned inside the unit task, so they are aborted with it. Nothing checks a flag, because nothing is left running to check one. The status bars are the one thing that outlives the unit, and they need nothing from this return to do so: they watch the unit from the outside and carry on in its slot by themselves.
 
 Head identity is a phase of the task, not a stored state nor a branch re-tested every tick [(snake.atm)](TODO):
 
@@ -498,7 +498,7 @@ In Atmos, none of these state machines remain as variables. The alive to dead tr
 
 # Snake Unit Status Signalling
 
-In SNKRX, a unit's healthbar reads its fields directly and the hit flash is shared state between combat and rendering. In Atmos, both are replaced by events and control flow: the bar is a task owned by the unit, and the flash is a state machine that only feeds the drawing.
+In SNKRX, a unit's healthbar reads its fields directly and the hit flash is shared state between combat and rendering. In Atmos, both are replaced by events and control flow: the bar is a task that watches the unit from beside it, and the flash is a state machine that only feeds the drawing.
 
 ## Lua + LOVE2D
 
@@ -531,23 +531,55 @@ The flash is triggered in `hit` by calling `self.hfx:use('hit', ...)`, which set
 
 ## Atmos + Pico
 
-In the atmos counterpart the bar is a task the unit owns, spawned with the slot it was laid out in [(snake.atm)](TODO):
+In the atmos counterpart the bar is a task spawned beside the unit rather than inside it, in a pool of its own, holding the slot the unit was laid out in [(snake.atm)](TODO):
 
 ```lua
-val task SnakeUnit(index, character, trail, positions, party) {
-    val slot = index
-    spawn StatBars(slot, colors)
-    ;; ...
+val task Snake() {
+    pin bars = tasks()
+
+    pin party = tasks()
+    loop i, character in G.party {
+        spawn @party SnakeUnit(i, character, trail, positions, party)
+    }
+
+    loop i, unit in party {
+        spawn @bars StatBars(i, G.party@i, unit)
+    }
 ```
 
-Reporting damage is then an emit to the unit's own subtree, which is where the bar lives:
+Nothing connects the two pools. The unit is never handed a reference to the bars, and reporting damage is an emit aimed by position in the task tree instead:
 
 ```lua
-set hp = math.max(hp - 5, 0)
-emit :hp [ hp=hp, max=maxHp ]
+set hp = math.max(hp - taken, 0)
+emit @2 :hp [ slot=slot, hp=hp, max=maxHp ]
 ```
 
-`StatBars` keeps its own `hp` and redraws from it. The unit never reaches into the bar and the bar never reads the unit, so neither can be found holding a stale copy of the other's fields. Because the bar is a child, it also dies exactly when the unit does, with no cleanup step: what outlives the unit is a separate `DeadBar` that its parent spawns in the slot the unit vacated, which is why the bar's slot is fixed at birth while the unit's party index shifts underneath it.
+`@2` names an ancestor: `0` is the unit itself, `1` the party pool it was spawned into, `2` the `Snake` task above that. The event is delivered to that ancestor's whole subtree, which is how it arrives at a pool the emitter has no name for. A pool counts as a level here, so the party pool has to be counted even though nothing in the source spawns into it by hand; an anonymous `spawn { }` block does not, which is why the ability loop, nested one block deeper, still emits `@2` and not `@3`.
+
+That reach is wide: every unit sees the event too, not just the bars. So the slot travels in the payload and each bar picks out the one meant for it:
+
+```lua
+val d = await :hp [slot=slot]
+```
+
+The alternative is to keep a `bars` reference in `Snake` and thread it down through every `SnakeUnit` so the emit can name the pool directly. That narrows the broadcast to the bars alone, at the cost of a parameter on the unit that exists only to point at a sibling. `@2` keeps the units knowing nothing about who reports on them, and pays for it with a number that has to be recounted if a pool or wrapper task is ever inserted between the unit and `Snake`.
+
+`StatBars` keeps its own `hp` and redraws from it. The unit never reaches into the bar and the bar never reads the unit, so neither can be found holding a stale copy of the other's fields. The bar is not a child of the unit, though. It wraps its live drawing in `watching (unit)`, so the unit's death ends that block and the bar falls through to drawing the spent frame in the slot it has held all along:
+
+```lua
+val task StatBars(slot, character, unit) {
+    watching (unit) {
+        ;; ... hp bar and cooldown bar
+    }
+
+    ;; the unit is gone: its slot keeps the spent frame for the rest of the run
+    loop on :draw {
+        ;; ... greyed out frame
+    }
+}
+```
+
+That is what keeps the bar's slot fixed at birth while the unit's party index shifts underneath it. Nothing bookkeeps the dead, because the task that reported on a unit is the same task that goes on standing in for it.
 
 The hit flash is a state machine, but only one side of it draws [(snake.atm)](TODO):
 

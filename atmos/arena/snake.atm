@@ -215,7 +215,7 @@ val task StatBars(slot, character, unit) {
 
 ;; slot is where this unit's bars sit and never moves, while index is its
 ;; place in the snake, which moves up as the units ahead of it die
-val task SnakeUnit(index, character, trail, positions, party, bars) {
+val task SnakeUnit(index, character, trail, positions, party) {
     val slot = index
     val colors = char_colors(character)
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
@@ -372,8 +372,9 @@ val task SnakeUnit(index, character, trail, positions, party, bars) {
 
             spawn @castPool ability.caster(pos, enemy_pos)
             emit :flash_unit
-            ;; the bars live beside this unit now, so the slot addresses them
-            emit @bars :ability_fired [ slot=slot, interval=ability.interval ]
+            ;; @2 is Snake: 0 is this unit, 1 the party pool it sits in.
+            ;; the enclosing spawn block is not a level of its own
+            emit @2 :ability_fired [ slot=slot, interval=ability.interval ]
         }
     }
 
@@ -414,7 +415,8 @@ val task SnakeUnit(index, character, trail, positions, party, bars) {
         if taken > 0 {
             emit :flash_unit
             set hp = math.max(hp - taken, 0)
-            emit @bars :hp [ slot=slot, hp=hp, max=maxHp ]
+            ;; up to Snake and back down into the bars pool (see the cast above)
+            emit @2 :hp [ slot=slot, hp=hp, max=maxHp ]
 
             if hp <= 0 {
                 table.remove(G.party, index)
@@ -432,13 +434,14 @@ val task Snake() {
 
     ;; the bars sit beside the units rather than inside them: each one
     ;; watches its unit die and then keeps its slot, so nothing here
-    ;; bookkeeps the dead. The pool exists first so the units can report to it
+    ;; bookkeeps the dead. The units reach them by emitting up to here,
+    ;; so no reference to this pool has to travel down with them
     pin bars = tasks()
 
     pin party = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @party SnakeUnit(i, character, trail, positions, party, bars)
+        spawn @party SnakeUnit(i, character, trail, positions, party)
     }
 
     loop i, unit in party {
