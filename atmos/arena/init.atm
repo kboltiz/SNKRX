@@ -16,6 +16,8 @@ task () {
         ;; survivors carry their party into the next level, a wipe (or a
         ;; finished run) starts over from level 1
         if survived && (G.level < MAX_LEVEL) {
+            ;; paid for the level just cleared, so the shop ahead has it
+            set G.gold = (G.gold + level_reward(G.level))
             set G.level = (G.level + 1)
         } else {
             set G = new_run()
