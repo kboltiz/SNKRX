@@ -6,9 +6,49 @@ val LINE_H = 0.03
 val LEVEL_Y = 0.94
 val LEVEL_H = 0.04
 
+;; SNKRX's InfoText, in the port's units. It sits 10px below the centre of
+;; a 480x270 screen, in a box padded 16px wide and 4px tall, with the text
+;; itself nudged 2px lower than the box, and lasts 2 seconds
+val INFO_SECS = 2s
+val INFO_Y = (145/270)          ;; gh/2 + 10
+val INFO_TEXT_Y = (147/270)     ;; the same, + the 2px text nudge
+val INFO_PAD_W = (16/480)
+val INFO_PAD_H = (4/270)
+val INFO_BG = [ '%', r=0.138, g=0.138, b=0.138 ]   ;; SNKRX's bg[-2]
+
 ;;;
 ;; TODO : fsantanna : unreviewed
 ;;;
+
+;; PATTERN #1 : Finite State Machines : shown -> gone
+;;  - the message is the task: it ends on its own, so whoever awaits it
+;;    is simply held for as long as it is up
+val task Info_Text (line) {
+    val runs = parse_rich_text(line)
+    val positions, width = measure_runs(runs, LINE_H)
+    val left = (0.5 - (width / 2))
+
+    watching (INFO_SECS) {
+        loop on :draw {
+            pico.set.pencil [ color=INFO_BG ]
+            pico.output.draw.rect [ '%',
+                x = 0.5, y = INFO_Y,
+                w = (width + INFO_PAD_W),
+                h = (LINE_H + INFO_PAD_H),
+            ]
+
+            loop i, run in runs {
+                val pos = positions@i
+                pico.set.pencil [ color=run.color ]
+                pico.output.draw.text.fix(run.text, [ '%',
+                    x = (left + pos.start + (pos.width / 2)),
+                    y = INFO_TEXT_Y,
+                    h = LINE_H,
+                ])
+            }
+        }
+    }
+}
 
 task Popup (lines) {
     val parsed = []
@@ -394,7 +434,14 @@ val task Shop () {
     }
 
     par:any {
-        await :o.click.dn [id=:go]
+        ;; a click on an empty party refuses and says so for a moment,
+        ;; the way SNKRX answers it, instead of leaving the button dead
+        loop {
+            await :o.click.dn [id=:go]
+            until (#G.party > 0)
+
+            await Info_Text("[fg]cannot start the round with [yellow]0 [fg]units")
+        }
         true    ;; Go!
     } with {
         await :key.dn [key=:Escape]

@@ -12,7 +12,9 @@ func new_run () {
         level = 1,
         gold  = 3,
         rolls = 3,
-        party = [:swordsman, :wizard, :swordsman, :wizard],
+        ;; a run opens with an empty party and 3 gold, as SNKRX does: the
+        ;; first shop is where the snake is assembled
+        party = [],
         cost  = [
             swordsman = 1,
             wizard    = 1,
@@ -21,6 +23,25 @@ func new_run () {
 }
 
 set G = new_run()
+
+;; gold paid for clearing a level, ported from SNKRX's level_to_gold_gained.
+;; each entry is the [min,max] the reward is rolled between
+set LEVEL_GOLD = [
+    [3,3],   [3,3],   [5,6],   [4,5],   [5,8],
+    [8,10],  [8,10],  [12,14], [14,18], [10,13],
+    [12,15], [18,20], [10,14], [12,16], [14,18],
+    [12,12], [12,12], [20,24], [8,12],  [10,14],
+    [20,28], [32,32], [36,36], [48,48], [100,100],
+]
+
+;; the level's roll plus interest, which SNKRX pays at 1 per 5 gold held,
+;; capped at 5. The merchant bonus and picked-up gold are not ported
+func level_reward (level) {
+    val band = LEVEL_GOLD@(math.min(level, #LEVEL_GOLD))
+    val gained = math.random(band@1, band@2)
+    val interest = math.min(math.floor(G.gold / 5), 5)
+    return(gained + interest)
+}
 
 ;; arena bounds, shared by the snake (walls) and the battle (spawns)
 set ARENA_W = 0.8
@@ -107,6 +128,7 @@ set CLASS_ICON_ASPECT_RATIO = 3/2;
 set TEXT_TAGS = [
     idle = COLORS.idle.fg,
     hover = COLORS.hover.fg,
+    fg = COLORS.fg.base,
     gold = COLORS.gold,
     yellow = COLORS.yellow.base,
     blue = COLORS.blue.base,
