@@ -66,15 +66,15 @@ val func snake_angle(pos) {
 val func seek_step(pos, drift, dt, speed) {
     val chase = snake_angle(pos)
 
-    set drift.n = math.max(math.min(
-        (drift.n + (((math.random() - 0.5) * 2) * WANDER_RATE * dt)),
+    val wander = math.max(math.min(
+        (drift + (((math.random() - 0.5) * 2) * WANDER_RATE * dt)),
         WANDER_MAX), -WANDER_MAX)
 
     val sx, sy = separation(pos)
     val desired = math.atan(
         (math.sin(chase) + (sy * SEPARATION_WEIGHT)),
         (math.cos(chase) + (sx * SEPARATION_WEIGHT))
-    ) + drift.n
+    ) + wander
 
     val diff = angle_diff(pos.r, desired)
     val maxTurn = (SEEKER_TURN_RATE * dt)
@@ -86,11 +86,24 @@ val func seek_step(pos, drift, dt, speed) {
     ;; no reflection while seeking: it is already steering back towards the
     ;; snake, which is inside the arena
     clamp_to_arena(pos)
+
+    return(wander)
 }
 
 ;; slows by this much per second, ending up ~e.knockback from where it was hit
 val KNOCKBACK_DECAY = 14
 val KNOCKBACK_STOP = 0.005
+
+;; the chase as a task of its own, so an attack can switch it off and back on
+;; instead of each phase restating it. The wander lives in here: toggling
+;; suspends the task rather than dropping it, so what it has accumulated
+;; survives an interruption and no caller has to hold it on its behalf
+val task Chase(pos, speed) {
+    var drift = 0
+    loop us on :clock {
+        set drift = seek_step(pos, drift, us/1s, speed)
+    }
+}
 
 ;; seeker is the most basic type of enemy
 ;; bosses will build on top of this seeker behavior
@@ -101,17 +114,15 @@ val task Seeker(startX, startY) {
     var health = SEEKER_HEALTH
     set pub = [ x=startX, y=startY, r=0 ]
 
-    ;; its own drift, so identical seekers do not travel identical paths
-    val drift = [ n=0 ]
+    ;; its own chase, so identical seekers do not travel identical paths
+    pin chase = spawn Chase(pub, SEEKER_SPEED)
 
     spawn {
         loop {
-            ;; seeking
-            val e = watching :hit {
-                loop us on :clock {
-                    seek_step(pub, drift, us/1s, SEEKER_SPEED)
-                }
-            }
+            val e = await :hit
+            ;; suspended, not dropped: the wander it built up is still
+            ;; there when the knockback finishes
+            toggle chase(false)
 
             ;; knocked back, sliding away from the hit until it stops
             val ang = math.atan(
@@ -138,6 +149,8 @@ val task Seeker(startX, startY) {
                 set speed = (speed - (speed * KNOCKBACK_DECAY * dt))
                 until (speed < KNOCKBACK_STOP)
             }
+
+            toggle chase(true)
         }
     }
 
@@ -174,14 +187,6 @@ val HEADBUTTER_HEALTH = 120
 val HEADBUTTER_W = 0.0375                   ;; the 18x7 rectangle SNKRX draws
 val HEADBUTTER_H = 0.026
 
-;; the chase as a task of its own, so an attack can switch it off and back on
-;; instead of each phase restating it
-val task Chase(pos, drift, speed) {
-    loop us on :clock {
-        seek_step(pos, drift, us/1s, speed)
-    }
-}
-
 ;; turn towards the snake at a fixed rate, without moving
 val func aim_step(pos, dt, rate) {
     val diff = angle_diff(pos.r, snake_angle(pos))
@@ -196,12 +201,11 @@ val task Headbutter(startX, startY) {
     var health = HEADBUTTER_HEALTH
     set pub = [ x=startX, y=startY, r=0 ]
 
-    val drift = [ n=0 ]
     var windup = 0      ;; 0..1 while winding up, 0 the rest of the time
 
     ;; the chase is what it does by default: the attack below switches it off
     ;; while the ram lands, rather than restating it either side
-    pin chase = spawn Chase(pub, drift, SEEKER_SPEED)
+    pin chase = spawn Chase(pub, SEEKER_SPEED)
 
     spawn {
         loop {
@@ -321,14 +325,12 @@ val task Shooter(startX, startY, shots) {
     var health = SHOOTER_HEALTH
     set pub = [ x=startX, y=startY, r=0 ]
 
-    val drift = [ n=0 ]
-
     spawn {
         ;; walks in with the clump, then plants itself for good
         par :any {
             await(SHOOTER_SETTLE)
         } with {
-            await Chase(pub, drift, SEEKER_SPEED)
+            await Chase(pub, SEEKER_SPEED)
         }
 
         ;; tracking runs on its own from here, so it keeps aiming between bursts
