@@ -25,6 +25,73 @@ val func level_waves(level) { LEVEL_WAVES@(math.min(level, #LEVEL_WAVES)) }
 ;; enemies in a wave, ported from SNKRX: 8 + (wave-1)*2
 val func wave_enemies(wave) { (8 + ((wave - 1) * 2)) }
 
+;; SNKRX rolls every spawn for an elite rather than adding one per wave:
+;; the weights below sum to that spawn's percent chance of being one, and
+;; the pick between them is weighted by the same numbers. Ported from
+;; level_to_elite_spawn_weights / level_to_elite_spawn_types
+val ELITE_WEIGHTS = [
+    [0],        [4,2],      [10],       [4,4],      [4,3,2],
+    [12],       [5,3,2],    [6,3,3,3],  [14],       [8,4],
+    [8,6,2],    [16],       [8,8],      [12,6],     [18],
+    [10,6,4],   [6,5,4,3],  [18],       [10,6],     [8,6,2],
+    [22],       [10,8,4],   [20,5,5],   [30],       [5,5,5,5,5,5],
+]
+
+;; only :headbutter and :shooter exist so far; a roll landing on any of the
+;; other four spawns a plain seeker, so the elite rate stays true to the
+;; original even where the variant is still missing
+val ELITE_TYPES = [
+    [:speed_booster],
+    [:speed_booster, :shooter],
+    [:speed_booster],
+    [:speed_booster, :exploder],
+    [:speed_booster, :exploder, :shooter],
+    [:speed_booster],
+    [:speed_booster, :exploder, :headbutter],
+    [:speed_booster, :exploder, :headbutter, :shooter],
+    [:shooter],
+    [:exploder, :headbutter],
+    [:exploder, :headbutter, :tank],
+    [:exploder],
+    [:speed_booster, :shooter],
+    [:speed_booster, :spawner],
+    [:shooter],
+    [:speed_booster, :exploder, :spawner],
+    [:speed_booster, :exploder, :spawner, :shooter],
+    [:spawner],
+    [:headbutter, :tank],
+    [:speed_booster, :tank, :spawner],
+    [:headbutter],
+    [:speed_booster, :headbutter, :tank],
+    [:headbutter, :tank, :shooter],
+    [:tank],
+    [:speed_booster, :exploder, :headbutter, :tank, :shooter, :spawner],
+]
+
+;; nil for an ordinary seeker
+val func roll_elite(level) {
+    val idx = math.min(level, #ELITE_WEIGHTS)
+    val weights = ELITE_WEIGHTS@idx
+    val types = ELITE_TYPES@idx
+
+    var total = 0
+    loop _, w in weights {
+        set total = (total + w)
+    }
+    if math.random(1, 100) > total {
+        return(nil)
+    }
+
+    var pick = math.random(1, total)
+    loop i, w in weights {
+        set pick = (pick - w)
+        if pick <= 0 {
+            return(types@i)
+        }
+    }
+    return(nil)
+}
+
 ;; one point per wave, inset so the whole cluster still fits in the arena
 ;; and retried while it lands too close to the snake's head
 val func cluster_centre() {
@@ -158,15 +225,22 @@ task Battle () {
             await(WAVE_DELAY)
 
             val centre = cluster_centre()
+            ;; an elite takes the place of a seeker rather than adding to
+            ;; the count, so the wave size stays 8 + (wave-1)*2
             loop _ in wave_enemies(i) {
                 val p = cluster_pos(centre)
-                spawn @ENEMIES Enemies.seeker(p.x, p.y)
-            }
-            ;; one mini-boss rides along with the clump, alternating
-            if (i % 2) == 1 {
-                spawn @ENEMIES Enemies.headbutter(centre.x, centre.y)
-            } else {
-                spawn @ENEMIES Enemies.shooter(centre.x, centre.y, SHOTS)
+                val elite = roll_elite(G.level)
+                ifs {
+                    (elite == :headbutter) => {
+                        spawn @ENEMIES Enemies.headbutter(p.x, p.y)
+                    }
+                    (elite == :shooter) => {
+                        spawn @ENEMIES Enemies.shooter(p.x, p.y, SHOTS)
+                    }
+                    else => {
+                        spawn @ENEMIES Enemies.seeker(p.x, p.y)
+                    }
+                }
             }
 
             ;; the pool empties only once every enemy of this wave is dead
