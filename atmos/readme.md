@@ -616,3 +616,101 @@ loop {
 ```
 
 The unit is drawn in exactly one place. The loop underneath it says what a flash *is* — white, springing, for 0.15s, then back — by setting two locals and letting the spring run for as long as the `watching` allows. Anything that wants a flash emits `:flash_unit`: a hit, an ability firing, a bounce off the wall. None of them know the colour, the duration, or that a spring is involved, and adding a fourth reason to flash adds no new writer of drawing state.
+
+
+# Elite Attack Phases
+
+In SNKRX, an elite's attack is a chain of timer callbacks that set boolean flags, and the rest of the enemy reads those flags to know what it is doing. In Atmos the phases are consecutive lines of one task, so there is nothing left for a flag to record.
+
+## Lua + LOVE2D
+
+The headbutter installs its whole attack once, at birth, as a condition and an action [(enemies.lua)](https://github.com/kboltiz/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/enemies.lua#L180):
+
+```lua
+self.last_headbutt_time = 0
+self.t:every(function()
+  return math.distance(self.x, self.y, main.current.player.x, main.current.player.y) < 76
+     and love.timer.getTime() - self.last_headbutt_time > 10*n
+end, function()
+  if self.silenced or self.barbarian_stunned then return end
+  if self.headbutt_charging or self.headbutting then return end
+  self.headbutt_charging = true
+  self.t:tween(2, self.color, {r = fg[0].r, b = fg[0].b, g = fg[0].g}, math.cubic_in_out, function()
+    if self.silenced or self.barbarian_stunned then return end
+    self.headbutt_charging = false
+    self.headbutting = true
+    self.last_headbutt_time = love.timer.getTime()
+    self:apply_steering_impulse(300, self:angle_to_object(main.current.player), 0.75)
+    self.t:after(0.75, function() self.headbutting = false end)
+  end)
+end)
+```
+
+Three variables carry the attack. `headbutt_charging` and `headbutting` say which phase is running, and `last_headbutt_time` is a timestamp the condition subtracts from the clock every frame to decide whether the cooldown has passed. The two booleans double as the re-entry guard, because nothing else stops the condition from firing again while an attack is already underway.
+
+The phases are nested callbacks, so an interruption has to be re-tested at each level. `silenced` is checked on entry and again two seconds later inside the tween, since the enemy may have been silenced during the wind-up.
+
+A third phase boundary lives in the collision handler [(enemies.lua)](https://github.com/kboltiz/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/enemies.lua#L410):
+
+```lua
+if self.headbutter and self.headbutting then
+  self.headbutting = false
+end
+```
+
+`headbutting` is set in the tween, cleared by a timer, and cleared again on impact. To know what the enemy is doing you have to find all three writers.
+
+## Atmos + Pico
+
+The same attack reads as one sequence [(enemies.atm)](https://github.com/kboltiz/SNKRX/blob/395b1de94200a7da66a021cc9a1c5b7709dd53dc/atmos/arena/enemies.atm#L200):
+
+```lua
+loop {
+    ;; close enough to be worth ramming
+    loop on :clock {
+        until (snake_dist(pub) <= HEADBUTT_RANGE)
+    }
+    toggle chase(false)
+
+    ;; plant and turn to face the snake, telegraphing the whole time
+    watching (HEADBUTT_WINDUP) {
+        loop us on :clock {
+            val dt = us/1s
+            set windup = math.min((windup + (dt / (HEADBUTT_WINDUP/1s))), 1)
+            aim_step(pub, dt, HEADBUTT_AIM_RATE)
+        }
+    }
+    set windup = 0
+
+    ;; commit: the ram holds its heading, so it can be side-stepped
+    val ram = pub.r
+    watching (HEADBUTT_CHARGE) {
+        loop us on :clock {
+            ;; ... step forward along `ram` ...
+            val hitV, hitH = clamp_to_arena(pub)
+            ;; a wall ends the charge early
+            until (hitV || hitH)
+        }
+    }
+
+    ;; back to chasing while it recovers
+    toggle chase(true)
+    await(HEADBUTT_COOLDOWN)
+}
+```
+
+There is no `headbutt_charging` and no `headbutting`, because charging is the first `watching` block and ramming is the second. The enemy is in a phase when control is inside it.
+
+`last_headbutt_time` is gone for the same reason. The cooldown is the `await` at the end of the loop, and the attack cannot start again during it because the task has not come back round yet. Nothing guards re-entry, since the condition is only tested on the one line that tests it.
+
+A charge ends either when its duration runs out or when `until (hitV || hitH)` fires against a wall. Both endings are written inside the block they end, rather than in a collision handler that reaches back into the enemy.
+
+The chase underneath is a task, suspended for the attack and resumed for the recovery. `toggle` suspends rather than aborts, so `Chase` keeps the wander it has built up. That is what lets the wander live inside `Chase` instead of being held by each enemy on its behalf, since an inlined loop would be rebuilt at every interruption and lose it.
+
+## Analysis
+
+In the original Lua code, the attack is a state machine whose states are never written down. Two booleans encode three phases and a timestamp encodes the cooldown, and that encoding only holds while all four writers agree about it. The agreement itself appears nowhere in the source.
+
+In Atmos, the phase is the program counter. The attack occupies a stretch of one task, and the enemy's phase is the line that task is sitting on. Each phase ends from inside itself, so nothing outside it can leave it half finished.
+
+The clearest difference is interruption. Lua tests `silenced` once at every phase boundary, and each new way of being interrupted adds another test at every one of them. In Atmos a single `watching` around the sequence ends whichever phase happens to be running.
