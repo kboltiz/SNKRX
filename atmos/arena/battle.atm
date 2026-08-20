@@ -10,7 +10,20 @@ val LEVEL_WAVES = [
     8, 8, 10, 12, 14, 16, 25,
 ]
 
-val WAVE_DELAY = 1s           ;; breather between clearing a wave and the next spawn
+;; SNKRX waits 0.5s after an arena clears, plants its marker, and lands
+;; the swarm 1.125s later. The marker's life is exactly that second gap
+val WAVE_DELAY = 0.5s
+val MARKER_LIFE = 1125ms
+val MARKER_PX = 24            ;; the 24x6 bar SNKRX crosses over itself
+val MARKER_BAR = (6/24)       ;; a bar's thickness, as a fraction of the layer
+val MARKER_W = (MARKER_PX/480)
+val MARKER_H = (MARKER_PX/270)
+val MARKER_BLINK_LO = 195ms   ;; first gap between blinks, before it tightens
+val MARKER_BLINK_HI = 240ms
+val MARKER_DECAY_LO = 0.84    ;; each blink shortens the next gap by this
+val MARKER_DECAY_HI = 0.87
+val MARKER_POP_LO = 1.4       ;; spring:pull(0.4, 0.6) in the original
+val MARKER_POP_HI = 1.6
 val CLUSTER_RADIUS = 0.08     ;; how tightly a horde packs around its spawn point
 ;; keeps a horde off the snake's face; the arena is thin, so a larger
 ;; clearance leaves only its far ends available
@@ -92,6 +105,55 @@ val func roll_elite(level) {
         }
     }
     return(nil)
+}
+
+val func rand_between(lo, hi) { (lo + (math.random() * (hi - lo))) }
+
+;; PATTERN #1 : Finite State Machines : shown -> hidden -> shown -> gone
+;;  - the blink is the loop's own rhythm rather than a timer that has to
+;;    be rescheduled, and the marker ends by outliving its `watching`
+;;
+;; SNKRX's SpawnMarker, ported from objects.lua: a red cross that flickers
+;; faster the closer the swarm gets, then hands the spot over to it
+val task Spawn_Marker (x, y) {
+    var hidden = false
+
+    pin spring = spawn Spring.Simple(rand_between(MARKER_POP_LO, MARKER_POP_HI))
+    emit @spring :start
+
+    ;; pico cannot turn a primitive, only a layer, so the cross is drawn
+    ;; square into one of its own and the layer is what carries the angle
+    val id = pico.layer.empty [ dim=['!', w=MARKER_PX, h=MARKER_PX] ]
+    pico.set.layer(id)
+    pico.set.effect [ rotate=[ angle=(math.random() * 360), anchor="C" ] ]
+    pico.set.layer(:world)
+
+    spawn {
+        loop on :draw {
+            if !hidden {
+                pico.set.layer(id)
+                pico.set.pencil [ color=COLORS.red.base ]
+                pico.output.draw.rect [ '%', x=0.5, y=0.5, w=1, h=MARKER_BAR ]
+                pico.output.draw.rect [ '%', x=0.5, y=0.5, w=MARKER_BAR, h=1 ]
+                pico.set.layer(:world)
+
+                pico.output.draw.layer(id, [ '%',
+                    x = x, y = y,
+                    w = (MARKER_W * spring.pub.scale),
+                    h = (MARKER_H * spring.pub.scale),
+                ])
+            }
+        }
+    }
+
+    var gap = rand_between(MARKER_BLINK_LO, MARKER_BLINK_HI)
+    watching (MARKER_LIFE) {
+        loop {
+            await(gap)
+            set hidden = !hidden
+            set gap = (gap * rand_between(MARKER_DECAY_LO, MARKER_DECAY_HI))
+        }
+    }
 }
 
 ;; one point per wave, inset so the whole cluster still fits in the arena
@@ -304,6 +366,11 @@ task Battle () {
             await(WAVE_DELAY)
 
             val centre = cluster_centre()
+
+            ;; the spot is marked first, and the swarm arrives as the
+            ;; marker goes out
+            await Spawn_Marker(centre.x, centre.y)
+
             ;; an elite takes the place of a seeker rather than adding to
             ;; the count, so the wave size stays 8 + (wave-1)*2
             loop _ in wave_enemies(i) {
