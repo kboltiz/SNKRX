@@ -124,6 +124,20 @@ val func cluster_pos(centre) {
 
 val OVERLAY_DELAY = 0.5s    ;; swallows the click that was in flight when the run ended
 
+val PAUSE_KEY = :Escape
+
+;; PATTERN #6 : Pausing : the arena freezes but stays on screen
+;;  - `toggle ... with :draw` suspends a task's reaction to everything
+;;    except drawing, so the battle holds its exact state and keeps
+;;    rendering it. Nothing has to be told it is paused
+val task Pause_Overlay () {
+    loop on :draw {
+        pico.set.pencil [ color=COLORS.idle.fg ]
+        pico.output.draw.text.fix("PAUSED", [ '%', x=0.5, y=0.5, h=0.06 ])
+        pico.output.draw.text.fix("esc to resume", [ '%', x=0.5, y=0.58, h=0.03 ])
+    }
+}
+
 ;; PATTERN #1 : Finite State Machines : overlay -> input -> done
 ;;  - awaited inside Battle, so the arena is only torn down once the
 ;;    player acknowledges the outcome
@@ -252,6 +266,25 @@ task Battle () {
             await Outcome("you win!", COLORS.yellow.base)
         }
         true
+    } with {
+        ;; PATTERN #6 : Pausing : snake, enemies and shots at once
+        ;;  - every one of them is already held here, so pausing is three
+        ;;    toggles rather than a flag each of them has to check
+        loop {
+            await :key.dn [key=PAUSE_KEY]
+
+            toggle snake(false) with :draw
+            toggle enemies(false) with :draw
+            toggle shots(false) with :draw
+
+            watching :key.dn [key=PAUSE_KEY] {
+                await Pause_Overlay()
+            }
+
+            toggle snake(true)
+            toggle enemies(true)
+            toggle shots(true)
+        }
     }
 }
 
