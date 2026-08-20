@@ -21,6 +21,8 @@ val WAVE_TEXT_X = 0.03        ;; top-left corner, above the arena
 val WAVE_TEXT_Y = 0.06
 val WAVE_TEXT_H = 0.04
 
+val func char_base(character) { COLORS@(CHARACTERS@character.color).base }
+
 val func level_waves(level) { LEVEL_WAVES@(math.min(level, #LEVEL_WAVES)) }
 ;; enemies in a wave, ported from SNKRX: 8 + (wave-1)*2
 val func wave_enemies(wave) { (8 + ((wave - 1) * 2)) }
@@ -124,6 +126,20 @@ val func cluster_pos(centre) {
 
 val OVERLAY_DELAY = 0.5s    ;; swallows the click that was in flight when the run ended
 
+;; the run's result, laid out where SNKRX puts it on a 480x270 screen.
+;; both faces are 8px there, so a row is LINE_H and the rest is scaled
+;; off it the way the original scales its Text2
+val OUTCOME_Y = (103/270)           ;; gh/2 - 32
+val OUTCOME_H = (LINE_H * 1.25)     ;; fat font, height_multiplier 1.25
+val SCORE_Y = 0.5                   ;; gh/2
+val SCORE_H = (LINE_H * 0.7)        ;; fat font at sx,sy 0.7
+val CONTINUE_Y = (159/270)          ;; gh/2 + 24, where restart run (r) sits
+val BUILD_X = (40/480)
+val BUILD_Y = (20/270)
+val BUILD_ROW_X = (20/480)
+val BUILD_ROW_Y = (40/270)
+val BUILD_ROW_STEP = (19/270)
+
 val PAUSE_KEY = :Escape
 
 ;; PATTERN #6 : Pausing : the arena freezes but stays on screen
@@ -143,17 +159,59 @@ val task Pause_Overlay () {
 ;;    player acknowledges the outcome
 ;; TODO: draw over a frozen screenshot of the arena, like Transition does,
 ;;       instead of covering it
-val task Outcome (msg, clr) {
+val task Outcome (msg, clr, party) {
+    ;; the level is read now: a wipe rebuilds the run once Battle returns
+    val level = G.level
+
+    ;; measured in the face it is drawn in, so the runs line up
+    pico.set.pencil [ font=FAT_FONT ]
+    val runs = parse_rich_text("[fg]level reached: [yellow]" ++ level)
+    val positions, width = measure_runs(runs, SCORE_H)
+    pico.set.pencil [ font=FONT ]
+    val scoreLeft = (0.5 - (width / 2))
+
     spawn {
         loop on :draw {
             pico.set.pencil [ color=:black ]
             pico.output.draw.rect [ '%', x=0.5, y=0.5, w=1, h=1 ]
 
+            pico.set.pencil [ font=FAT_FONT ]
+
             pico.set.pencil [ color=clr ]
-            pico.output.draw.text.fix(msg, [ '%', x=0.5, y=0.45, h=0.08 ])
+            pico.output.draw.text.fix(msg, [ '%', x=0.5, y=OUTCOME_Y, h=OUTCOME_H ])
+
+            ;; the score, with the number picked out the way SNKRX does
+            loop i, run in runs {
+                val pos = positions@i
+                pico.set.pencil [ color=run.color ]
+                pico.output.draw.text.fix(run.text, [ '%',
+                    x = (scoreLeft + pos.start + (pos.width / 2)),
+                    y = SCORE_Y,
+                    h = SCORE_H,
+                ])
+            }
+
+            pico.set.pencil [ font=FONT ]
+
+            ;; the party that got this far, down the left edge
+            pico.set.pencil [ color=COLORS.fg.base ]
+            pico.output.draw.text.fix("your build", [ '%',
+                x=BUILD_X, y=BUILD_Y, h=LINE_H,
+            ])
+            loop i, character in party {
+                pico.set.pencil [ color=char_base(character) ]
+                pico.output.draw.text.fix(CHARACTERS@character.name, [ '%',
+                    x = BUILD_ROW_X,
+                    y = (BUILD_ROW_Y + ((i - 1) * BUILD_ROW_STEP)),
+                    h = LINE_H,
+                    anchor = "W",
+                ])
+            }
 
             pico.set.pencil [ color=COLORS.idle.fg ]
-            pico.output.draw.text.fix("click to continue", [ '%', x=0.5, y=0.58, h=0.035 ])
+            pico.output.draw.text.fix("click to continue", [ '%',
+                x=0.5, y=CONTINUE_Y, h=LINE_H,
+            ])
         }
     }
 
@@ -219,6 +277,13 @@ task Battle () {
     pin shots = tasks()
     set SHOTS = shots
 
+    ;; the units drop themselves from G.party as they die, so the build
+    ;; shown at the end has to be taken before the first one falls
+    val startParty = []
+    loop i, character in G.party {
+        set startParty@i = character
+    }
+
     val maxWaves = level_waves(G.level)
     ;; boxed, so the counter reads the current wave without owning it
     val wave = [ n=1 ]
@@ -229,7 +294,7 @@ task Battle () {
     par :any {
         ;; Snake ends when its last slot does: the whole party is down
         await(snake)
-        await Outcome("you died", COLORS.red.base)
+        await Outcome("you died...", COLORS.red.base, startParty)
         false
     } with {
         loop i in maxWaves {
@@ -263,7 +328,7 @@ task Battle () {
 
         ;; the last level of a run has nothing to continue into
         if (G.level >= MAX_LEVEL) {
-            await Outcome("you win!", COLORS.yellow.base)
+            await Outcome("you win!", COLORS.yellow.base, startParty)
         }
         true
     } with {

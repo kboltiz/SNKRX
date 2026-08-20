@@ -59,6 +59,8 @@ set SOUNDS = [
     hover = "../assets/sounds/467951__benzix2__ui-button-click.ogg",
 ]
 set FONT = "../assets/fonts/PixulBrush.ttf"
+;; SNKRX draws the run's outcome and score in its fat pixel face
+set FAT_FONT = "../assets/fonts/FatPixelFont.ttf"
 
 set COLORS = [
     idle = [
@@ -122,6 +124,9 @@ set CHARACTERS = [
         sound = "../assets/sounds/Wind Bolt 20.ogg"
     ]
 ]
+
+;; one row of 8px text, the size both SNKRX faces are drawn at
+set LINE_H = 0.03
 
 set CLASS_ICON_ASPECT_RATIO = 3/2;
 

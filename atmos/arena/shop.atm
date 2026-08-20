@@ -1,6 +1,5 @@
 val PAD = 0.03
 val POPUP_PAD = 0.1
-val LINE_H = 0.03
 
 ;; run progress, centred along the bottom edge
 val LEVEL_Y = 0.94
