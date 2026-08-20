@@ -1,4 +1,6 @@
 val Enemies = require "arena.enemies"
+val Icons = require "arena.icon"
+val Char_Icon = Icons.Char_Icon
 val Snake  = require "arena.snake"
 
 ;; waves per level, ported from SNKRX's level_to_max_waves
@@ -198,53 +200,6 @@ val task Spawn_Marker (x, y) {
     }
 }
 
-;; PATTERN #1 : Finite State Machines : shown -> hidden -> shown -> gone
-;;  - the blink is the loop's own rhythm rather than a timer that has to
-;;    be rescheduled, and the marker ends by outliving its `watching`
-;;
-;; SNKRX's SpawnMarker, ported from objects.lua: a red cross that flickers
-;; faster the closer the swarm gets, then hands the spot over to it
-val task Spawn_Marker (x, y) {
-    var hidden = false
-
-    pin spring = spawn Spring.Simple(rand_between(MARKER_POP_LO, MARKER_POP_HI))
-    emit @spring :start
-
-    ;; pico cannot turn a primitive, only a layer, so the cross is drawn
-    ;; square into one of its own and the layer is what carries the angle
-    val id = pico.layer.empty [ dim=['!', w=MARKER_PX, h=MARKER_PX] ]
-    pico.set.layer(id)
-    pico.set.effect [ rotate=[ angle=(math.random() * 360), anchor="C" ] ]
-    pico.set.layer(:world)
-
-    spawn {
-        loop on :draw {
-            if !hidden {
-                pico.set.layer(id)
-                pico.set.pencil [ color=COLORS.red.base ]
-                pico.output.draw.rect [ '%', x=0.5, y=0.5, w=1, h=MARKER_BAR ]
-                pico.output.draw.rect [ '%', x=0.5, y=0.5, w=MARKER_BAR, h=1 ]
-                pico.set.layer(:world)
-
-                pico.output.draw.layer(id, [ '%',
-                    x = x, y = y,
-                    w = (MARKER_W * spring.pub.scale),
-                    h = (MARKER_H * spring.pub.scale),
-                ])
-            }
-        }
-    }
-
-    var gap = rand_between(MARKER_BLINK_LO, MARKER_BLINK_HI)
-    watching (MARKER_LIFE) {
-        loop {
-            await(gap)
-            set hidden = !hidden
-            set gap = (gap * rand_between(MARKER_DECAY_LO, MARKER_DECAY_HI))
-        }
-    }
-}
-
 ;; one point per wave, inset so the whole cluster still fits in the arena
 ;; and retried while it lands too close to the snake's head
 val func cluster_centre() {
@@ -287,9 +242,40 @@ val SCORE_H = (LINE_H * 0.7)        ;; fat font at sx,sy 0.7
 val CONTINUE_Y = (159/270)          ;; gh/2 + 24, where restart run (r) sits
 val BUILD_X = (40/480)
 val BUILD_Y = (20/270)
-val BUILD_ROW_X = (20/480)
+val BUILD_ROW_X = (20/480)          ;; where CharacterPart sits
+val BUILD_NAME_X = (34/480)         ;; 20 + 14, where the name follows it
 val BUILD_ROW_Y = (40/270)
 val BUILD_ROW_STEP = (19/270)
+val BUILD_ICON_W = 0.03             ;; the tile the shop uses for a party slot
+val BUILD_ICON_H = (0.03 * ASPECT_RATIO)
+
+;; PATTERN #4 : Lifespan Hierarchies : Row > Object,Char_Icon
+;;  - one row of the build, carrying the same tile the shop shows, so the
+;;    card on hover comes along with it rather than being rebuilt here
+val task Build_Row (i, character) {
+    set pub = [
+        id       = nil,
+        char     = character,
+        dragging = false,
+        rect = [ '%',
+            x = BUILD_ROW_X,
+            y = (BUILD_ROW_Y + ((i - 1) * BUILD_ROW_STEP)),
+            w = BUILD_ICON_W,
+            h = BUILD_ICON_H,
+        ],
+    ]
+    set pub.id = pico.layer.empty [ dim=pub.rect ]
+
+    spawn Object(task, 1)
+    spawn task->Char_Icon(r, cost, false) where {
+        r = [ '%', x=0.5, y=0.5, w=1, h=1 ]
+        cost = G.cost@character
+    }
+
+    loop on :draw {
+        pico.output.draw.layer(pub.id, pub.rect)
+    }
+}
 
 val PAUSE_KEY = :Escape
 
@@ -352,7 +338,7 @@ val task Outcome (msg, clr, party) {
             loop i, character in party {
                 pico.set.pencil [ color=char_base(character) ]
                 pico.output.draw.text.fix(CHARACTERS@character.name, [ '%',
-                    x = BUILD_ROW_X,
+                    x = BUILD_NAME_X,
                     y = (BUILD_ROW_Y + ((i - 1) * BUILD_ROW_STEP)),
                     h = LINE_H,
                     anchor = "W",
@@ -364,6 +350,12 @@ val task Outcome (msg, clr, party) {
                 x=0.5, y=CONTINUE_Y, h=LINE_H,
             ])
         }
+    }
+
+    ;; spawned after the panel above, so the tiles sit on top of it
+    pin rows = tasks()
+    loop i, character in party {
+        spawn @rows Build_Row(i, character)
     }
 
     await(OVERLAY_DELAY)

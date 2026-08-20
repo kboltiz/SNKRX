@@ -1,0 +1,145 @@
+;; the character tile and its hover popup, shared by the shop and by the
+;; build the outcome screen lists: both want the same tile with the same
+;; card behind it, so neither owns it
+
+val POPUP_PAD = 0.1
+
+task Popup (lines) {
+    val parsed = []
+    var maxWidth = 0
+
+    loop i, line in lines {
+        val runs = parse_rich_text(line)
+        val positions, width = measure_runs(runs, LINE_H)
+        set parsed@i = [ runs=runs, positions=positions, width=width ]
+        if width > maxWidth {
+            set maxWidth = width
+        }
+    }
+
+    val totalHeight = #lines * LINE_H
+
+    ;; calculate full rect to cover
+    val fullRect = [ '%',
+        x = 0.5, y = 0.5,
+        w = maxWidth / (1 - POPUP_PAD),
+        h = totalHeight / (1 - POPUP_PAD),
+    ]
+
+    pin spring = spawn Spring.Simple(1.1)
+    emit @spring :start
+
+    ;; TODO: popup layer may be required to draw it on top
+    loop on :draw {
+        val r = fullRect ++ [
+            w = fullRect.w * spring.pub.scale,
+            h = fullRect.h * spring.pub.scale,
+        ]
+
+        pico.set.pencil [ color=COLORS.idle.bg ]
+        pico.output.draw.rect(r)
+
+        val blockTop = r.y - ((totalHeight * spring.pub.scale) / 2)
+
+        loop i, entry in parsed {
+            val rowY = blockTop + (((i - 1) + 0.5) * LINE_H * spring.pub.scale)
+            val rowStart = r.x - ((entry.width * spring.pub.scale) / 2)
+
+            loop ri, run in entry.runs {
+                val pos = entry.positions@ri
+                pico.set.pencil [ color=run.color ]
+                pico.output.draw.text.fix(run.text, [ '%',
+                    x = rowStart + ((pos.start + (pos.width / 2)) * spring.pub.scale),
+                    y = rowY,
+                    h = LINE_H * (1 - POPUP_PAD) * spring.pub.scale,
+                ])
+            }
+        }
+    }
+
+    await(false)
+}
+
+;; PATTERN #4 : Lifespan Hierarchies : Char_Icon > loop > Popup
+;;  - nested loop owns Popup, which aborts on each iteration
+;; PATTERN #1 : Finite State Machines : Popup show/hide
+;;  - over on -> show -> off -> hide
+
+val task Char_Icon (me, rect, cost, showName) {
+    val char = me.pub.char
+    val charColorGroup = CHARACTERS@char.color
+    val charColors = COLORS@charColorGroup
+
+    spawn {
+        loop on :draw {
+            pico.set.layer(me.pub.id)
+            pico.set.pencil [ font=FONT ]
+
+            val rectColor = (if me.pub.dragging => COLORS.idle.bg => charColors.base)
+            val textColor = (if me.pub.dragging => COLORS.idle.fg => charColors.text)            
+
+            pico.set.pencil [ color=rectColor ]
+            pico.output.draw.rect(rect)
+
+            pico.set.pencil [ color=textColor ]
+            pico.output.draw.text.fix(tostring(cost)) <- [
+                '%', x=rect.x, y=rect.y, h=(rect.h*0.6),
+            ]
+
+            if showName {
+                pico.set.pencil [ color=charColors.base ]
+                pico.output.draw.text.fix(me.pub.char) <- [
+                    '%', x=rect.x, y=(rect.y + rect.h), h=(rect.h*0.6),
+                ]
+            }
+
+            pico.set.layer(:world)
+        }
+    }
+
+    val headerColor, labelColor, effectText =
+        if (G.level == 3)
+            => (:yellow, :idle,  CHARACTERS@char.effect_description)
+            => (:hover,  :hover, CHARACTERS@char.effect_description)
+
+    val classList = CHARACTERS@char.classes
+    var formattedClasses = []
+
+    loop i, c in classList {
+        val classColor = (
+            if (CLASSES@c.color == nil) => :idle => CLASSES@c.color
+        )
+        set formattedClasses = formattedClasses ++ ['[' ++ classColor ++ ']' ++ c]
+    }
+
+    ;; popup
+
+    do {
+        set pub = [
+            id    = me.pub.id,
+            layer = me.pub.id,
+            rect  = rect,
+        ]
+
+        spawn Object(task, 1)
+
+        val text = [ s1, s2, s3, s4, s5 ] where {
+            s1 = '[' ++ CHARACTERS@char.color ++ ']' ++
+                 CHARACTERS@char.name ++ "[idle] - cost: [gold]" ++ cost
+            s2 = "[idle]Classes: " ++ table.concat(formattedClasses, "[idle], ")
+            s3 = CHARACTERS@char.description
+            s4 = '[' ++ headerColor ++ ']' ++
+                 "Lv.3 [" ++ labelColor ++ ']' ++
+                 "Effect - " ++ CHARACTERS@char.effect_name
+            s5 = effectText
+        }
+
+        loop {
+            await :o.over.on [me=task]
+            spawn Popup(text)
+            await :o.over.off [me=task]
+        }
+    }
+}
+
+[ Popup = Popup, Char_Icon = Char_Icon ]
