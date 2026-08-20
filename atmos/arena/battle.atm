@@ -109,6 +109,95 @@ val func roll_elite(level) {
 
 val func rand_between(lo, hi) { (lo + (math.random() * (hi - lo))) }
 
+val COUNTDOWN_FROM = 3
+val COUNTDOWN_Y = (87/270)      ;; gh/2 - 48
+val COUNTDOWN_FLASH = 250ms     ;; hfx:use('condition1', 0.25, ...)
+val COUNTDOWN_POP = 1.5
+
+;; PATTERN #1 : Finite State Machines : 3 -> 2 -> 1 -> go
+;;  - the count is the loop's own variable, and the run of the task is
+;;    the countdown. Nothing else is told the arena has not started yet
+;;
+;; the snake is already loose while this runs, as it is in SNKRX: the
+;; player gets the three seconds to position before anything spawns
+val task Countdown () {
+    var n = COUNTDOWN_FROM
+    var clr = COLORS.red.base
+
+    pin spring = spawn Spring.Simple(COUNTDOWN_POP)
+
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ font=FAT_FONT ]
+            pico.set.pencil [ color=clr ]
+            pico.output.draw.text.fix(tostring(n), [ '%',
+                x = 0.5, y = COUNTDOWN_Y,
+                h = (LINE_H * spring.pub.scale),
+            ])
+            pico.set.pencil [ font=FONT ]
+        }
+    }
+
+    loop {
+        await(1s)
+        set n = (n - 1)
+        until (n <= 0)      ;; zero is never shown, the waves start instead
+
+        ;; whitens on the change, then settles back to red
+        emit @spring :start
+        set clr = COLORS.fg.base
+        await(COUNTDOWN_FLASH)
+        set clr = COLORS.red.base
+    }
+}
+
+;; PATTERN #1 : Finite State Machines : shown -> hidden -> shown -> gone
+;;  - the blink is the loop's own rhythm rather than a timer that has to
+;;    be rescheduled, and the marker ends by outliving its `watching`
+;;
+;; SNKRX's SpawnMarker, ported from objects.lua: a red cross that flickers
+;; faster the closer the swarm gets, then hands the spot over to it
+val task Spawn_Marker (x, y) {
+    var hidden = false
+
+    pin spring = spawn Spring.Simple(rand_between(MARKER_POP_LO, MARKER_POP_HI))
+    emit @spring :start
+
+    ;; pico cannot turn a primitive, only a layer, so the cross is drawn
+    ;; square into one of its own and the layer is what carries the angle
+    val id = pico.layer.empty [ dim=['!', w=MARKER_PX, h=MARKER_PX] ]
+    pico.set.layer(id)
+    pico.set.effect [ rotate=[ angle=(math.random() * 360), anchor="C" ] ]
+    pico.set.layer(:world)
+
+    spawn {
+        loop on :draw {
+            if !hidden {
+                pico.set.layer(id)
+                pico.set.pencil [ color=COLORS.red.base ]
+                pico.output.draw.rect [ '%', x=0.5, y=0.5, w=1, h=MARKER_BAR ]
+                pico.output.draw.rect [ '%', x=0.5, y=0.5, w=MARKER_BAR, h=1 ]
+                pico.set.layer(:world)
+
+                pico.output.draw.layer(id, [ '%',
+                    x = x, y = y,
+                    w = (MARKER_W * spring.pub.scale),
+                    h = (MARKER_H * spring.pub.scale),
+                ])
+            }
+        }
+    }
+
+    var gap = rand_between(MARKER_BLINK_LO, MARKER_BLINK_HI)
+    watching (MARKER_LIFE) {
+        loop {
+            await(gap)
+            set hidden = !hidden
+            set gap = (gap * rand_between(MARKER_DECAY_LO, MARKER_DECAY_HI))
+        }
+    }
+}
+
 ;; PATTERN #1 : Finite State Machines : shown -> hidden -> shown -> gone
 ;;  - the blink is the loop's own rhythm rather than a timer that has to
 ;;    be rescheduled, and the marker ends by outliving its `watching`
@@ -359,6 +448,8 @@ task Battle () {
         await Outcome("you died...", COLORS.red.base, startParty)
         false
     } with {
+        await Countdown()
+
         loop i in maxWaves {
             set wave.n = i
             emit :wave
