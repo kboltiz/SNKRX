@@ -207,13 +207,63 @@ val task Card (slot, char) {
     char
 }
 
+;; SNKRX's level_to_shop_odds: the chance a card comes from tier 1..4,
+;; by shop level. The port has no shop upgrade yet, so it rolls at 1
+val SHOP_ODDS = [
+    [70, 20, 10, 0],
+    [50, 30, 15, 5],
+    [25, 45, 20, 10],
+    [10, 25, 45, 20],
+    [5,  15, 30, 50],
+]
+val SHOP_LEVEL = 1
+val CARDS = 3
+val TIER_TRIES = 8      ;; bounded, since most tiers are still empty
+
+;; a character's cost is its tier, as it is in the original
+val func tier_chars (tier) {
+    val out = []
+    loop name, _ in CHARACTERS {
+        if (G.cost@name == tier) {
+            set out@+ = name
+        }
+    }
+    return(out)
+}
+
+val func roll_tier () {
+    val weights = SHOP_ODDS@SHOP_LEVEL
+    var total = 0
+    loop _, w in weights {
+        set total = (total + w)
+    }
+
+    var pick = math.random(1, total)
+    loop i, w in weights {
+        set pick = (pick - w)
+        if pick <= 0 {
+            return(i)
+        }
+    }
+    return(1)
+}
+
 val func roll () {
-    ;; TODO: port tier_weights / weighted_pick from the Lua roll logic
-    return [
-        :swordsman,
-        :wizard,
-        :swordsman,
-    ]
+    val out = []
+    loop i in CARDS {
+        ;; roll a tier, then anyone from it. A tier nobody fills yet is
+        ;; rolled again rather than left as a blank card
+        var chars = []
+        loop _ in TIER_TRIES {
+            set chars = tier_chars(roll_tier())
+            until (#chars > 0)
+        }
+        if #chars == 0 {
+            set chars = tier_chars(1)
+        }
+        set out@i = chars@(math.random(1, #chars))
+    }
+    return(out)
 }
 
 ;; PATTERN #4 : Lifespan Hierarchies : Shop > Widgets (go,roll,cards,party)
