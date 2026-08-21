@@ -2,6 +2,8 @@ val Abilities = require "arena.abilities"
 
 val SPACING = 0.03
 val TRAIL_MAX = 256
+;; a point is only worth laying if the head actually went somewhere
+val TRAIL_MIN_STEP = 0.0005
 val HEAD_SPEED = 0.4
 val TURN_RATE = 4
 val UNIT_SIZE = 0.03
@@ -364,9 +366,17 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
             set SNAKE_POS.x = pos.x
             set SNAKE_POS.y = pos.y
 
-            set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
-            if (#trail > TRAIL_MAX) {
-                table.remove(trail, 1)
+            ;; a halting head must not keep laying points on one spot: they
+            ;; would crowd the spread-out ones out of the trail, and the body
+            ;; samples what is left, closing up onto the head
+            val last = trail@(#trail)
+            val tdx = (pos.x - last.x)
+            val tdy = ((pos.y - last.y) / ASPECT_RATIO)
+            if math.sqrt((tdx*tdx) + (tdy*tdy)) >= TRAIL_MIN_STEP {
+                set trail@+ = [ x=pos.x, y=pos.y, r=pos.r ]
+                if (#trail > TRAIL_MAX) {
+                    table.remove(trail, 1)
+                }
             }
 
             val sampled = sample_all_trail(trail, #G.party)
