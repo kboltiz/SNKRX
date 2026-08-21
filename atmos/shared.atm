@@ -40,7 +40,8 @@ func level_reward (level) {
     val band = LEVEL_GOLD@(math.min(level, #LEVEL_GOLD))
     val gained = math.random(band@1, band@2)
     val interest = math.min(math.floor(G.gold / 5), 5)
-    return(gained + interest)
+    ;; kept apart, since the clear screen counts them up one line at a time
+    return [ gained=gained, interest=interest, total=(gained + interest) ]
 }
 
 ;; arena bounds, shared by the snake (walls) and the battle (spawns)

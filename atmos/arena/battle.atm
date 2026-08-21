@@ -111,6 +111,74 @@ val func roll_elite(level) {
 
 val func rand_between(lo, hi) { (lo + (math.random() * (hi - lo))) }
 
+val CLEAR_Y = (87/270)          ;; gh/2 - 48, where the countdown stood
+val CLEAR_HOLD = 2s             ;; SNKRX sits on the text before moving on
+val REWARD_STEP = 200ms         ;; each line lands a fifth of a second later
+val REWARD_Y = 0.46
+val REWARD_STEP_Y = (LINE_H * 1.5)      ;; height_multiplier 1.5 between rows
+
+;; the three lines SNKRX counts up, at whatever stage the reveal is on
+val func reward_lines (reward, shown) {
+    return [
+        "[fg]gold gained: [gold]" ++ (if shown >= 1 => reward.gained => 0),
+        "[fg]interest: [gold]" ++ (if shown >= 2 => reward.interest => 0),
+        "[fg]total: [gold]" ++ (if shown >= 3 => reward.total => 0),
+    ]
+}
+
+;; PATTERN #1 : Finite State Machines : nothing -> gained -> interest -> total
+;;  - the reveal is the loop counting, so no line has to be told which
+;;    stage the tally is at
+val task Arena_Clear (reward) {
+    ;; every stage is measured once here rather than per frame, since the
+    ;; text only changes on the four occasions the count moves on
+    val stages = []
+    loop st in 4 {
+        val measured = []
+        loop j, line in reward_lines(reward, st - 1) {
+            val runs = parse_rich_text(line)
+            val positions, width = measure_runs(runs, LINE_H)
+            set measured@j = [ runs=runs, positions=positions, width=width ]
+        }
+        set stages@st = measured
+    }
+
+    var shown = 0
+
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ font=FAT_FONT ]
+            pico.set.pencil [ color=COLORS.fg.base ]
+            pico.output.draw.text.fix("arena clear!", [ '%',
+                x=0.5, y=CLEAR_Y, h=LINE_H,
+            ])
+            pico.set.pencil [ font=FONT ]
+
+            loop j, row in stages@(shown + 1) {
+                val left = (0.5 - (row.width / 2))
+                loop i, run in row.runs {
+                    val pos = row.positions@i
+                    pico.set.pencil [ color=run.color ]
+                    pico.output.draw.text.fix(run.text, [ '%',
+                        x = (left + pos.start + (pos.width / 2)),
+                        y = (REWARD_Y + ((j - 1) * REWARD_STEP_Y)),
+                        h = LINE_H,
+                    ])
+                }
+            }
+        }
+    }
+
+    await(CLEAR_HOLD)
+    loop {
+        await(REWARD_STEP)
+        set shown = (shown + 1)
+        pico.output.sound(SOUNDS.pop)
+        until (shown >= 3)
+    }
+    await(CLEAR_HOLD)
+}
+
 val COUNTDOWN_FROM = 3
 val COUNTDOWN_Y = (87/270)      ;; gh/2 - 48
 val COUNTDOWN_FLASH = 250ms     ;; hfx:use('condition1', 0.25, ...)
@@ -475,6 +543,12 @@ task Battle () {
             ;; the pool empties only once every enemy of this wave is dead
             await :all ENEMIES
         }
+
+        ;; the waves are done: the clear screen counts the payout up
+        ;; before the gold actually lands
+        val reward = level_reward(G.level)
+        await Arena_Clear(reward)
+        set G.gold = (G.gold + reward.total)
 
         ;; the last level of a run has nothing to continue into
         if (G.level >= MAX_LEVEL) {
