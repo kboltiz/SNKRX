@@ -1,5 +1,34 @@
 ;; snake units now pull snake position from shared.atm 
 
+val func rand_between(lo, hi) { (lo + (math.random() * (hi - lo))) }
+
+;; the closest enemy inside range, or nil
+val func enemy_within(pos, range) {
+    var best = nil
+    var bestDist = range
+    loop _, t in ENEMIES {
+        val dx = (t.pub.x - pos.x)
+        val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
+        val dist = math.sqrt((dx*dx) + (dy*dy))
+        if dist <= bestDist {
+            set bestDist = dist
+            set best = [ x=t.pub.x, y=t.pub.y ]
+        }
+    }
+    return(best)
+}
+
+;; the burst both the wizard and a turret land on a spot
+val func burst_at(spot, size, dmg, knockback, srcX, srcY) {
+    val rect = [ "%", x=spot.x, y=spot.y, w=size, h=(size * ASPECT_RATIO) ]
+    loop _, t in ENEMIES {
+        if pico.vs.pos.rect([ "%", x=t.pub.x, y=t.pub.y ], rect) {
+            emit @t :hit [ dmg=dmg, srcX=srcX, srcY=srcY, knockback=knockback ]
+        }
+    }
+    return(rect)
+}
+
 val task Swordsman(unit_pos, enemy_pos) {
     print("swordsman_ability")
     
@@ -95,8 +124,90 @@ val task Wizard(unit_pos, enemy_pos) {
     await(0.3 * 1s)
 }
 
+
+val TURRET_SIZE = 0.022
+val TURRET_RANGE = 0.2
+val TURRET_DMG = 8
+val TURRET_BURST = 0.09
+val TURRET_KNOCKBACK = 0.04
+val TURRET_GAP_LO = 2750ms      ;; SNKRX fires its sentry every {2.75, 3.5}
+val TURRET_GAP_HI = 3500ms
+val TURRET_FLASH = 200ms
+
+;; PATTERN #4 : Lifespan Hierarchies : Battle > turrets
+;;  - spawned into the battle's pool rather than under the unit that built
+;;    it, so it keeps firing after the cast ends and after its builder dies
+val task Turret (x, y) {
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=COLORS.green.base ]
+            pico.output.draw.rect [ "%",
+                x=x, y=y, w=TURRET_SIZE, h=(TURRET_SIZE * ASPECT_RATIO),
+            ]
+        }
+    }
+
+    loop {
+        await(rand_between(TURRET_GAP_LO, TURRET_GAP_HI))
+
+        val spot = enemy_within([ x=x, y=y ], TURRET_RANGE)
+        if spot {
+            val rect = burst_at(spot, TURRET_BURST, TURRET_DMG, TURRET_KNOCKBACK, x, y)
+            val clr = pico.color.alpha(COLORS.green.base, 150)
+            watching (TURRET_FLASH) {
+                loop on :draw {
+                    pico.set.pencil [ color=clr ]
+                    pico.output.draw.rect(rect)
+                }
+            }
+        }
+    }
+}
+
+;; the cast is over in a moment, but what it leaves behind is not
+val task Sentry (unit_pos, enemy_pos, party) {
+    print("sentry_ability")
+    spawn @TURRETS Turret(unit_pos.x, unit_pos.y)
+    pico.output.sound(CHARACTERS@('sentry').sound)
+    await(0.3 * 1s)
+}
+
+val PRIEST_HEAL = 0.2       ;; a fifth of each unit's maximum
+val PRIEST_SIZE = 0.16
+
+;; PATTERN #5 : Signaling Mechanisms : Priest -> party pool
+;;  - the only ability that reaches the party rather than the enemies. It
+;;    is addressed at the pool the units sit in, so it needs no reference
+;;    to any one of them, and each unit decides what the heal means to it
+val task Priest (unit_pos, enemy_pos, party) {
+    print("priest_ability")
+    emit @party :heal [ frac=PRIEST_HEAL ]
+    pico.output.sound(CHARACTERS@('priest').sound)
+
+    pin spring = spawn Spring.Simple(0.8)
+    emit @spring :start
+
+    val clr = pico.color.alpha(COLORS.green.base, 150)
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=clr ]
+            pico.output.draw.rect([ "%",
+                x = unit_pos.x, y = unit_pos.y,
+                w = (PRIEST_SIZE * spring.pub.scale),
+                h = (PRIEST_SIZE * ASPECT_RATIO * spring.pub.scale),
+            ])
+        }
+    }
+
+    await(0.3 * 1s)
+}
+
+;; needs_target says whether the unit has to see an enemy before it fires.
+;; the priest is the first that does not, which is why the flag exists
 [
-    swordsman = [ caster = Swordsman, interval = 2 * 1s, range = 0.08 ],
-    wizard = [ caster = Wizard, interval = 5 * 1s, range = 0.13 ]
+    swordsman = [ caster = Swordsman, interval = 2 * 1s, range = 0.08, needs_target = true ],
+    wizard = [ caster = Wizard, interval = 5 * 1s, range = 0.13, needs_target = true ],
+    sentry = [ caster = Sentry, interval = 7 * 1s, range = 0.13, needs_target = true ],
+    priest = [ caster = Priest, interval = 12 * 1s, range = 0, needs_target = false ]
 ]
 

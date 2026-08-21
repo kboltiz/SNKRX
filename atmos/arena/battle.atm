@@ -491,6 +491,12 @@ task Battle () {
     pin shots = tasks()
     set SHOTS = shots
 
+    ;; PATTERN #7 : Dynamic Collections : turrets outlive the cast
+    ;;  - a sentry's turret keeps firing long after the cast that built it
+    ;;    has ended, so it cannot live under the caster
+    pin turrets = tasks()
+    set TURRETS = turrets
+
     ;; the units drop themselves from G.party as they die, so the build
     ;; shown at the end has to be taken before the first one falls
     val startParty = []

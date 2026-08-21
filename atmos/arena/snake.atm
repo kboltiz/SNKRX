@@ -222,6 +222,17 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
     ;; hp shared through events instead of pub
     var hp, maxHp = (100, 100)
 
+    ;; PATTERN #5 : Signaling Mechanisms : party pool -> unit
+    ;;  - the priest heals the pool, not any unit in particular, so each
+    ;;    one applies the fraction to its own maximum and tells its bar
+    spawn {
+        loop {
+            val h = await :heal
+            set hp = math.min((hp + math.floor(maxHp * h.frac)), maxHp)
+            emit @2 :hp [ slot=slot, hp=hp, max=maxHp ]
+        }
+    }
+
     ;; movement, no exit condition of its own;
     ;; cleaned up automatically on task cleanup (PATTERN #4)
     spawn {
@@ -367,12 +378,17 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
         ;; terminate SnakeUnit itself
         ;; cooldown before checking again (TODO: ok on startup?)
         loop on (ability.interval) {
-            ;; check every tick until something's in range
-            val enemy_pos = loop on :clock {
-                until (enemy_in_range(ability.range, pos))
+            ;; a healer has nothing to aim at, so it does not stand around
+            ;; waiting for an enemy the way the attackers do
+            var enemy_pos = nil
+            if ability.needs_target {
+                set enemy_pos = loop on :clock {
+                    until (enemy_in_range(ability.range, pos))
+                }
             }
 
-            spawn @castPool ability.caster(pos, enemy_pos)
+            ;; the party comes along, since an ability may address it
+            spawn @castPool ability.caster(pos, enemy_pos, party)
             emit :flash_unit
             ;; @2 is Snake: 0 is this unit, 1 the party pool it sits in.
             ;; the enclosing spawn block is not a level of its own

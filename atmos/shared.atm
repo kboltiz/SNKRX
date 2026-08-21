@@ -18,6 +18,8 @@ func new_run () {
         cost  = [
             swordsman = 1,
             wizard    = 1,
+            sentry    = 2,
+            priest    = 4,
         ],
     ]
 }
@@ -88,6 +90,11 @@ set COLORS = [
         base = [ '%', r=0.91, g=0.11, b=0.22 ],
         text = [ '%', r=0.91, g=0.11, b=0.22 ]
     ],
+    ;; SNKRX's #8bbf40
+    green = [
+        base = [ '%', r=0.545, g=0.749, b=0.251 ],
+        text = [ '%', r=0.408, g=0.561, b=0.188 ]
+    ],
     ;; SNKRX's #f07021 and #dadada
     orange = [
         base = [ '%', r=0.941, g=0.439, b=0.129 ],
@@ -102,7 +109,10 @@ set COLORS = [
 set CLASSES = [
     warrior = [color = :yellow],
     mage = [color = :blue],
-    nuker = [color = :red]
+    nuker = [color = :red],
+    ranger = [color = :green],
+    conjurer = [color = :orange],
+    healer = [color = :green]
 ]
 
 set CHARACTERS = [
@@ -114,6 +124,24 @@ set CHARACTERS = [
         effect_name = "Cleave",
         effect_description = "the swordsman's damage is doubled",
         sound = "../assets/sounds/Heavy sword woosh 1.ogg"
+    ],
+    sentry = [
+        name = "Sentry",
+        color = :green,
+        classes = [:ranger, :conjurer],
+        description = "builds a turret that shoots on its own, dealing [yellow]8[idle] damage a burst",
+        effect_name = "Sentry Barrage",
+        effect_description = "the turret fires twice as often",
+        sound = "../assets/sounds/Wind Bolt 20.ogg"
+    ],
+    priest = [
+        name = "Priest",
+        color = :green,
+        classes = [:healer],
+        description = "heals every unit for [yellow]20%[idle] of its health, needing no target",
+        effect_name = "Divine Intervention",
+        effect_description = "the heal is doubled",
+        sound = "../assets/sounds/bamboo_hit_by_lord.ogg"
     ],
     wizard = [
         name = "Wizard",
@@ -138,7 +166,9 @@ set TEXT_TAGS = [
     gold = COLORS.gold,
     yellow = COLORS.yellow.base,
     blue = COLORS.blue.base,
-    red = COLORS.red.base
+    red = COLORS.red.base,
+    green = COLORS.green.base,
+    orange = COLORS.orange.base
 ]
 
 ;; moved from battle.atm for enemies and snake to use
