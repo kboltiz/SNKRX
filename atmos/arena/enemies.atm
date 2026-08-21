@@ -91,6 +91,22 @@ val func seek_step(pos, drift, dt, speed) {
 }
 
 ;; slows by this much per second, ending up ~e.knockback from where it was hit
+;; PATTERN #1 : Finite State Machines : base -> white -> base
+;;  - the same shape the snake's units use: the hit whitens whatever is
+;;    drawing, and the drawing side never asks whether it was hit
+val HIT_FLASH = 100ms
+
+;; runs alongside whatever else reacts to :hit, and only says what colour
+;; the thing should be drawn in
+val task Flash (state, base) {
+    loop {
+        await :hit
+        set state.clr = :white
+        await(HIT_FLASH)
+        set state.clr = base
+    }
+}
+
 val KNOCKBACK_DECAY = 14
 val KNOCKBACK_STOP = 0.005
 
@@ -116,6 +132,9 @@ val task Seeker(startX, startY) {
 
     ;; its own chase, so identical seekers do not travel identical paths
     pin chase = spawn Chase(pub, SEEKER_SPEED)
+
+    val look = [ clr = :red ]
+    spawn Flash(look, :red)
 
     spawn {
         loop {
@@ -156,7 +175,7 @@ val task Seeker(startX, startY) {
 
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=:red ]
+            pico.set.pencil [ color=look.clr ]
             pico.output.draw.oval([ "%",
                 x=pub.x, y=pub.y,
                 w=SEEKER_SIZE, h=(SEEKER_SIZE * ASPECT_RATIO),
@@ -203,6 +222,9 @@ val task Headbutter(startX, startY) {
 
     var windup = 0      ;; 0..1 while winding up, 0 the rest of the time
 
+    val look = [ clr = nil ]    ;; set only while the flash is up
+    spawn Flash(look, nil)
+
     ;; the chase is what it does by default: the attack below switches it off
     ;; while the ram lands, rather than restating it either side
     pin chase = spawn Chase(pub, SEEKER_SPEED)
@@ -246,12 +268,13 @@ val task Headbutter(startX, startY) {
 
     spawn {
         loop on :draw {
-            ;; whitens as the wind-up completes, so the ram is readable
-            pico.set.pencil [ color=['%',
+            ;; a hit whitens it outright, otherwise it whitens as the
+            ;; wind-up completes, so the ram stays readable
+            pico.set.pencil [ color=(look.clr || ['%',
                 r = (COLORS.orange.base.r + ((1 - COLORS.orange.base.r) * windup)),
                 g = (COLORS.orange.base.g + ((1 - COLORS.orange.base.g) * windup)),
                 b = (COLORS.orange.base.b + ((1 - COLORS.orange.base.b) * windup)),
-            ] ]
+            ]) ]
             pico.output.draw.rect([ "%",
                 x=pub.x, y=pub.y,
                 w=HEADBUTTER_W, h=(HEADBUTTER_H * ASPECT_RATIO),
@@ -325,6 +348,9 @@ val task Shooter(startX, startY, shots) {
     var health = SHOOTER_HEALTH
     set pub = [ x=startX, y=startY, r=0 ]
 
+    val look = [ clr = COLORS.fg.base ]
+    spawn Flash(look, COLORS.fg.base)
+
     spawn {
         ;; walks in with the clump, then plants itself for good
         par :any {
@@ -352,7 +378,7 @@ val task Shooter(startX, startY, shots) {
 
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=COLORS.fg.base ]
+            pico.set.pencil [ color=look.clr ]
             pico.output.draw.rect([ "%",
                 x=pub.x, y=pub.y,
                 w=SHOOTER_W, h=(SHOOTER_H * ASPECT_RATIO),
