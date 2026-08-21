@@ -122,6 +122,30 @@ val trackH = (barH - (border * 2 * ASPECT_RATIO))
 
 val func char_colors(character) { COLORS@(CHARACTERS@character.color) }
 
+;; PATTERN #1 : Finite State Machines : apart -> touching -> apart
+;;  - a contact is a task rather than a flag. While it is alive this enemy
+;;    has already landed its hit, so nothing has to remember that it did,
+;;    and the pair coming apart is the task ending rather than a reset
+;; PATTERN #4 : Lifespan Hierarchies : Unit > contacts
+;;  - it also ends if the enemy dies mid-contact, since it watches it
+val task Contact (t, pos, radius) {
+    set pub = [ enemy = t ]
+    watching (t) {
+        loop on :clock {
+            val dx = (t.pub.x - pos.x)
+            val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
+            until (math.sqrt((dx*dx) + (dy*dy)) >= radius)
+        }
+    }
+}
+
+;; whether this enemy is already inside a contact
+val func contacting (contacts, t) {
+    loop _, c in contacts {
+        until (c.pub.enemy == t, true)
+    }
+}
+
 ;; PATTERN #1 : Finite State Machines : live bars -> spent frame
 ;;  - outlives the unit it reports on, so it can watch it die and carry on
 ;;    drawing; the slot it was given never moves, which is what keeps the
@@ -399,8 +423,12 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
     ;; enemy collision
     val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
     val TOUCH_KNOCKBACK = 0.05
-    val TOUCH_DMG = 5
+    val TOUCH_DMG = 5       ;; what the enemy lands on the unit
+    val TOUCH_BACK = 10     ;; and what the unit lands back on it
     val SHOT_RADIUS = ((UNIT_SIZE/2) + 0.01)
+
+    ;; one task per enemy currently in contact with this unit
+    pin contacts = tasks()
 
     loop on :clock {
         var taken = 0
@@ -408,11 +436,13 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
         loop _, t in ENEMIES {
             val dx = (t.pub.x - pos.x)
             val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
-            if math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS {
-                ;; dmg=0: running into a unit only shoves the enemy back,
-                ;; the unit is the one that takes the damage
+            ;; SNKRX settles a collision once, on the frame it begins:
+            ;; both sides take a hit and the enemy is shoved off
+            if (math.sqrt((dx*dx) + (dy*dy)) < TOUCH_RADIUS) &&
+               !contacting(contacts, t) {
+                spawn @contacts Contact(t, pos, TOUCH_RADIUS)
                 emit @t :hit [
-                    dmg=0,
+                    dmg=TOUCH_BACK,
                     srcX=pos.x, srcY=pos.y,
                     knockback=TOUCH_KNOCKBACK,
                 ]
