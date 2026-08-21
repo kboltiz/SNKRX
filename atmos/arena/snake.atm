@@ -215,7 +215,7 @@ val task StatBars(slot, character, unit) {
 
 ;; slot is where this unit's bars sit and never moves, while index is its
 ;; place in the snake, which moves up as the units ahead of it die
-val task SnakeUnit(index, character, trail, positions, party) {
+val task SnakeUnit(index, character, trail, positions, party, pace) {
     val slot = index
     val colors = char_colors(character)
     var pos = [ x=SNAKE_POS.x, y=SNAKE_POS.y, r=0 ]
@@ -252,7 +252,9 @@ val task SnakeUnit(index, character, trail, positions, party) {
         ;; index is 1 from here on: this unit inherited the head
         loop {
             val us = await :clock
-            val dt = us/1s;
+            ;; pace.n is 1 in play and eases to 0 when the arena clears,
+            ;; which slows the turn and the step together
+            val dt = ((us/1s) * pace.n);
 
             val m = pico.get.mouse('%')
             val dxVisual = (m.x - pos.x)
@@ -428,7 +430,7 @@ val task SnakeUnit(index, character, trail, positions, party) {
     }
 }
 
-val task Snake() {
+val task Snake(pace) {
     var trail = [[ x=0.5, y=0.5, r=0 ]]
     val positions = []
 
@@ -441,7 +443,7 @@ val task Snake() {
     pin party = tasks()
     loop i, character in G.party {
         print("Spawning "++character++ " " ++ i)
-        spawn @party SnakeUnit(i, character, trail, positions, party)
+        spawn @party SnakeUnit(i, character, trail, positions, party, pace)
     }
 
     loop i, unit in party {

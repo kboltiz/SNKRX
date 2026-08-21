@@ -111,6 +111,9 @@ val func roll_elite(level) {
 
 val func rand_between(lo, hi) { (lo + (math.random() * (hi - lo))) }
 
+val SLOW_HOLD = 2s              ;; SNKRX holds the pace before easing off
+val SLOW_RAMP = 700ms           ;; then tweens main_slow_amount to 0 over this
+
 val CLEAR_Y = (87/270)          ;; gh/2 - 48, where the countdown stood
 val CLEAR_HOLD = 2s             ;; SNKRX sits on the text before moving on
 val REWARD_STEP = 200ms         ;; each line lands a fifth of a second later
@@ -500,7 +503,9 @@ task Battle () {
     val wave = [ n=1 ]
     spawn Wave_Text(wave, maxWaves)
 
-    pin snake = spawn Snake()
+    ;; boxed, so the snake reads its own pace without owning it
+    val pace = [ n=1 ]
+    pin snake = spawn Snake(pace)
 
     par :any {
         ;; Snake ends when its last slot does: the whole party is down
@@ -547,6 +552,19 @@ task Battle () {
         ;; the waves are done: the clear screen counts the payout up
         ;; before the gold actually lands
         val reward = level_reward(G.level)
+
+        ;; the snake coasts to a halt while the tally runs, the way SNKRX
+        ;; eases main_slow_amount to zero once the arena is clear
+        spawn {
+            await(SLOW_HOLD)
+            var elapsed = 0
+            loop us on :clock {
+                set elapsed = (elapsed + (us/1s))
+                set pace.n = math.max((1 - (elapsed / (SLOW_RAMP/1s))), 0)
+                until (pace.n <= 0)
+            }
+        }
+
         await Arena_Clear(reward)
         set G.gold = (G.gold + reward.total)
 
