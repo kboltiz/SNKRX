@@ -452,7 +452,9 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
     val TOUCH_RADIUS = ((UNIT_SIZE/2) + (0.025/2))
     val TOUCH_KNOCKBACK = 0.05
     val TOUCH_DMG = 5       ;; what the enemy lands on the unit
-    val TOUCH_BACK = 10     ;; and what the unit lands back on it
+    ;; a shove, not an attack: a seeker has 20 health, so running one down
+    ;; takes ten passes and the abilities stay the way damage is dealt
+    val TOUCH_BACK = 2
     val SHOT_RADIUS = ((UNIT_SIZE/2) + 0.01)
 
     ;; one task per enemy currently in contact with this unit
