@@ -2,31 +2,14 @@
 
 val func rand_between(lo, hi) { (lo + (math.random() * (hi - lo))) }
 
-;; the closest enemy inside range, or nil
-val func enemy_within(pos, range) {
-    var best = nil
-    var bestDist = range
+;; the first enemy within radius of a point, or nil. Enemies do not look
+;; for friendly shots, so a shot has to do the looking itself
+val func enemy_hit(px, py, radius) {
     loop _, t in ENEMIES {
-        val dx = (t.pub.x - pos.x)
-        val dy = ((t.pub.y - pos.y) / ASPECT_RATIO)
-        val dist = math.sqrt((dx*dx) + (dy*dy))
-        if dist <= bestDist {
-            set bestDist = dist
-            set best = [ x=t.pub.x, y=t.pub.y ]
-        }
+        val dx = (t.pub.x - px)
+        val dy = ((t.pub.y - py) / ASPECT_RATIO)
+        until (math.sqrt((dx*dx) + (dy*dy)) < radius, t)
     }
-    return(best)
-}
-
-;; the burst both the wizard and a turret land on a spot
-val func burst_at(spot, size, dmg, knockback, srcX, srcY) {
-    val rect = [ "%", x=spot.x, y=spot.y, w=size, h=(size * ASPECT_RATIO) ]
-    loop _, t in ENEMIES {
-        if pico.vs.pos.rect([ "%", x=t.pub.x, y=t.pub.y ], rect) {
-            emit @t :hit [ dmg=dmg, srcX=srcX, srcY=srcY, knockback=knockback ]
-        }
-    }
-    return(rect)
 }
 
 val task Swordsman(unit_pos, enemy_pos) {
@@ -125,14 +108,54 @@ val task Wizard(unit_pos, enemy_pos) {
 }
 
 
-val TURRET_SIZE = 0.022
-val TURRET_RANGE = 0.2
-val TURRET_DMG = 8
-val TURRET_BURST = 0.09
-val TURRET_KNOCKBACK = 0.04
+val TURRET_SIZE = 0.024
 val TURRET_GAP_LO = 2750ms      ;; SNKRX fires its sentry every {2.75, 3.5}
 val TURRET_GAP_HI = 3500ms
-val TURRET_FLASH = 200ms
+val TURRET_SHOTS = 4            ;; four bullets, square to each other
+
+val SHOT_SIZE = 0.01
+val SHOT_SPEED = 0.35
+val SHOT_LIFE = 2s
+val SHOT_DMG = 8
+val SHOT_KNOCKBACK = 0.04
+val SHOT_HIT_R = 0.02
+
+;; PATTERN #7 : Dynamic Collections : a bullet outlives the turret's volley
+;;  - it leaves on its own heading and ends on whichever comes first: an
+;;    enemy, a wall, or its own age
+val task Turret_Shot (startX, startY, r) {
+    var px, py = (startX, startY)
+
+    spawn {
+        loop on :draw {
+            pico.set.pencil [ color=COLORS.green.base ]
+            pico.output.draw.oval([ "%",
+                x=px, y=py, w=SHOT_SIZE, h=(SHOT_SIZE * ASPECT_RATIO),
+            ])
+        }
+    }
+
+    par :any {
+        ;; travelling, until it leaves the arena
+        loop us on :clock {
+            val dt = us/1s
+            set px = (px + (math.cos(r) * SHOT_SPEED * dt))
+            set py = (py + (math.sin(r) * SHOT_SPEED * dt * ASPECT_RATIO))
+            until ((px < ARENA_LEFT) || (px > ARENA_RIGHT) ||
+                   (py < ARENA_TOP) || (py > ARENA_BOTTOM))
+        }
+    } with {
+        ;; the first enemy it reaches takes it, and the shot is spent
+        val t = loop on :clock {
+            until (enemy_hit(px, py, SHOT_HIT_R))
+        }
+        emit @t :hit [
+            dmg=SHOT_DMG, srcX=px, srcY=py, knockback=SHOT_KNOCKBACK,
+        ]
+    } with {
+        await(SHOT_LIFE)
+    }
+}
 
 ;; PATTERN #4 : Lifespan Hierarchies : Battle > turrets
 ;;  - spawned into the battle's pool rather than under the unit that built
@@ -141,25 +164,20 @@ val task Turret (x, y) {
     spawn {
         loop on :draw {
             pico.set.pencil [ color=COLORS.green.base ]
-            pico.output.draw.rect [ "%",
+            pico.output.draw.oval([ "%",
                 x=x, y=y, w=TURRET_SIZE, h=(TURRET_SIZE * ASPECT_RATIO),
-            ]
+            ])
         }
     }
 
+    ;; fires on its own clock whether or not anything is in front of it,
+    ;; four bullets square to each other, off a fresh heading each volley
     loop {
         await(rand_between(TURRET_GAP_LO, TURRET_GAP_HI))
-
-        val spot = enemy_within([ x=x, y=y ], TURRET_RANGE)
-        if spot {
-            val rect = burst_at(spot, TURRET_BURST, TURRET_DMG, TURRET_KNOCKBACK, x, y)
-            val clr = pico.color.alpha(COLORS.green.base, 150)
-            watching (TURRET_FLASH) {
-                loop on :draw {
-                    pico.set.pencil [ color=clr ]
-                    pico.output.draw.rect(rect)
-                }
-            }
+        val base = (math.random() * 2 * math.pi)
+        loop k in TURRET_SHOTS {
+            ;; into the battle's pool, so a volley is not tied to the turret
+            spawn @TURRETS Turret_Shot(x, y, (base + ((k - 1) * (math.pi/2))))
         }
     }
 }
