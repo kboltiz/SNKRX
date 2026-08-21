@@ -122,6 +122,16 @@ val trackH = (barH - (border * 2 * ASPECT_RATIO))
 
 val func char_colors(character) { COLORS@(CHARACTERS@character.color) }
 
+;; how close to the edge counts as being against it
+val WALL_TOUCH = 0.004
+
+val func at_wall(pos) {
+    return ((pos.x <= (ARENA_LEFT + WALL_TOUCH)) ||
+            (pos.x >= (ARENA_RIGHT - WALL_TOUCH)) ||
+            (pos.y <= (ARENA_TOP + WALL_TOUCH)) ||
+            (pos.y >= (ARENA_BOTTOM - WALL_TOUCH)))
+}
+
 ;; PATTERN #1 : Finite State Machines : apart -> touching -> apart
 ;;  - a contact is a task rather than a flag. While it is alive this enemy
 ;;    has already landed its hit, so nothing has to remember that it did,
@@ -257,6 +267,24 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
         }
     }
 
+    ;; PATTERN #1 : Finite State Machines : clear -> against the wall -> clear
+    ;;  - a follower rides the head's trail, so it reaches the wall a moment
+    ;;    after the head did and flashes then. The jolt runs down the body in
+    ;;    the order the units arrive, rather than all at once
+    ;;  - the second loop is what stops a unit scraping along the wall from
+    ;;    flashing every frame: it has to come away before it can flash again
+    spawn {
+        loop {
+            loop on :clock {
+                until (at_wall(pos))
+            }
+            emit :flash_unit
+            loop on :clock {
+                until (!at_wall(pos))
+            }
+        }
+    }
+
     ;; movement, no exit condition of its own;
     ;; cleaned up automatically on task cleanup (PATTERN #4)
     spawn {
@@ -324,7 +352,7 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
             }
                 
             if (hitVertical || hitHorizontal) {
-                emit(:flash_unit)
+                emit :flash_unit
             }
 
             set nextX = math.max(math.min(nextX, ARENA_RIGHT), ARENA_LEFT)
