@@ -798,3 +798,26 @@ The two versions detect the same event by opposite means. Lua asks *is the enemy
 That difference is what removes `spawning_enemies`. The flag is not incidental complexity — it is the necessary repair to a predicate that is slightly too broad, and it costs a hand-computed duration that must track the spawn animation forever. Neither the flag nor the duration has anything to say once the ending is awaited rather than inferred.
 
 The same applies at the level above. `wave > max_waves` and `quitting` describe a control-flow position — *after the last wave* — in terms of data, and must be re-tested every frame because data cannot say where the program is. In Atmos that position is reachable directly, and the level's end is written on the line where it happens.
+
+---
+
+# Measurements
+
+Dense lines of code — non-blank, non-comment — over the spans each section above quotes, taken whole: the enclosing function, callback or task rather than the excerpt. *Phase vars* counts the Lua variables that record which phase the code is in. Positioning and anchoring is not counted, because its three Lua lines are three button constructors carrying their entire action closures.
+
+| Feature                         | Atmos | Lua | Phase vars |
+|---------------------------------|------:|----:|-----------:|
+| Button encapsulation and sizing |    22 |  18 |          0 |
+| Hover detection                 |    22 |  27 |          2 |
+| Spring based scaling            |    41 |  23 |          5 |
+| Button click action flow        |    19 |  32 |          2 |
+| Transition effect control flow  |    63 |  32 |          4 |
+| Snake unit state management     |    28 |  83 |          6 |
+| Snake unit status signalling    |    71 |  82 |          4 |
+| Elite attack phases             |    28 |  25 |          3 |
+| Wave progression                |    24 |  35 |          3 |
+| TOTAL                           |   318 | 357 |         29 |
+
+Atmos carries four such variables across all nine: `scale` and `v` in the spring, `pct` in the transition, `look.clr` in the hit flash.
+
+Counted on the Lua side are SNKRX's own `engine/` helpers wherever the port had to write the equivalent itself — `Spring`, `GameObject`'s mouse dispatch, `HitFX`. LOVE2D and pico-sdl primitives are excluded on both sides. The two rows where Atmos costs more, the spring and the transition, are where LOVE2D supplied a `Spring` class and a `Timer` with `after` and `tween`, and pico supplies neither.
