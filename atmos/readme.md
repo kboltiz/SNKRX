@@ -431,7 +431,7 @@ The `following` flag starts `false`, triggers once, and remains `true` for the r
 
 ## Atmos + Pico
 
-In Atmos, death is the end of the unit's body. No state variable, no transition to track [(snake.atm)](TODO):
+In Atmos, death is the end of the unit's body. No state variable, no transition to track [(snake.atm)](https://github.com/kboltiz/SNKRX/blob/1320946107883d040060ea3186c8456361e86ff7/atmos/arena/snake.atm#L509):
 
 ```lua
 if hp <= 0 {
@@ -443,7 +443,7 @@ if hp <= 0 {
 
 When the unit returns, `SnakeUnit` terminates. Movement, drawing, the ability loop, the cast pool and any pinned spring were all spawned inside the unit task, so they are aborted with it. Nothing checks a flag, because nothing is left running to check one. The status bars are the one thing that outlives the unit, and they need nothing from this return to do so: they watch the unit from the outside and carry on in its slot by themselves.
 
-Head identity is a phase of the task, not a stored state nor a branch re-tested every tick [(snake.atm)](TODO):
+Head identity is a phase of the task, not a stored state nor a branch re-tested every tick [(snake.atm)](https://github.com/kboltiz/SNKRX/blob/1320946107883d040060ea3186c8456361e86ff7/atmos/arena/snake.atm#L294):
 
 ```lua
 if index > 1 {
@@ -467,7 +467,7 @@ loop {
 
 A unit that starts behind runs the race above: shifting on one side, following on the other. The moment its index reaches 1 the race ends, and control falls through to the head loop below it. Promotion is the task advancing a line. No flag is transferred, no follower list is moved, and past that point nothing asks whether this unit is the head, because a task that reached the head loop cannot be anything else.
 
-Reindexing rides on the pool that holds the party. Each unit adjusts only its own index [(snake.atm)](TODO):
+Reindexing rides on the pool that holds the party. Each unit adjusts only its own index [(snake.atm)](https://github.com/kboltiz/SNKRX/blob/1320946107883d040060ea3186c8456361e86ff7/atmos/arena/snake.atm#L298):
 
 ```lua
 loop i on :any party {
@@ -531,7 +531,7 @@ The flash is triggered in `hit` by calling `self.hfx:use('hit', ...)`, which set
 
 ## Atmos + Pico
 
-In the atmos counterpart the bar is a task spawned beside the unit rather than inside it, in a pool of its own, holding the slot the unit was laid out in [(snake.atm)](TODO):
+In the atmos counterpart the bar is a task spawned beside the unit rather than inside it, in a pool of its own, holding the slot the unit was laid out in [(snake.atm)](https://github.com/kboltiz/SNKRX/blob/1320946107883d040060ea3186c8456361e86ff7/atmos/arena/snake.atm#L519):
 
 ```lua
 val task Snake() {
@@ -581,7 +581,7 @@ val task StatBars(slot, character, unit) {
 
 That is what keeps the bar's slot fixed at birth while the unit's party index shifts underneath it. Nothing bookkeeps the dead, because the task that reported on a unit is the same task that goes on standing in for it.
 
-The hit flash is a state machine, but only one side of it draws [(snake.atm)](TODO):
+The hit flash is a state machine, but only one side of it draws [(snake.atm)](https://github.com/kboltiz/SNKRX/blob/1320946107883d040060ea3186c8456361e86ff7/atmos/arena/snake.atm#L389):
 
 ```lua
 var clr = colors.base
@@ -714,3 +714,87 @@ In the original Lua code, the attack is a state machine whose states are never w
 In Atmos, the phase is the program counter. The attack occupies a stretch of one task, and the enemy's phase is the line that task is sitting on. Each phase ends from inside itself, so nothing outside it can leave it half finished.
 
 The clearest difference is interruption. Lua tests `silenced` once at every phase boundary, and each new way of being interrupted adds another test at every one of them. In Atmos a single `watching` around the sequence ends whichever phase happens to be running.
+
+# Wave Progression
+
+A level is a run of waves, and a wave ends when the last of its enemies dies. In SNKRX that ending is a predicate polled every frame against a global object list; in Atmos it is an `await` on the pool the wave spawned into.
+
+## Lua + LOVE2D
+
+The arena installs the wave spawner once, as a condition and an action [(arena.lua)](https://github.com/kboltiz/SNKRX/blob/6b93a64d694d59472375467648868ae4521d6706/arena.lua#L184):
+
+```lua
+self.t:every(function()
+  return #self.main:get_objects_by_classes(self.enemies) <= 0 and not self.spawning_enemies
+end, function()
+  self.wave = self.wave + 1
+  if self.wave > self.max_waves then return end
+  self.t:after(0.5, function()
+    self.spawning_enemies = true
+    self.t:after((8 + (self.wave-1)*2)*0.1 + 0.5 + 0.75, function()
+      self.spawning_enemies = false
+    end, 'spawning_enemies')
+    local p = spawn_points[random:table{'left', 'middle', 'right'}]
+    SpawnMarker{group = self.effects, x = p.x, y = p.y}
+    self.t:after(1.125, function()
+      self:spawn_n_enemies(p, nil, 8 + (self.wave+math.min(self.loop*12, 200)-1)*2)
+    end)
+  end)
+end, self.max_waves+1)
+
+self.t:every(function()
+  return #self.main:get_objects_by_classes(self.enemies) <= 0 and self.wave > self.max_waves
+     and not self.quitting and not self.spawning_enemies
+end, function() self:quit() end)
+```
+
+Three pieces of state carry the progression. `self.wave` is the counter, `spawning_enemies` guards the gap between waves, and `quitting` keeps the level from ending twice.
+
+`spawning_enemies` exists only because of how the ending is detected. "The wave is over" is written as *no enemies are alive*, and that is also true for the second and a half between the marker appearing and the swarm landing on it — so without the guard the condition would fire again mid-spawn and stack wave `n+1` on top of wave `n`. The flag is set on entry and cleared by a timer whose duration, `(8 + (self.wave-1)*2)*0.1 + 0.5 + 0.75`, is the spawn animation re-derived by hand. Two independent descriptions of the same interval have to agree, and nothing checks that they do — and here they do not. The spawn count carries a `math.min(self.loop*12, 200)` term for repeat runs, and the duration that guards it does not, so past the first loop the flag clears while enemies are still landing.
+
+The `max_waves+1` argument is what stops the poller, one iteration past the last wave so that the `return` on the line above can fire. The level's end is a *second* poller, testing the same object list plus two of the same flags. Both run every frame for the whole level.
+
+The countdown before the first wave is the enclosing structure. `t:every(1, ..., 3, continuation)` counts three seconds down, and everything above lives inside the continuation — the arena's whole wave logic is nested in the completion callback of its own countdown.
+
+## Atmos + Pico
+
+The progression is a loop [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/1320946107883d040060ea3186c8456361e86ff7/atmos/arena/battle.atm#L522):
+
+```lua
+await Countdown()
+
+loop i in maxWaves {
+    set wave.n = i
+    emit :wave
+
+    await(WAVE_DELAY)
+    val centre = cluster_centre()
+
+    ;; the spot is marked first, and the swarm arrives as the marker goes out
+    await Spawn_Marker(centre.x, centre.y)
+
+    loop _ in wave_enemies(i) {
+        val p = cluster_pos(centre)
+        ;; ... spawn @ENEMIES a seeker, or the elite that displaces it ...
+    }
+
+    ;; the pool empties only once every enemy of this wave is dead
+    await :all ENEMIES
+}
+```
+
+There is no `spawning_enemies`, because the spawn and the wait for extinction are consecutive lines. While the marker is up and the swarm is landing, control has not yet reached `await :all ENEMIES` — the sequence is the guard, and there is no interval to re-derive. `Spawn_Marker` is awaited rather than scheduled, so the 1.125s delay is the marker's own duration rather than a number repeated at the call site.
+
+There is no `quitting` and no second poller. Falling out of the loop *is* the level being cleared, and the lines after it are what happens next. The win condition needs no expression because it is a position in the program.
+
+The wave number survives, but only as something to draw. `wave` is a box read by `Wave_Text`, which re-measures its rich text on `emit :wave` instead of once per frame. The loop variable `i` is the control state; `wave.n` is a copy kept for the counter in the corner.
+
+The countdown is one `await` on the line before the loop [(battle.atm)](https://github.com/kboltiz/SNKRX/blob/1320946107883d040060ea3186c8456361e86ff7/atmos/arena/battle.atm#L196). Nothing nests inside it, and nothing else is told the arena has not started — the snake is already loose, as it is in SNKRX, because the waves simply have not begun.
+
+## Analysis
+
+The two versions detect the same event by opposite means. Lua asks *is the enemy list empty?* on every frame and has to subtract the cases where it is empty for the wrong reason. Atmos waits on the specific pool the wave filled, which cannot be empty for the wrong reason because it does not exist before the wave fills it.
+
+That difference is what removes `spawning_enemies`. The flag is not incidental complexity — it is the necessary repair to a predicate that is slightly too broad, and it costs a hand-computed duration that must track the spawn animation forever. Neither the flag nor the duration has anything to say once the ending is awaited rather than inferred.
+
+The same applies at the level above. `wave > max_waves` and `quitting` describe a control-flow position — *after the last wave* — in terms of data, and must be re-tested every frame because data cannot say where the program is. In Atmos that position is reachable directly, and the level's end is written on the line where it happens.
