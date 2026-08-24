@@ -12,6 +12,30 @@ val func enemy_hit(px, py, radius) {
     }
 }
 
+;; a cast's hit area, drawn from the battle's effects pool rather than from
+;; under the caster. FX sits above the enemies pool in the tree, so the area
+;; is painted before the seekers and they stay visible on top of it
+;;
+;; 102/255 is 40% opaque: the area tints what is under it without hiding it
+val ABILITY_FX = 0.3 * 1s
+val func hit_alpha (color) { pico.color.alpha(color, 102) }
+
+val task Hit_Area (rect, color) {
+    pin spring = spawn Spring.Simple(0.8)
+    emit @spring :start
+    watching (ABILITY_FX) {
+        loop on :draw {
+            pico.set.pencil [ color=color ]
+            pico.output.draw.rect([ "%",
+                x = rect.x,
+                y = rect.y,
+                w = (rect.w * spring.pub.scale),
+                h = (rect.h * spring.pub.scale),
+            ])
+        }
+    }
+}
+
 val task Swordsman(unit_pos, enemy_pos) {
     print("swordsman_ability")
     
@@ -24,23 +48,7 @@ val task Swordsman(unit_pos, enemy_pos) {
         h = (AREA_SIZE * ASPECT_RATIO),
     ]
 
-    pin spring = spawn Spring.Simple(0.8)
-    emit @spring :start
-
-    val hitColor = pico.color.alpha(COLORS.yellow.base, 150)
-
-    ;; area_drawing
-    spawn {
-        loop on :draw {
-            pico.set.pencil [ color=hitColor ]
-            pico.output.draw.rect([ "%",
-                x = hit_area_rect.x,
-                y = hit_area_rect.y,
-                w = hit_area_rect.w * spring.pub.scale,
-                h = hit_area_rect.h * spring.pub.scale,
-            ])
-        }
-    }
+    spawn @FX Hit_Area(hit_area_rect, hit_alpha(COLORS.yellow.base))
     
     pico.output.sound(CHARACTERS@('swordsman').sound)
     
@@ -74,23 +82,7 @@ val task Wizard(unit_pos, enemy_pos) {
         h = (AREA_SIZE * ASPECT_RATIO),
     ]
     
-    pin spring = spawn Spring.Simple(0.8)
-    emit @spring :start
-    
-     val hitColor = pico.color.alpha(COLORS.blue.base, 150)
-
-    ;; area_drawing
-    spawn {
-        loop on :draw {
-            pico.set.pencil [ color=hitColor ]
-            pico.output.draw.rect([ "%",
-                x = hit_area_rect.x,
-                y = hit_area_rect.y,
-                w = hit_area_rect.w * spring.pub.scale,
-                h = hit_area_rect.h * spring.pub.scale,
-            ])
-        }
-    }
+    spawn @FX Hit_Area(hit_area_rect, hit_alpha(COLORS.blue.base))
     
     pico.output.sound(CHARACTERS@('wizard').sound)
 
@@ -128,7 +120,7 @@ val task Turret_Shot (startX, startY, r) {
 
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=COLORS.green.base ]
+            pico.set.pencil [ color=oval_clr(COLORS.green.base) ]
             pico.output.draw.oval([ "%",
                 x=px, y=py, w=SHOT_SIZE, h=(SHOT_SIZE * ASPECT_RATIO),
             ])
@@ -163,7 +155,7 @@ val task Turret_Shot (startX, startY, r) {
 val task Turret (x, y) {
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=COLORS.green.base ]
+            pico.set.pencil [ color=oval_clr(COLORS.green.base) ]
             pico.output.draw.oval([ "%",
                 x=x, y=y, w=TURRET_SIZE, h=(TURRET_SIZE * ASPECT_RATIO),
             ])
@@ -202,20 +194,10 @@ val task Priest (unit_pos, enemy_pos, party) {
     emit @party :heal [ frac=PRIEST_HEAL ]
     pico.output.sound(CHARACTERS@('priest').sound)
 
-    pin spring = spawn Spring.Simple(0.8)
-    emit @spring :start
-
-    val clr = pico.color.alpha(COLORS.green.base, 150)
-    spawn {
-        loop on :draw {
-            pico.set.pencil [ color=clr ]
-            pico.output.draw.rect([ "%",
-                x = unit_pos.x, y = unit_pos.y,
-                w = (PRIEST_SIZE * spring.pub.scale),
-                h = (PRIEST_SIZE * ASPECT_RATIO * spring.pub.scale),
-            ])
-        }
-    }
+    spawn @FX Hit_Area([ "%",
+        x = unit_pos.x, y = unit_pos.y,
+        w = PRIEST_SIZE, h = (PRIEST_SIZE * ASPECT_RATIO),
+    ], hit_alpha(COLORS.green.base))
 
     await(0.3 * 1s)
 }

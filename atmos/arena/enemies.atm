@@ -175,7 +175,7 @@ val task Seeker(startX, startY) {
 
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=look.clr ]
+            pico.set.pencil [ color=oval_clr(look.clr) ]
             pico.output.draw.oval([ "%",
                 x=pub.x, y=pub.y,
                 w=SEEKER_SIZE, h=(SEEKER_SIZE * ASPECT_RATIO),

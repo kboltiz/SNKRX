@@ -68,7 +68,7 @@ task Transition (msg, pos, Next, ...) {
                 ;; draw oval with current pct
                 val cover = cover_radius(pos.x, pos.y)
                 loop on :draw {
-                    pico.set.pencil [ color=COLORS.hover.bg ]
+                    pico.set.pencil [ color=oval_clr(COLORS.hover.bg) ]
                     pico.output.draw.oval [
                         '%', x=pos.x, y=pos.y,
                         w = pct * cover * 2,

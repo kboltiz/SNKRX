@@ -65,6 +65,13 @@ set FONT = "../assets/fonts/PixulBrush.ttf"
 ;; SNKRX draws the run's outcome and score in its fat pixel face
 set FAT_FONT = "../assets/fonts/FatPixelFont.ttf"
 
+;; pico-sdl leaves alpha blending switched OFF after an oval, tri or poly is
+;; drawn with a fully opaque colour, and it stays off for the rest of the
+;; process: every later translucent draw comes out opaque, however the pencil
+;; reports itself. An alpha of 254 is indistinguishable on screen and keeps
+;; blending on, so every oval in the port is drawn through this
+func oval_clr (c) { pico.color.alpha(c, 254) }
+
 set COLORS = [
     idle = [
         bg = [ '%', r=0.18, g=0.18, b=0.18 ],

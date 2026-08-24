@@ -395,7 +395,7 @@ val task SnakeUnit(index, character, trail, positions, party, pace) {
 
         spawn {
             loop on :draw {
-                pico.set.pencil [ color=clr ]
+                pico.set.pencil [ color=oval_clr(clr) ]
                 pico.output.draw.oval [ "%",
                     x=pos.x, y=pos.y,
                     w=(UNIT_SIZE * scale),

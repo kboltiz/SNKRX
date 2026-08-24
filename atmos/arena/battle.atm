@@ -350,12 +350,23 @@ val task Build_Row (i, character) {
 
 val PAUSE_KEY = :Escape
 
+;; the overlays dim what is behind them rather than covering it. 160/255
+;; is dark enough for text to read over a lit arena while the arena is
+;; still visible through it
+val func dim_color () { pico.color.alpha(:black, 160) }
+
 ;; PATTERN #6 : Pausing : the arena freezes but stays on screen
 ;;  - `toggle ... with :draw` suspends a task's reaction to everything
 ;;    except drawing, so the battle holds its exact state and keeps
 ;;    rendering it. Nothing has to be told it is paused
 val task Pause_Overlay () {
+    ;; no screenshot needed: the toggles below suspend everything except
+    ;; drawing, so the arena is already holding still underneath
+    val dim = dim_color()
     loop on :draw {
+        pico.set.pencil [ color=dim ]
+        pico.output.draw.rect [ '%', x=0.5, y=0.5, w=1, h=1 ]
+
         pico.set.pencil [ color=COLORS.idle.fg ]
         pico.output.draw.text.fix("PAUSED", [ '%', x=0.5, y=0.5, h=0.06 ])
         pico.output.draw.text.fix("esc to resume", [ '%', x=0.5, y=0.58, h=0.03 ])
@@ -365,8 +376,6 @@ val task Pause_Overlay () {
 ;; PATTERN #1 : Finite State Machines : overlay -> input -> done
 ;;  - awaited inside Battle, so the arena is only torn down once the
 ;;    player acknowledges the outcome
-;; TODO: draw over a frozen screenshot of the arena, like Transition does,
-;;       instead of covering it
 val task Outcome (msg, clr, party) {
     ;; the level is read now: a wipe rebuilds the run once Battle returns
     val level = G.level
@@ -378,9 +387,15 @@ val task Outcome (msg, clr, party) {
     pico.set.pencil [ font=FONT ]
     val scoreLeft = (0.5 - (width / 2))
 
+    ;; the arena is still live under here, so it is grabbed once and the
+    ;; still is what gets dimmed, the way Transition freezes the old screen
+    pico.layer.screenshot [ mode='~', key=:outcome, sup=:window ]
+    val dim = dim_color()
+
     spawn {
         loop on :draw {
-            pico.set.pencil [ color=:black ]
+            pico.output.draw.layer(:outcome) <- [ '%', x=0.5, y=0.5, w=1, h=1 ]
+            pico.set.pencil [ color=dim ]
             pico.output.draw.rect [ '%', x=0.5, y=0.5, w=1, h=1 ]
 
             pico.set.pencil [ font=FAT_FONT ]
@@ -480,6 +495,13 @@ task Battle () {
             ])
         }
     }
+
+    ;; effects draw below the enemies, so a hit area never hides a seeker.
+    ;; a task's draw order is its position in the tree, not when it was
+    ;; spawned, so this pool has to be created before the enemies pool for
+    ;; its members to end up underneath them
+    pin fx = tasks()
+    set FX = fx
 
     pin enemies = tasks()
     set ENEMIES = enemies
